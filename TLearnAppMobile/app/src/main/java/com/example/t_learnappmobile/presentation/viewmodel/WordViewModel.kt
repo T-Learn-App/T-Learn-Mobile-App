@@ -6,7 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
 import com.example.t_learnappmobile.data.repository.WordRepositoryImpl
-import com.example.t_learnappmobile.model.Word
+import com.example.t_learnappmobile.model.VocabularyStats
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -29,11 +29,20 @@ class WordViewModel : ViewModel() {
     private val _cardStats = MutableLiveData<CardStats>()
     val cardStats: LiveData<CardStats> = _cardStats
 
+    private val _isLoading = MutableLiveData(false)
+    val isLoading: LiveData<Boolean> = _isLoading
+
+    private val _error = MutableLiveData<String?>(null)
+    val error: LiveData<String?> = _error
+
     private var timerJob: Job? = null
 
     init {
+        loadInitialBatch()
         startPeriodicCheck()
-        updateStats()
+    }
+    private fun loadInitialBatch(){
+
     }
 
     private fun startPeriodicCheck() {
@@ -48,32 +57,18 @@ class WordViewModel : ViewModel() {
     }
 
     private fun updateStats() {
-        val stats = CardStats(
-            newWordsCount = repository.getNewWords().size,
-            rotationWordsCount = repository.getRotationWords().size,
-            learnedWordsCount = repository.getLearnedWords().size
-        )
-        _cardStats.value = stats
+
     }
 
     fun toggleTranslation() {
         _isTranslationHidden.value = !(_isTranslationHidden.value ?: true)
     }
 
-    fun onAnswerSuccess() {
-        val card = (currentWord.value) ?: return
-        repository.markAsSuccessful(card)
-        updateStats()
-    }
+    fun onKnowCard() { }
+    fun onDontKnowCard() { }
+    private fun loadNextBatch() { }
 
-    fun onAnswerFailure() {
-        val card = (currentWord.value) ?: return
-        repository.markAsFailure(card)
-        updateStats()
-    }
+    private fun updateStats(stats: VocabularyStats?) { }
+    override fun onCleared() { timerJob?.cancel(); super.onCleared() }
 
-    override fun onCleared() {
-        super.onCleared()
-        timerJob?.cancel()
     }
-}

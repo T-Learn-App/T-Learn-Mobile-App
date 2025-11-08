@@ -1,5 +1,6 @@
 package com.example.t_learnappmobile.presentation.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -41,9 +42,19 @@ class WordViewModel : ViewModel() {
         loadInitialBatch()
         startPeriodicCheck()
     }
-    private fun loadInitialBatch(){
-
+    private fun loadInitialBatch() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                repository.fetchWordBatch(vocabularyId = 1, batchSize = 10)
+            } catch (e: Exception) {
+                _error.value = "Ошибка загрузки"
+            } finally {
+                _isLoading.value = false
+            }
+        }
     }
+
 
     private fun startPeriodicCheck() {
         timerJob?.cancel()

@@ -54,16 +54,8 @@ class MainActivity : AppCompatActivity() {
                     binding.wordLabel.text = "● Новое слово"
                 }
                 CardType.ROTATION -> {
-                    // оставить потом только этап повтора
-                    val now = LocalDateTime.now()
-//                    val timeDiff = java.time.Duration.between(now, word.nextRepetitionTime)
-//                    if (timeDiff.isNegative || timeDiff.isZero){
-//                        binding.wordLabel.text = "● Повтор сейчас. Этап ${word.repetitionStage + 1}/8"
-//                    } else {
-//                        val minutes = timeDiff.toMinutes()
-//                        binding.wordLabel.text = "● Повторить через ${minutes}м. Этап ${word.repetitionStage + 1}/8"
-//                    }
-
+                    binding.wordLabel.visibility = View.VISIBLE
+                    binding.wordLabel.text = "● Этап: ${word.repetitionStage + 1}"
                 }
             }
             when (word.translationDirection){
@@ -94,6 +86,13 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        viewModel.isLoading.observe(this) { isLoading ->
+            binding.knownButton.isEnabled = !isLoading
+            binding.unknownButton.isEnabled = !isLoading
+        }
+
+
+
         viewModel.isTranslationHidden.observe(this) { isHidden ->
             if (isHidden){
                 binding.translationText.visibility = View.GONE
@@ -106,29 +105,26 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        viewModel.cardStats.observe(this) {stats ->
-            val statsText = "Новых: ${stats.newWordsCount} | В ротации: ${stats.rotationWordsCount} | Выучено: ${stats.learnedWordsCount}"
-        }
     }
 
     private fun setUpClickListener() {
         binding.eyeIcon.setOnClickListener {
-           // viewModel.toggleTranslation()
+            viewModel.toggleTranslation()
         }
         binding.showTranslationButtonText.setOnClickListener {
-           // viewModel.toggleTranslation()
+           viewModel.toggleTranslation()
         }
         binding.knownButton.setOnClickListener {
             binding.knownButton.isEnabled = false
             binding.unknownButton.isEnabled = false
             binding.knownButton.text = "Отлично!"
-            //viewModel.onAnswerSuccess()
+            viewModel.onKnowCard()
         }
         binding.unknownButton.setOnClickListener {
             binding.knownButton.isEnabled = false
             binding.unknownButton.isEnabled = false
             binding.unknownButton.text = "Подождите..."
-            //viewModel.onAnswerFailure()
+            viewModel.onDontKnowCard()
         }
         binding.statsButton.setOnClickListener {
 

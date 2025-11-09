@@ -9,6 +9,7 @@ interface WordRepository {
     fun getCurrentCard(): Word?
     fun getNewWords(): List<Word>
     fun getLearnedWords(): List<Word>
+    fun getRotationWords(): List<Word>
     fun addWord(word: Word)
     fun triggerUpdate()
 

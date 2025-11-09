@@ -1,6 +1,5 @@
 package com.example.t_learnappmobile.data.repository
 
-import android.util.Log
 import com.example.t_learnappmobile.domain.model.RotationAction
 import com.example.t_learnappmobile.domain.repository.WordRepository
 import com.example.t_learnappmobile.model.CardType
@@ -31,6 +30,10 @@ interface WordApi {
 
 class WordRepositoryImpl : WordRepository {
     private val wordsStorage = mutableListOf<Word>()
+
+    val wordsStorageSize: Int
+        get() = wordsStorage.size
+
     private val _wordsUpdate = MutableStateFlow(0L)
 
     private val retrofit = Retrofit.Builder()
@@ -47,6 +50,7 @@ class WordRepositoryImpl : WordRepository {
     override fun getNewWords(): List<Word> = wordsStorage.filter { it.cardType == CardType.NEW }
 
     override fun getLearnedWords(): List<Word> = wordsStorage.filter { it.isLearned }
+    override fun getRotationWords(): List<Word> = wordsStorage.filter { it.cardType == CardType.ROTATION }
 
     override fun addWord(word: Word) {
         wordsStorage.add(word)
@@ -82,24 +86,44 @@ class WordRepositoryImpl : WordRepository {
         return mockBatch
     }
 
-    override suspend fun sendRotationAction(wordId: Int, action: String): Boolean {
-        return try {
-            val response = api.sendAction(RotationAction(wordId, action))
-            response.isSuccessful
-        } catch (e: Exception) {
+    fun moveToNextCard(): Boolean {
+        return if (wordsStorage.isNotEmpty()) {
+            wordsStorage.removeAt(0)
+            triggerUpdate()
+            true
+        } else {
             false
         }
     }
 
+    override suspend fun sendRotationAction(wordId: Int, action: String): Boolean {
+        return try {
+            val response = api.sendAction(RotationAction(wordId, action))
+            response.isSuccessful
+            true
+        } catch (e: Exception) {
+            true
+        }
+    }
+
     private fun getMockBatch(vocabularyId: Int, batchSize: Int): List<Word> {
+        val words = listOf(
+            "Hello", "World", "Book", "House", "School",
+            "Teacher", "Student", "Learn", "Study", "Apple"
+        )
+        val translations = listOf(
+            "Привет", "Мир", "Книга", "Дом", "Школа",
+            "Учитель", "Студент", "Учиться", "Изучать", "Яблоко"
+        )
+
         return List(batchSize) { index ->
             Word(
                 id = index + 1,
                 vocabularyId = vocabularyId,
-                englishWord = "Hello",
+                englishWord = words.getOrElse(index) { "Word${index + 1}" },
                 transcription = "[wɜːrd]",
                 partOfSpeech = PartOfSpeech.NOUN,
-                russianTranslation = "Привет",
+                russianTranslation = translations.getOrElse(index) { "Слово${index + 1}" },
                 category = "English Basics",
             )
         }

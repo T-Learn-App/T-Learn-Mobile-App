@@ -42,13 +42,17 @@ class WordViewModel : ViewModel() {
         loadInitialBatch()
         startPeriodicCheck()
     }
+
     private fun loadInitialBatch() {
         viewModelScope.launch {
             _isLoading.value = true
+            _error.value = null
             try {
                 repository.fetchWordBatch(vocabularyId = 1, batchSize = 10)
+                repository.triggerUpdate()
+                updateStats()
             } catch (e: Exception) {
-                _error.value = "Ошибка загрузки"
+                _error.value = "Ошибка загрузки: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
@@ -56,11 +60,28 @@ class WordViewModel : ViewModel() {
     }
 
 
+    private fun loadNextBatch() {
+        viewModelScope.launch {
+            try {
+                repository.moveToNextCard()
+                if (repository.wordsStorageSize < 2) {
+                    repository.fetchWordBatch(1, 10)
+                    repository.moveToNextCard()
+                }
+                updateStats()
+            } catch (e: Exception) {
+                _error.value = "Ошибка"
+            }
+        }
+    }
+
+
+
     private fun startPeriodicCheck() {
         timerJob?.cancel()
         timerJob = viewModelScope.launch {
             while (isActive) {
-                delay(5000) 
+                delay(5000)
                 repository.triggerUpdate()
                 updateStats()
             }
@@ -68,18 +89,66 @@ class WordViewModel : ViewModel() {
     }
 
     private fun updateStats() {
+        val newCount = repository.getNewWords().size
+        val rotationCount = repository.getRotationWords().size
+        val learnedCount = repository.getLearnedWords().size
+        _cardStats.value = CardStats(newCount, rotationCount, learnedCount)
+    }
 
+    fun onKnowCard() {
+        val card = currentWord.value
+        if (card == null) {
+            _error.value = "Карточка не загружена"
+            return
+        }
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+            try {
+                val success = repository.sendRotationAction(card.id, "know")
+                _isLoading.value = false
+                if (success) {
+                    loadNextBatch()
+                } else {
+                    _error.value = "Ошибка отправки действия (mock fallback)"
+                }
+            } catch (e: Exception) {
+                _isLoading.value = false
+                _error.value = "Ошибка: ${e.message}"
+            }
+        }
+    }
+
+    fun onDontKnowCard() {
+        val card = currentWord.value
+        if (card == null) {
+            _error.value = "Карточка не загружена"
+            return
+        }
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+            try {
+                val success = repository.sendRotationAction(card.id, "dont_know")
+                _isLoading.value = false
+                if (success) {
+                    loadNextBatch()
+                } else {
+                    _error.value = "Ошибка отправки действия (mock fallback)"
+                }
+            } catch (e: Exception) {
+                _isLoading.value = false
+                _error.value = "Ошибка: ${e.message}"
+            }
+        }
     }
 
     fun toggleTranslation() {
         _isTranslationHidden.value = !(_isTranslationHidden.value ?: true)
     }
 
-    fun onKnowCard() { }
-    fun onDontKnowCard() { }
-    private fun loadNextBatch() { }
-
-    private fun updateStats(stats: VocabularyStats?) { }
-    override fun onCleared() { timerJob?.cancel(); super.onCleared() }
-
+    override fun onCleared() {
+        timerJob?.cancel()
+        super.onCleared()
     }
+}

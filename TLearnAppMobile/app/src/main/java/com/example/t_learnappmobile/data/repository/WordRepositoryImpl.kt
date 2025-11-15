@@ -1,110 +1,85 @@
 package com.example.t_learnappmobile.data.repository
 
+
+import com.example.t_learnappmobile.domain.model.CardAction
 import com.example.t_learnappmobile.domain.model.RotationAction
 import com.example.t_learnappmobile.domain.repository.WordRepository
-import com.example.t_learnappmobile.model.CardType
 import com.example.t_learnappmobile.model.PartOfSpeech
 import com.example.t_learnappmobile.model.VocabularyStats
 import com.example.t_learnappmobile.model.Word
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.map
-import retrofit2.Response
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
-import retrofit2.http.Body
-import retrofit2.http.GET
-import retrofit2.http.POST
-import retrofit2.http.Query
 
-interface WordApi {
-    @GET("words")
-    suspend fun getBatch(
-        @Query("vocabulary_id") vocabularyId: Int,
-        @Query("batch_size") batchSize: Int
-    ): Response<List<Word>>
 
-    @POST("rotation")
-    suspend fun sendAction(@Body action: RotationAction): Response<Unit>
-}
 
-class WordRepositoryImpl : WordRepository {
-    private val wordsStorage = mutableListOf<Word>()
 
-    val wordsStorageSize: Int
-        get() = wordsStorage.size
+class WordRepositoryImpl (
+    private val api: WordApi,
+    private val storage : WordsStorage
+) : WordRepository {
 
-    private val _wordsUpdate = MutableStateFlow(0L)
+    override fun nextWord() {
+        storage.nextWord()
+    }
 
-    private val retrofit = Retrofit.Builder()
-        .baseUrl("http://10.0.2.2:8080/")
-        .addConverterFactory(GsonConverterFactory.create())
-        .build()
+    override fun getCurrentCardFlow(): Flow<Word?> {
+        return storage.currentCardFlow
+    }
 
-    private val api = retrofit.create(WordApi::class.java)
+    override fun getCurrentCard(): Word? {
+        return storage.getCurrentWord()
+    }
+    override fun getNewWords(): List<Word> {
+        return storage.getNewWords()
+    }
 
-    override fun getCurrentCardFlow(): Flow<Word?> = _wordsUpdate.map { getCurrentCard() }
-
-    override fun getCurrentCard(): Word? = wordsStorage.firstOrNull()
-
-    override fun getNewWords(): List<Word> = wordsStorage.filter { it.cardType == CardType.NEW }
-
-    override fun getLearnedWords(): List<Word> = wordsStorage.filter { it.isLearned }
-    override fun getRotationWords(): List<Word> = wordsStorage.filter { it.cardType == CardType.ROTATION }
+    override fun getLearnedWords(): List<Word> {
+        return storage.getLearnedWords()
+    }
+    override fun getRotationWords() : List<Word> {
+        return storage.getRotationWords()
+    }
 
     override fun addWord(word: Word) {
-        wordsStorage.add(word)
-        triggerUpdate()
+        storage.addWord(word)
     }
 
-    override fun triggerUpdate() {
-        _wordsUpdate.value = System.currentTimeMillis()
-    }
 
     override suspend fun fetchWordBatch(vocabularyId: Int, batchSize: Int): List<Word>? {
         return try {
             val response = api.getBatch(vocabularyId, batchSize)
             if (response.isSuccessful && response.body() != null) {
                 val batch = response.body()!!
-                wordsStorage.clear()
-                wordsStorage.addAll(batch)
-                triggerUpdate()
+                storage.updateWords(batch)
                 batch
             } else {
-                fallbackToMock(vocabularyId, batchSize)
+                val mockBatch = getMockBatch(vocabularyId, batchSize)
+                storage.updateWords(mockBatch)
+                mockBatch
             }
         } catch (e: Exception) {
-            fallbackToMock(vocabularyId, batchSize)
+            val mockBatch = getMockBatch(vocabularyId, batchSize)
+            storage.updateWords(mockBatch)
+            mockBatch
         }
     }
 
-    private fun fallbackToMock(vocabularyId: Int, batchSize: Int): List<Word> {
-        val mockBatch = getMockBatch(vocabularyId, batchSize)
-        wordsStorage.clear()
-        wordsStorage.addAll(mockBatch)
-        triggerUpdate()
-        return mockBatch
-    }
 
-    fun moveToNextCard(): Boolean {
-        return if (wordsStorage.isNotEmpty()) {
-            wordsStorage.removeAt(0)
-            triggerUpdate()
-            true
-        } else {
-            false
-        }
-    }
-
-    override suspend fun sendRotationAction(wordId: Int, action: String): Boolean {
+    override suspend fun sendRotationAction(wordId: Int, action: CardAction): Boolean {
         return try {
-            val response = api.sendAction(RotationAction(wordId, action))
-            response.isSuccessful
-            true
+            val response = api.sendAction(RotationAction(wordId, action.apiKey))
+            if (response.isSuccessful) {
+                true
+            } else {
+                println("API Error: ${response.code()} - ${response.message()}")
+                true
+            }
         } catch (e: Exception) {
+            println("Exception in sendRotationAction: ${e.message}")
+            e.printStackTrace()
             true
         }
     }
+
 
     private fun getMockBatch(vocabularyId: Int, batchSize: Int): List<Word> {
         val words = listOf(

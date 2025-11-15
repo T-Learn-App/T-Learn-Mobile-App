@@ -16,9 +16,9 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 4
-}]]></component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 4
+}</component>
   <component name="ProjectId" id="35Btwxj15RQvpvHjpbD2z3oPOry" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
@@ -34,7 +34,7 @@
     "cf.first.check.clang-format": "false",
     "cidr.known.project.marker": "true",
     "git-widget-placeholder": "main",
-    "last_opened_file_path": "/home/alena/Рабочий стол/t-bank/T-Learn-Mobile-App/TLearnAppMobile",
+    "last_opened_file_path": "C:/Users/Maria/Desktop/t-bank/T-Learn-Mobile-App",
     "settings.editor.selected.configurable": "AndroidSdkUpdater"
   }
 }]]></component>

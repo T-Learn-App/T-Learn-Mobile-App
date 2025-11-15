@@ -1,15 +1,21 @@
 package com.example.t_learnappmobile.presentation.viewmodel
 
-import android.util.Log
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
+import com.example.t_learnappmobile.data.repository.ServiceLocator
 import com.example.t_learnappmobile.data.repository.WordRepositoryImpl
-import com.example.t_learnappmobile.model.VocabularyStats
+import com.example.t_learnappmobile.data.repository.WordsStorage
+import com.example.t_learnappmobile.domain.model.CardAction
+import com.example.t_learnappmobile.model.Word
+
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -20,21 +26,25 @@ data class CardStats(
 )
 
 class WordViewModel : ViewModel() {
-    private val repository = WordRepositoryImpl()
+    private val repository = ServiceLocator.wordRepository
 
-    val currentWord = repository.getCurrentCardFlow().asLiveData()
+    val currentWord : StateFlow<Word?> = repository.getCurrentCardFlow()
+        .stateIn(viewModelScope, SharingStarted.Lazily, null)
 
-    private val _isTranslationHidden = MutableLiveData(true)
-    val isTranslationHidden: LiveData<Boolean> = _isTranslationHidden
+    private val _isTranslationHidden = MutableStateFlow(true)
+    val isTranslationHidden: MutableStateFlow<Boolean> = _isTranslationHidden
 
-    private val _cardStats = MutableLiveData<CardStats>()
-    val cardStats: LiveData<CardStats> = _cardStats
 
-    private val _isLoading = MutableLiveData(false)
-    val isLoading: LiveData<Boolean> = _isLoading
+    private val _cardStats = MutableStateFlow(CardStats())
+    val cardStats: MutableStateFlow<CardStats> = _cardStats
 
-    private val _error = MutableLiveData<String?>(null)
-    val error: LiveData<String?> = _error
+
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: MutableStateFlow<Boolean> = _isLoading
+
+
+    private val _error = MutableSharedFlow<String?>(replay = 0)
+    val error: SharedFlow<String?> = _error
 
     private var timerJob: Job? = null
 
@@ -42,39 +52,18 @@ class WordViewModel : ViewModel() {
         loadInitialBatch()
         startPeriodicCheck()
     }
-
     private fun loadInitialBatch() {
         viewModelScope.launch {
-            _isLoading.value = true
-            _error.value = null
+            _isLoading.emit(true)
             try {
                 repository.fetchWordBatch(vocabularyId = 1, batchSize = 10)
-                repository.triggerUpdate()
-                updateStats()
             } catch (e: Exception) {
-                _error.value = "Ошибка загрузки: ${e.message}"
+                _error.emit("Ошибка загрузки")
             } finally {
-                _isLoading.value = false
+                _isLoading.emit(false)
             }
         }
     }
-
-
-    private fun loadNextBatch() {
-        viewModelScope.launch {
-            try {
-                repository.moveToNextCard()
-                if (repository.wordsStorageSize < 2) {
-                    repository.fetchWordBatch(1, 10)
-                    repository.moveToNextCard()
-                }
-                updateStats()
-            } catch (e: Exception) {
-                _error.value = "Ошибка"
-            }
-        }
-    }
-
 
 
     private fun startPeriodicCheck() {
@@ -82,7 +71,6 @@ class WordViewModel : ViewModel() {
         timerJob = viewModelScope.launch {
             while (isActive) {
                 delay(5000)
-                repository.triggerUpdate()
                 updateStats()
             }
         }
@@ -95,60 +83,72 @@ class WordViewModel : ViewModel() {
         _cardStats.value = CardStats(newCount, rotationCount, learnedCount)
     }
 
-    fun onKnowCard() {
-        val card = currentWord.value
-        if (card == null) {
-            _error.value = "Карточка не загружена"
-            return
-        }
-        viewModelScope.launch {
-            _isLoading.value = true
-            _error.value = null
-            try {
-                val success = repository.sendRotationAction(card.id, "know")
-                _isLoading.value = false
-                if (success) {
-                    loadNextBatch()
-                } else {
-                    _error.value = "Ошибка отправки действия (mock fallback)"
-                }
-            } catch (e: Exception) {
-                _isLoading.value = false
-                _error.value = "Ошибка: ${e.message}"
-            }
-        }
-    }
-
-    fun onDontKnowCard() {
-        val card = currentWord.value
-        if (card == null) {
-            _error.value = "Карточка не загружена"
-            return
-        }
-        viewModelScope.launch {
-            _isLoading.value = true
-            _error.value = null
-            try {
-                val success = repository.sendRotationAction(card.id, "dont_know")
-                _isLoading.value = false
-                if (success) {
-                    loadNextBatch()
-                } else {
-                    _error.value = "Ошибка отправки действия (mock fallback)"
-                }
-            } catch (e: Exception) {
-                _isLoading.value = false
-                _error.value = "Ошибка: ${e.message}"
-            }
-        }
-    }
-
     fun toggleTranslation() {
-        _isTranslationHidden.value = !(_isTranslationHidden.value ?: true)
+        _isTranslationHidden.value = !_isTranslationHidden.value
+    }
+
+    suspend fun onKnowCard() {
+        val card = currentWord.value
+        if (card == null) {
+            _error.emit("Карточка не загружена")
+            return
+        }
+
+            _isLoading.value = true
+            _error.emit(null)
+            try {
+                val success = repository.sendRotationAction(card.id, CardAction.KNOW)
+                _isLoading.value = false
+                if (success) {
+                    _isTranslationHidden.value = true
+                    repository.nextWord()
+
+
+                    updateStats()
+                } else {
+                    _error.emit("Ошибка отправки действия (mock fallback)")
+                }
+            } catch (e: Exception) {
+                _isLoading.value = false
+                _error.emit("Ошибка: ${e.message}")
+            }
+    }
+
+    suspend fun onDontKnowCard() {
+        val card = currentWord.value
+        if (card == null) {
+            _error.emit("Карточка не загружена")
+            return
+        }
+
+            _isLoading.value = true
+            _error.emit(null)
+            try {
+                val success = repository.sendRotationAction(card.id, CardAction.DONT_KNOW)
+                _isLoading.value = false
+                if (success) {
+                    _isTranslationHidden.value = true
+                    repository.nextWord()
+                    updateStats()
+                } else {
+                    _error.emit("Ошибка отправки действия (mock fallback)")
+                }
+            } catch (e: Exception) {
+                _isLoading.value = false
+                _error.emit("Ошибка: ${e.message}")
+            }
+
     }
 
     override fun onCleared() {
         timerJob?.cancel()
         super.onCleared()
     }
+
 }
+
+
+
+
+
+

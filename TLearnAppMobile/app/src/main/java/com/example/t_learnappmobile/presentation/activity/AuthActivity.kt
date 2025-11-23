@@ -6,10 +6,10 @@ import androidx.appcompat.app.AppCompatActivity
 import com.example.t_learnappmobile.databinding.ActivityAuthBinding
 
 
-class AuthActivity: AppCompatActivity() {
+class AuthActivity : AppCompatActivity() {
     private lateinit var binding: ActivityAuthBinding
 
-    override fun onCreate(savedInstanceState: Bundle?){
+    override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityAuthBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -17,7 +17,7 @@ class AuthActivity: AppCompatActivity() {
         setupListeners()
     }
 
-    private fun setupListeners(){
+    private fun setupListeners() {
         binding.btnSendCode.setOnClickListener {
             val intent = Intent(this, EmailVerificationActivity::class.java)
             intent.putExtra("email", binding.emailEditText.text.toString())

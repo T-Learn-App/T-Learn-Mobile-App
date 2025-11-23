@@ -12,7 +12,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.example.t_learnappmobile.R
-import com.example.t_learnappmobile.databinding.ActivityCardBinding
+import com.example.t_learnappmobile.databinding.FragmentCardBinding
 import com.example.t_learnappmobile.model.CardType
 import com.example.t_learnappmobile.model.TranslationDirection
 import com.example.t_learnappmobile.presentation.viewmodel.WordViewModel
@@ -21,16 +21,19 @@ import kotlinx.coroutines.launch
 class CardsFragment : Fragment() {
 
 
-    private var _binding: ActivityCardBinding? = null
+    private var _binding: FragmentCardBinding? = null
     private val binding get() = _binding!!
     private lateinit var viewModel: WordViewModel
     private var onStatsClickListener: (() -> Unit)? = null
     private var onSettingsClickListener: (() -> Unit)? = null
 
 
-
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) : View {
-        _binding = ActivityCardBinding.inflate(inflater, container, false)
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        _binding = FragmentCardBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -46,7 +49,7 @@ class CardsFragment : Fragment() {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.currentWord.collect { word ->
                     if (word == null) {
-                        binding.categoryText.text = "Нет карточек"
+                        binding.categoryText.setText(R.string.no_cards)
                         binding.knownButton.isEnabled = false
                         binding.unknownButton.isEnabled = false
                         return@collect
@@ -55,20 +58,23 @@ class CardsFragment : Fragment() {
                     binding.knownButton.isEnabled = true
                     binding.unknownButton.isEnabled = true
 
-                    binding.categoryText.text = "Категория: ${word.category}"
+                    binding.categoryText.text = getString(R.string.type, word.category)
+
 
                     when (word.cardType) {
                         CardType.NEW -> {
                             binding.wordLabel.visibility = View.VISIBLE
-                            binding.wordLabel.text = "● Новое слово"
-                            binding.knownButton.text = "Я знаю это слово"
-                            binding.unknownButton.text = "Я не знаю этого слова"
+                            binding.wordLabel.setText(R.string.new_word)
+                            binding.knownButton.setText(R.string.i_know_that_word)
+                            binding.unknownButton.setText(R.string.i_dont_know_that_word)
                         }
+
                         CardType.ROTATION -> {
                             binding.wordLabel.visibility = View.VISIBLE
-                            binding.wordLabel.text = "Этап повтора: ${word.repetitionStage}"
-                            binding.knownButton.text = "Я запомнил это слово"
-                            binding.unknownButton.text = "Я не запомнил это слово"
+                            binding.wordLabel.text =
+                                getString(R.string.replay_stage, word.repetitionStage)
+                            binding.knownButton.setText(R.string.i_remember_that_word)
+                            binding.unknownButton.setText(R.string.i_didnt_remember_that_word)
                         }
                     }
 
@@ -78,6 +84,7 @@ class CardsFragment : Fragment() {
                             binding.transcriptionText.text = word.transcription
                             binding.translationText.text = word.russianTranslation
                         }
+
                         TranslationDirection.RUSSIAN_TO_ENGLISH -> {
                             binding.wordText.text = word.russianTranslation
                             binding.transcriptionText.text = word.transcription
@@ -88,7 +95,8 @@ class CardsFragment : Fragment() {
                     binding.partOfSpeechText.text = word.partOfSpeech.name
 
                     binding.translationText.visibility = View.GONE
-                    binding.showTranslationButtonText.text = "Показать перевод"
+                    binding.showTranslationButtonText.setText(R.string.show_translation)
+
                 }
             }
         }
@@ -98,22 +106,13 @@ class CardsFragment : Fragment() {
                 viewModel.isTranslationHidden.collect { isHidden ->
                     if (isHidden) {
                         binding.translationText.visibility = View.GONE
-                        binding.showTranslationButtonText.text = "Показать перевод"
+                        binding.showTranslationButtonText.setText(R.string.show_translation)
                         binding.eyeIcon.setImageResource(R.drawable.visibility_24px)
                     } else {
                         binding.translationText.visibility = View.VISIBLE
-                        binding.showTranslationButtonText.text = "Скрыть перевод"
+                        binding.showTranslationButtonText.setText(R.string.hide_translation)
                         binding.eyeIcon.setImageResource(R.drawable.visibility_off_24px)
                     }
-                }
-            }
-        }
-
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.cardStats.collect { stats ->
-                    val statsText = "Новых: ${stats.newWordsCount} | В ротации: ${stats.rotationWordsCount} | Выучено: ${stats.learnedWordsCount}"
-                    // binding.statsText.text = statsText
                 }
             }
         }
@@ -178,14 +177,17 @@ class CardsFragment : Fragment() {
             requireActivity().finish()
         }
     }
+
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
     }
-    fun setOnStatsClickListener(listener: () -> Unit){
+
+    fun setOnStatsClickListener(listener: () -> Unit) {
         onStatsClickListener = listener
     }
-    fun setOnSettingsClickListener(listener: () -> Unit){
+
+    fun setOnSettingsClickListener(listener: () -> Unit) {
         onSettingsClickListener = listener
     }
 }

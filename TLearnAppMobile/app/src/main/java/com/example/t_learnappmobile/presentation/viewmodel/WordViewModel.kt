@@ -28,7 +28,7 @@ data class CardStats(
 class WordViewModel : ViewModel() {
     private val repository = ServiceLocator.wordRepository
 
-    val currentWord : StateFlow<Word?> = repository.getCurrentCardFlow()
+    val currentWord: StateFlow<Word?> = repository.getCurrentCardFlow()
         .stateIn(viewModelScope, SharingStarted.Lazily, null)
 
     private val _isTranslationHidden = MutableStateFlow(true)
@@ -52,6 +52,7 @@ class WordViewModel : ViewModel() {
         loadInitialBatch()
         startPeriodicCheck()
     }
+
     private fun loadInitialBatch() {
         viewModelScope.launch {
             _isLoading.emit(true)
@@ -94,24 +95,24 @@ class WordViewModel : ViewModel() {
             return
         }
 
-            _isLoading.value = true
-            _error.emit(null)
-            try {
-                val success = repository.sendRotationAction(card.id, CardAction.KNOW)
-                _isLoading.value = false
-                if (success) {
-                    _isTranslationHidden.value = true
-                    repository.nextWord()
+        _isLoading.value = true
+        _error.emit(null)
+        try {
+            val success = repository.sendRotationAction(card.id, CardAction.KNOW)
+            _isLoading.value = false
+            if (success) {
+                _isTranslationHidden.value = true
+                repository.nextWord()
 
 
-                    updateStats()
-                } else {
-                    _error.emit("Ошибка отправки действия (mock fallback)")
-                }
-            } catch (e: Exception) {
-                _isLoading.value = false
-                _error.emit("Ошибка: ${e.message}")
+                updateStats()
+            } else {
+                _error.emit("Ошибка отправки действия (mock fallback)")
             }
+        } catch (e: Exception) {
+            _isLoading.value = false
+            _error.emit("Ошибка: ${e.message}")
+        }
     }
 
     suspend fun onDontKnowCard() {
@@ -121,22 +122,22 @@ class WordViewModel : ViewModel() {
             return
         }
 
-            _isLoading.value = true
-            _error.emit(null)
-            try {
-                val success = repository.sendRotationAction(card.id, CardAction.DONT_KNOW)
-                _isLoading.value = false
-                if (success) {
-                    _isTranslationHidden.value = true
-                    repository.nextWord()
-                    updateStats()
-                } else {
-                    _error.emit("Ошибка отправки действия (mock fallback)")
-                }
-            } catch (e: Exception) {
-                _isLoading.value = false
-                _error.emit("Ошибка: ${e.message}")
+        _isLoading.value = true
+        _error.emit(null)
+        try {
+            val success = repository.sendRotationAction(card.id, CardAction.DONT_KNOW)
+            _isLoading.value = false
+            if (success) {
+                _isTranslationHidden.value = true
+                repository.nextWord()
+                updateStats()
+            } else {
+                _error.emit("Ошибка отправки действия (mock fallback)")
             }
+        } catch (e: Exception) {
+            _isLoading.value = false
+            _error.emit("Ошибка: ${e.message}")
+        }
 
     }
 
@@ -146,9 +147,3 @@ class WordViewModel : ViewModel() {
     }
 
 }
-
-
-
-
-
-

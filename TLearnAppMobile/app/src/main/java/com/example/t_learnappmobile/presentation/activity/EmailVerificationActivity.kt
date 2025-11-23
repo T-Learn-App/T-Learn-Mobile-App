@@ -4,24 +4,36 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.CountDownTimer
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import com.example.t_learnappmobile.R
 import com.example.t_learnappmobile.databinding.ActivityEmailVerificationBinding
+import com.example.t_learnappmobile.presentation.viewmodel.EmailVerificationViewModel
+import kotlinx.coroutines.launch
 
-class EmailVerificationActivity: AppCompatActivity() {
+class EmailVerificationActivity : AppCompatActivity() {
     private lateinit var binding: ActivityEmailVerificationBinding
-    private var countDownTimer: CountDownTimer? = null
-    private val TIMER_DURATION = 60000L
-    override fun onCreate(savedInstanceState: Bundle?){
+    private lateinit var viewModel: EmailVerificationViewModel
+
+    override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityEmailVerificationBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        val email = intent.getStringExtra("email") ?: "user@example.com"
-        binding.emailDisplay.text = "Код отправлен на: $email"
+        viewModel = ViewModelProvider(this).get(EmailVerificationViewModel::class.java)
+
+        val email = intent.getStringExtra("email") ?: ""
+        binding.emailDisplay.text = getString(R.string.code_has_been_sent_to, email)
 
         setupListeners()
-        startTimer()
+        observeViewModel()
+        if (savedInstanceState == null) {
+            viewModel.startTimer()
+        }
+
     }
-    private fun setupListeners(){
+
+    private fun setupListeners() {
         binding.btnBack.setOnClickListener {
             finish()
         }
@@ -33,8 +45,7 @@ class EmailVerificationActivity: AppCompatActivity() {
         binding.btnResendCode.setOnClickListener {
             binding.codeError.visibility = android.view.View.GONE
             binding.codeEditText.text?.clear()
-            binding.btnResendCode.isEnabled = false
-            startTimer()
+            viewModel.resetCode()
         }
         binding.codeEditText.addTextChangedListener(object : android.text.TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -45,28 +56,19 @@ class EmailVerificationActivity: AppCompatActivity() {
             override fun afterTextChanged(s: android.text.Editable?) {}
         })
     }
-    private fun startTimer(){
-        countDownTimer?.cancel()
-        binding.btnResendCode.isEnabled = false
-        binding.btnResendCode.alpha = 0.5f
 
-        countDownTimer = object : CountDownTimer(TIMER_DURATION, 1000){
-            override fun onTick(millisUntilFinished: Long) {
-                val secondsRemaining = millisUntilFinished / 1000
-                binding.timerText.text = "Повторить через: ${secondsRemaining}s"
-            }
-
-            override fun onFinish() {
-                binding.timerText.text = "Код истёк"
-                binding.btnResendCode.isEnabled = true
-                binding.btnResendCode.alpha = 1f
+    private fun observeViewModel() {
+        lifecycleScope.launch {
+            viewModel.timerText.collect { text ->
+                binding.timerText.text = text
             }
         }
-        countDownTimer?.start()
-    }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        countDownTimer?.cancel()
+        lifecycleScope.launch {
+            viewModel.isResendEnabled.collect { isEnabled ->
+                binding.btnResendCode.isEnabled = isEnabled
+                binding.btnResendCode.alpha = if (isEnabled) 1f else 0.5f
+            }
+        }
     }
 }

@@ -3,61 +3,61 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
+    android:background="@color/white"
     android:gravity="center"
-    android:paddingHorizontal="24dp"
-    android:background="@color/white">
+    android:orientation="vertical"
+    android:paddingHorizontal="24dp">
 
     <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:elevation="4dp"
-        app:cardCornerRadius="16dp"
-        app:cardBackgroundColor="@color/white">
+        app:cardBackgroundColor="@color/white"
+        app:cardCornerRadius="16dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:elevation="4dp"
             android:orientation="vertical"
-            android:padding="24dp"
-            android:elevation="4dp">
+            android:padding="24dp">
 
             <TextView
                 android:id="@+id/loginTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Вход в T-Learn"
-                android:textSize="24sp"
-                android:textColor="@color/black"
+                android:layout_gravity="center_horizontal"
                 android:layout_marginBottom="24dp"
-                android:textStyle="bold"
-                android:layout_gravity="center_horizontal"/>
+                android:text="@string/t_learn"
+                android:textColor="@color/black"
+                android:textSize="24sp"
+                android:textStyle="bold" />
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="На указанную электронную почту будет отправлен код подтверждения"
-                android:textSize="13sp"
+                android:layout_marginBottom="24dp"
+                android:text="@string/code_will_be"
                 android:textColor="@color/gray"
-                android:layout_marginBottom="24dp"/>
+                android:textSize="13sp" />
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
+                android:layout_marginBottom="24dp"
                 android:gravity="center_vertical"
-                android:layout_marginBottom="24dp">
+                android:orientation="horizontal">
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/emailInputLayout"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
                     android:layout_marginEnd="12dp"
-                    android:hint="Электронная почта"
+                    android:layout_weight="1"
+                    android:hint="@string/mail"
                     android:textColorHint="@color/gray"
-                    app:hintTextColor="@color/gray"
-                    app:boxStrokeColor="@color/black">
+                    app:boxStrokeColor="@color/black"
+                    app:hintTextColor="@color/gray">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/emailEditText"
@@ -65,33 +65,33 @@
                         android:layout_height="wrap_content"
                         android:inputType="textEmailAddress"
                         android:textColor="@color/black"
-                        android:textCursorDrawable="@null"/>
+                        android:textCursorDrawable="@null" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnSendCode"
+                    style="@style/Widget.MaterialComponents.Button"
                     android:layout_width="56dp"
                     android:layout_height="56dp"
                     android:backgroundTint="@color/yellow"
                     android:enabled="false"
-                    app:icon="@drawable/arrow_forward_ios_24px"
-                    app:iconSize="24dp"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
                     android:insetLeft="0dp"
+                    android:insetTop="0dp"
                     android:insetRight="0dp"
-                    style="@style/Widget.MaterialComponents.Button"
-                    android:textColor="@color/black"/>
+                    android:insetBottom="0dp"
+                    android:textColor="@color/black"
+                    app:icon="@drawable/arrow_forward_ios_24px"
+                    app:iconSize="24dp" />
             </LinearLayout>
 
             <TextView
                 android:id="@+id/emailError"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textSize="12sp"
-                android:textColor="@color/red"
                 android:layout_marginBottom="16dp"
-                android:visibility="gone"/>
+                android:textColor="@color/red"
+                android:textSize="12sp"
+                android:visibility="gone" />
 
         </LinearLayout>
 

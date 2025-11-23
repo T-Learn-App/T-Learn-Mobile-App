@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:paddingHorizontal="24dp"
+    android:background="@color/white">
+
+    <androidx.cardview.widget.CardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:elevation="4dp"
+        app:cardCornerRadius="16dp"
+        app:cardBackgroundColor="@color/white">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="24dp"
+            android:paddingVertical="32dp">
+
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="32dp">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnBack"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Назад"
+                    android:scaleType="centerInside"
+                    app:icon="@drawable/arrow_back_ios_24px"
+                    app:iconSize="24dp"
+                    app:tint="@color/black"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:insetLeft="0dp"
+                    android:insetRight="0dp"
+                    style="@style/Widget.MaterialComponents.Button"
+                    />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Подтверждение"
+                    android:textSize="24sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/black"
+                    android:gravity="center"/>
+
+                <View
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"/>
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/emailDisplay"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Код отправлен на: user@example.com"
+                android:textSize="13sp"
+                android:textColor="@color/gray"
+                android:layout_marginBottom="24dp"
+                android:gravity="center"/>
+
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Введите 6-значный код подтверждения"
+                android:textSize="13sp"
+                android:textColor="@color/gray"
+                android:layout_marginBottom="24dp"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="24dp">
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/codeInputLayout"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="12dp"
+                    android:hint="Код (6 цифр)"
+                    android:textColorHint="@color/gray"
+                    app:hintTextColor="@color/gray"
+                    app:boxStrokeColor="@color/black">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/codeEditText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number"
+                        android:maxLength="6"
+                        android:textColor="@color/black"
+                        android:textCursorDrawable="@null"/>
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnVerify"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:insetLeft="0dp"
+                    android:insetRight="0dp"
+                    app:icon="@drawable/arrow_forward_ios_24px"
+                    app:iconSize="24dp"
+                    style="@style/Widget.MaterialComponents.Button"
+                    android:backgroundTint="@color/yellow"
+                    android:textColor="@color/black"
+                    android:enabled="false"/>
+            </LinearLayout>
+
+
+            <TextView
+                android:id="@+id/codeError"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textSize="12sp"
+                android:textColor="@color/red"
+                android:layout_marginBottom="16dp"
+                android:visibility="gone"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <TextView
+                    android:id="@+id/timerText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Повторить через: 59s"
+                    android:textSize="13sp"
+                    android:textColor="@color/gray"
+                    android:layout_marginEnd="8dp"/>
+
+                <TextView
+                    android:id="@+id/btnResendCode"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Отправить снова"
+                    android:textSize="13sp"
+                    android:textColor="@color/red"
+                    android:enabled="false"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackground"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="4dp"/>
+            </LinearLayout>
+
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+</LinearLayout>

@@ -10,11 +10,9 @@ import com.example.t_learnappmobile.model.Word
 import kotlinx.coroutines.flow.Flow
 
 
-
-
-class WordRepositoryImpl (
+class WordRepositoryImpl(
     private val api: WordApi,
-    private val storage : WordsStorage
+    private val storage: WordsStorage
 ) : WordRepository {
 
     override fun nextWord() {
@@ -28,6 +26,7 @@ class WordRepositoryImpl (
     override fun getCurrentCard(): Word? {
         return storage.getCurrentWord()
     }
+
     override fun getNewWords(): List<Word> {
         return storage.getNewWords()
     }
@@ -35,7 +34,8 @@ class WordRepositoryImpl (
     override fun getLearnedWords(): List<Word> {
         return storage.getLearnedWords()
     }
-    override fun getRotationWords() : List<Word> {
+
+    override fun getRotationWords(): List<Word> {
         return storage.getRotationWords()
     }
 

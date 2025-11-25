@@ -1,3 +1,50 @@
 <resources>
     <string name="app_name">T-Learn App Mobile</string>
+    <string name="no_cards">Нет карточек</string>
+    <string name="new_word">● Новое слово</string>
+    <string name="type">Категория: %s</string>
+    <string name="i_know_that_word">Я знаю это слово</string>
+    <string name="i_dont_know_that_word">Я не знаю этого слова</string>
+    <string name="replay_stage">Этап повтора: %d</string>
+    <string name="i_remember_that_word">Я запомнил это слово</string>
+    <string name="show_translation">Показать перевод</string>
+    <string name="hide_translation">Скрыть перевод</string>
+    <string name="i_didnt_remember_that_word">Я не запомнил это слово</string>
+    <string name="code_has_been_sent_to">"Код отправлен на: %s</string>
+    <string name="repeat_after">Повторить через: %ds</string>
+    <string name="code_is_expired">Код истёк</string>
+    <string name="dictionary_has_been_reset">Словарь сброшен</string>
+    <string name="data_has_been_reset">Данные сброшены</string>
+    <string name="dark_theme_is_selected">Ночная тема выбрана</string>
+    <string name="light_theme_is_selected">Дневная тема выбрана</string>
+    <string name="t_learn">Вход в T-Learn</string>
+    <string name="code_will_be">На указанную электронную почту будет отправлен код подтверждения</string>
+    <string name="mail">Электронная почта</string>
+    <string name="back">Назад</string>
+    <string name="Confirmation">Подтверждение</string>
+    <string name="The_code_has_been_sent_to">Код отправлен на: user@example.com</string>
+    <string name="Enter_the_6_digit_verification_code">Введите 6-значный код подтверждения</string>
+    <string name="code">Код (6 цифр)</string>
+    <string name="repeat_after_59s">Повторить через: 59s</string>
+    <string name="send_again">Отправить снова</string>
+    <string name="aeetings">Настройки</string>
+    <string name="close">Закрыть</string>
+    <string name="dict">Словарь</string>
+    <string name="current_dict">Текущий словарь</string>
+    <string name="design_theme">Тема оформления</string>
+    <string name="light_theme">Дневная тема</string>
+    <string name="light">Дневная</string>
+    <string name="dark_theme">Ночная тема</string>
+    <string name="dark">Ночная</string>
+    <string name="data_managment">Управление данными</string>
+    <string name="delete_dict">Сбросить словарь</string>
+    <string name="delete_stats_or_current_dict">Удалить статистику текущего словаря</string>
+    <string name="delete">Очистить</string>
+    <string name="delete_data">Сбросить все данные</string>
+    <string name="delete_data_and_progress">Удалить всю статистику и прогресс</string>
+    <string name="stats_learning">Статистика по обучению</string>
+    <string name="in_process">В процессе</string>
+    <string name="learned">Выучено</string>
+
+
 </resources>

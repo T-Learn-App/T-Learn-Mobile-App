@@ -16,6 +16,7 @@ import com.example.t_learnappmobile.databinding.FragmentCardBinding
 import com.example.t_learnappmobile.model.CardType
 import com.example.t_learnappmobile.model.TranslationDirection
 import com.example.t_learnappmobile.presentation.auth.AuthActivity
+import com.example.t_learnappmobile.presentation.auth.RegistrationActivity
 import com.example.t_learnappmobile.presentation.settings.SettingsBottomSheet
 import com.example.t_learnappmobile.presentation.statistics.StatistisBottomSheet
 import kotlinx.coroutines.launch
@@ -175,7 +176,7 @@ class CardsFragment : Fragment() {
             bottomSheet.show(parentFragmentManager, SettingsBottomSheet.Companion.TAG)
         }
         binding.exitButton.setOnClickListener {
-            startActivity(Intent(requireContext(), AuthActivity::class.java))
+            startActivity(Intent(requireContext(), RegistrationActivity::class.java))
             requireActivity().finish()
         }
     }

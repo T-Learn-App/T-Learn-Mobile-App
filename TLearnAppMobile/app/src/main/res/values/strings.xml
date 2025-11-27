@@ -50,7 +50,7 @@
     <string name="password">Пароль</string>
     <string name="i_already_have_account">У меня уже есть аккаунт</string>
     <string name="show_password">Показать пароль</string>
-    <string name="register">Зарегистрироваться</string>
+    <string name="register">Создать аккаунт</string>
 
 
 </resources>

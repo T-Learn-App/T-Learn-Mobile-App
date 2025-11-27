@@ -28,7 +28,7 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginBottom="24dp"
-                android:text="@string/t_learn"
+                android:text="@string/t_learn_registration"
                 android:textColor="@color/black"
                 android:textSize="24sp"
                 android:textStyle="bold" />
@@ -69,7 +69,33 @@
                         android:textCursorDrawable="@null" />
                 </com.google.android.material.textfield.TextInputLayout>
 
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/mail"
+                    android:textColor="@color/black"
+                    android:textSize="13sp" />
 
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/emailInputLayoutRegistration"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+
+                    android:hint="@string/mail"
+                    android:textColorHint="@color/gray"
+                    app:boxStrokeColor="@color/black"
+                    app:hintTextColor="@color/gray">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/emailEditTextRegistration"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:inputType="textEmailAddress"
+                        android:textColor="@color/black"
+                        android:textCursorDrawable="@null" />
+                </com.google.android.material.textfield.TextInputLayout>
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -103,21 +129,21 @@
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnSendCode"
-                        style="@style/Widget.MaterialComponents.Button"
-                        android:layout_width="56dp"
+                    android:id="@+id/btnSendCode"
+                    style="@style/Widget.MaterialComponents.Button"
+                    android:layout_width="56dp"
 
-                        android:layout_height="56dp"
-                        android:backgroundTint="@color/yellow"
-                        android:enabled="false"
-                        android:insetLeft="0dp"
-                        android:insetTop="0dp"
-                        android:insetRight="0dp"
-                        android:insetBottom="0dp"
-                        android:layout_gravity="right"
-                        android:textColor="@color/black"
-                        app:icon="@drawable/arrow_forward_ios_24px"
-                        app:iconSize="24dp" />
+                    android:layout_height="56dp"
+                    android:backgroundTint="@color/yellow"
+                    android:enabled="false"
+                    android:insetLeft="0dp"
+                    android:insetTop="0dp"
+                    android:insetRight="0dp"
+                    android:insetBottom="0dp"
+                    android:layout_gravity="right"
+                    android:textColor="@color/black"
+                    app:icon="@drawable/arrow_forward_ios_24px"
+                    app:iconSize="24dp" />
 
             </LinearLayout>
         </LinearLayout>
@@ -125,11 +151,11 @@
 
     </androidx.cardview.widget.CardView>
     <TextView
-        android:id="@+id/tvAlreadyHaveAccount"
+        android:id="@+id/btnAlreadyHaveAccount"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center"
-        android:text="@string/register"
+        android:text="@string/i_already_have_account"
         android:textColor="@color/red"
         android:textSize="13sp"
         android:layout_marginTop="12dp"

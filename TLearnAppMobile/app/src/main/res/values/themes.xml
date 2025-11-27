@@ -30,5 +30,7 @@
         <!-- Статус бар -->
         <item name="android:statusBarColor">@android:color/white</item>
         <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+
+
     </style>
 </resources>

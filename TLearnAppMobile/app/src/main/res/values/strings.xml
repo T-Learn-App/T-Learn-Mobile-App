@@ -45,6 +45,12 @@
     <string name="stats_learning">Статистика по обучению</string>
     <string name="in_process">В процессе</string>
     <string name="learned">Выучено</string>
+    <string name="t_learn_registration">Регистрация в T-Learn</string>
+    <string name="login">Логин</string>
+    <string name="password">Пароль</string>
+    <string name="i_already_have_account">У меня уже есть аккаунт</string>
+    <string name="show_password">Показать пароль</string>
+    <string name="register">Зарегистрироваться</string>
 
 
 </resources>

@@ -1,10 +1,8 @@
-package com.example.t_learnappmobile.presentation.viewmodel
+package com.example.t_learnappmobile.presentation.cards
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.t_learnappmobile.data.repository.ServiceLocator
-import com.example.t_learnappmobile.data.repository.WordRepositoryImpl
-import com.example.t_learnappmobile.data.repository.WordsStorage
 import com.example.t_learnappmobile.domain.model.CardAction
 import com.example.t_learnappmobile.model.Word
 

@@ -1,4 +1,4 @@
-package com.example.t_learnappmobile.presentation.viewmodel
+package com.example.t_learnappmobile.presentation.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

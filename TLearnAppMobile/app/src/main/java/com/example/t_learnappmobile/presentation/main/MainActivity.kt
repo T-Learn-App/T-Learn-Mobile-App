@@ -1,11 +1,11 @@
 package com.example.t_learnappmobile.presentation.main
 
 import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
 import com.example.t_learnappmobile.databinding.ActivityMainBinding
+import com.example.t_learnappmobile.presentation.auth.SecureActivity
 import com.example.t_learnappmobile.presentation.cards.CardsFragment
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : SecureActivity() {
     private lateinit var binding: ActivityMainBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -24,5 +24,4 @@ class MainActivity : AppCompatActivity() {
             .replace(binding.fragmentContainer.id, fragment)
             .commit()
     }
-
 }

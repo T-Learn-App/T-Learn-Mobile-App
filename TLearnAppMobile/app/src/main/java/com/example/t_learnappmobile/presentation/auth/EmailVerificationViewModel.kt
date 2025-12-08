@@ -19,9 +19,6 @@ class EmailVerificationViewModel : ViewModel() {
     private val _isResendEnabled = MutableStateFlow(false)
     val isResendEnabled: StateFlow<Boolean> = _isResendEnabled
 
-    private val _isTimerActive = MutableStateFlow(false)
-    val isTimeActive: StateFlow<Boolean> = _isTimerActive
-
     private var timerJob: Job? = null
     private var timerRemaining = 0L
 
@@ -38,16 +35,12 @@ class EmailVerificationViewModel : ViewModel() {
                 timerRemaining -= TICK_INTERVAL
             }
             _timerText.value = "Код истек"
+            _isResendEnabled.value = true
         }
-    }
-
-    fun resetCode() {
-        startTimer()
     }
 
     override fun onCleared() {
         timerJob?.cancel()
         super.onCleared()
     }
-
 }

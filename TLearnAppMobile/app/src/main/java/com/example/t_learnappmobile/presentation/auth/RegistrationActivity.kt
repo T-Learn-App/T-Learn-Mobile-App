@@ -4,91 +4,143 @@ import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
-import android.view.View
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import com.example.t_learnappmobile.R
+import com.example.t_learnappmobile.data.auth.AuthViewModel
 import com.example.t_learnappmobile.databinding.ActivityRegistrationBinding
-import com.google.android.material.textfield.TextInputEditText
-import com.google.android.material.textfield.TextInputLayout
+import kotlinx.coroutines.launch
 
 class RegistrationActivity : AppCompatActivity() {
     private lateinit var binding: ActivityRegistrationBinding
+    private lateinit var viewModel: AuthViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityRegistrationBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        viewModel = ViewModelProvider(this).get(AuthViewModel::class.java)
+
         setupListeners()
+        observeViewModel()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        viewModel.resetState()
+    }
+
+    private fun observeViewModel() {
+        lifecycleScope.launch {
+            viewModel.authState.collect { state ->
+                when (state) {
+                    is AuthState.Loading -> {
+                        binding.btnSendCode.isEnabled = false
+                    }
+                    is AuthState.VerificationCodeSent -> {
+                        binding.btnSendCode.isEnabled = true
+                        val email = binding.emailEditTextRegistration.text.toString().trim()
+                        val intent = Intent(this@RegistrationActivity, EmailVerificationActivity::class.java)
+                        intent.putExtra("email", email)
+                        startActivity(intent)
+                    }
+                    is AuthState.Error -> {
+                        binding.btnSendCode.isEnabled = true
+                        showErrorDialog(state.message)
+                    }
+                    else -> {
+                        binding.btnSendCode.isEnabled = true
+                    }
+                }
+            }
+        }
     }
 
     private fun setupListeners() {
-        updateButtonState()
-        binding.passwordEditTextRegistration.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            override fun afterTextChanged(s: Editable?) {
-                val password = s.toString()
-                if (password.isEmpty()) {
-                    binding.passwordEditTextRegistration.error = null
-                    return
-                }
-                val requirements = mutableListOf<String>()
-                if (password.length < 8) {
-                    requirements.add("• Минимум 8 символов")
-                }
-                if (!password.any { it.isLowerCase() }) {
-                    requirements.add("• Строчные буквы (a-z)")
-                }
-                if (!password.any { it.isUpperCase() }) {
-                    requirements.add("• Прописные буквы (A-Z)")
-                }
-                if (!password.any { it.isDigit() }) {
-                    requirements.add("• Цифры (0-9)")
-                }
-                if (!password.any { "!@#\$%^&*()_+=-[]{}|;:,.<>?".contains(it) }) {
-                    requirements.add("• Спецсимволы (!@#$%)")
-                }
-
-                if (requirements.isNotEmpty()) {
-                    binding.passwordInputLayoutRegistration.error = requirements.joinToString("\n")
-                } else {
-                    binding.passwordInputLayoutRegistration.error = null
-                }
-                updateButtonState()
-            }
-        })
-        binding.loginEditTextRegistration.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            override fun afterTextChanged(s: Editable?) {
-                updateButtonState()
-            }})
-        binding.emailEditTextRegistration.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            override fun afterTextChanged(s: Editable?) {
-                updateButtonState()
-            }})
+        binding.passwordEditTextRegistration.addTextChangedListener(
+            PasswordValidationWatcher()
+        )
+        binding.loginEditTextRegistration.addTextChangedListener(
+            InputValidationWatcher()
+        )
+        binding.emailEditTextRegistration.addTextChangedListener(
+            InputValidationWatcher()
+        )
 
         binding.btnSendCode.setOnClickListener {
-            val intent = Intent(this, EmailVerificationActivity::class.java)
-            intent.putExtra("email", binding.emailEditTextRegistration.text.toString())
-            intent.putExtra("login", binding.loginEditTextRegistration.text.toString())
-            intent.putExtra("password", binding.passwordEditTextRegistration.text.toString())
+            val login = binding.loginEditTextRegistration.text.toString().trim()
+            val email = binding.emailEditTextRegistration.text.toString().trim()
+            val password = binding.passwordEditTextRegistration.text.toString()
 
-            startActivity(intent)
+            if (isFormValid()) {
+                viewModel.register(login, email, password)
+            } else {
+                Toast.makeText(this, getString(R.string.error_fill_all_fields_correct), Toast.LENGTH_SHORT).show()
+            }
         }
 
         binding.btnAlreadyHaveAccount.setOnClickListener {
             startActivity(Intent(this, LoginActivity::class.java))
+            finish()
         }
     }
-    fun updateButtonState(){
-        val loginValid = binding.loginEditTextRegistration.text.toString().trim().isNotEmpty()
-        val emailValid = binding.emailEditTextRegistration.text.toString().trim().isNotEmpty()
-        val passwordValid = binding.passwordEditTextRegistration.error == null && binding.passwordEditTextRegistration.text.toString().isNotEmpty()
-        binding.btnSendCode.isEnabled = loginValid && emailValid && passwordValid
+
+    private fun isFormValid(): Boolean {
+        val login = binding.loginEditTextRegistration.text.toString().trim()
+        val email = binding.emailEditTextRegistration.text.toString().trim()
+        val password = binding.passwordEditTextRegistration.text.toString()
+
+        return login.isNotEmpty() &&
+                email.isNotEmpty() &&
+                password.length >= 8 &&
+                binding.passwordInputLayoutRegistration.error == null
     }
 
+    private fun updateButtonState() {
+        binding.btnSendCode.isEnabled = isFormValid()
+    }
 
+    private fun showErrorDialog(message: String) {
+        android.app.AlertDialog.Builder(this)
+            .setTitle(getString(R.string.error_title))
+            .setMessage(message)
+            .setPositiveButton(getString(R.string.dialog_ok)) { _, _ -> }
+            .show()
+    }
+
+    private inner class PasswordValidationWatcher : TextWatcher {
+        override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+        override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        override fun afterTextChanged(s: Editable?) {
+            val password = s.toString()
+            if (password.isEmpty()) {
+                binding.passwordInputLayoutRegistration.error = null
+                updateButtonState()
+                return
+            }
+
+            val errors = mutableListOf<String>()
+            if (password.length < 8) errors.add(getString(R.string.password_error_min_length))
+            if (!password.any { it.isLowerCase() }) errors.add(getString(R.string.password_error_lowercase))
+            if (!password.any { it.isUpperCase() }) errors.add(getString(R.string.password_error_uppercase))
+            if (!password.any { it.isDigit() }) errors.add(getString(R.string.password_error_digits))
+            if (!password.any { "!@#\$%^&*()_+=-[]{}|;:,.<>?".contains(it) }) errors.add(getString(R.string.password_error_special))
+
+            binding.passwordInputLayoutRegistration.error =
+                if (errors.isNotEmpty()) errors.joinToString("\n") else null
+
+            updateButtonState()
+        }
+    }
+
+    private inner class InputValidationWatcher : TextWatcher {
+        override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+        override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        override fun afterTextChanged(s: Editable?) {
+            updateButtonState()
+        }
+    }
 }

@@ -54,6 +54,9 @@ dependencies {
     implementation(libs.androidx.cardview)
     implementation(libs.firebase.inappmessaging)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    implementation(libs.androidx.datastore.core)
+    implementation(libs.firebase.crashlytics.buildtools)
+    implementation(libs.core.ktx)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -71,5 +74,15 @@ dependencies {
 
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    implementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+// JWT
+    implementation("com.auth0:java-jwt:4.5.0")
+// DataStore
+    implementation("androidx.datastore:datastore-preferences:1.2.0")
+// Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+
 }

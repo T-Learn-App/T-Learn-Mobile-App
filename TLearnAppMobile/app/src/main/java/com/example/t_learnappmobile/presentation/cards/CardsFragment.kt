@@ -15,7 +15,7 @@ import com.example.t_learnappmobile.R
 import com.example.t_learnappmobile.databinding.FragmentCardBinding
 import com.example.t_learnappmobile.model.CardType
 import com.example.t_learnappmobile.model.TranslationDirection
-import com.example.t_learnappmobile.presentation.auth.AuthActivity
+
 import com.example.t_learnappmobile.presentation.auth.RegistrationActivity
 import com.example.t_learnappmobile.presentation.settings.SettingsBottomSheet
 import com.example.t_learnappmobile.presentation.statistics.StatistisBottomSheet

@@ -9,21 +9,20 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.example.t_learnappmobile.R
-import com.example.t_learnappmobile.data.auth.AuthViewModel
 import com.example.t_learnappmobile.databinding.ActivityLoginBinding
 import com.example.t_learnappmobile.presentation.main.MainActivity
 import kotlinx.coroutines.launch
 
 class LoginActivity : AppCompatActivity() {
     private lateinit var binding: ActivityLoginBinding
-    private lateinit var viewModel: AuthViewModel
+    private lateinit var viewModel: LoginViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityLoginBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        viewModel = ViewModelProvider(this).get(AuthViewModel::class.java)
+        viewModel = ViewModelProvider(this).get(LoginViewModel::class.java)
         setupListeners()
         observeViewModel()
     }
@@ -40,15 +39,20 @@ class LoginActivity : AppCompatActivity() {
                     is AuthState.Loading -> {
                         binding.btnSendCode.isEnabled = false
                     }
+
                     is AuthState.Success -> {
                         binding.btnSendCode.isEnabled = true
-                        startActivity(Intent(this@LoginActivity, MainActivity::class.java))
+                        val intent = Intent(this@LoginActivity, MainActivity::class.java)
+                        intent.putExtra("SKIP_AUTH_CHECK", true)
+                        startActivity(intent)
                         finish()
                     }
+
                     is AuthState.Error -> {
                         binding.btnSendCode.isEnabled = true
                         showErrorDialog(state.message)
                     }
+
                     else -> {
                         binding.btnSendCode.isEnabled = true
                     }
@@ -67,6 +71,7 @@ class LoginActivity : AppCompatActivity() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 updateButtonState()
             }
+
             override fun afterTextChanged(s: Editable?) {}
         })
 
@@ -75,6 +80,7 @@ class LoginActivity : AppCompatActivity() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 updateButtonState()
             }
+
             override fun afterTextChanged(s: Editable?) {}
         })
 
@@ -85,7 +91,8 @@ class LoginActivity : AppCompatActivity() {
             if (login.isNotEmpty() && password.isNotEmpty()) {
                 viewModel.login(login, password)
             } else {
-                Toast.makeText(this, getString(R.string.error_fill_all_fields), Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, getString(R.string.error_fill_all_fields), Toast.LENGTH_SHORT)
+                    .show()
             }
         }
     }

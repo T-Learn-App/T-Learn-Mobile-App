@@ -85,14 +85,14 @@ class AuthInterceptor(
         }
 
         return try {
-            performTokenRefresh(refreshToken)
+            performTokenRefresh()
         } catch (e: Exception) {
             runBlocking { tokenManager.clearTokens() }
             null
         }
     }
 
-    private fun performTokenRefresh(refreshToken: String): String? {
+    private fun performTokenRefresh(): String? {
         val refreshToken = getRefreshTokenSync()
         if (refreshToken.isNullOrEmpty()) {
             runBlocking { tokenManager.clearTokens() }
@@ -130,8 +130,7 @@ class AuthInterceptor(
                 }
             }
             null
-        } catch (e: Exception)
-        {
+        } catch (e: Exception) {
             runBlocking { tokenManager.clearTokens() }
             null
         }

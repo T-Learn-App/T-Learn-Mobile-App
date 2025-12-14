@@ -12,11 +12,15 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.example.t_learnappmobile.R
+
 import com.example.t_learnappmobile.databinding.FragmentCardBinding
 import com.example.t_learnappmobile.model.CardType
 import com.example.t_learnappmobile.model.TranslationDirection
+import com.example.t_learnappmobile.presentation.auth.AuthState
+import com.example.t_learnappmobile.presentation.auth.LoginActivity
+import com.example.t_learnappmobile.presentation.auth.LogoutViewModel
 
-import com.example.t_learnappmobile.presentation.auth.RegistrationActivity
+
 import com.example.t_learnappmobile.presentation.settings.SettingsBottomSheet
 import com.example.t_learnappmobile.presentation.statistics.StatistisBottomSheet
 import kotlinx.coroutines.launch
@@ -26,9 +30,11 @@ class CardsFragment : Fragment() {
 
     private var _binding: FragmentCardBinding? = null
     private val binding get() = _binding!!
-    private lateinit var viewModel: WordViewModel
     private var onStatsClickListener: (() -> Unit)? = null
     private var onSettingsClickListener: (() -> Unit)? = null
+
+    private lateinit var wordViewModel: WordViewModel
+    private lateinit var logoutViewModel: LogoutViewModel
 
 
     override fun onCreateView(
@@ -42,7 +48,8 @@ class CardsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        viewModel = ViewModelProvider(this).get(WordViewModel::class.java)
+        wordViewModel = ViewModelProvider(this).get(WordViewModel::class.java)
+        logoutViewModel = ViewModelProvider(requireActivity()).get(LogoutViewModel::class.java)
         observeViewModel()
         setUpClickListener()
     }
@@ -50,7 +57,7 @@ class CardsFragment : Fragment() {
     private fun observeViewModel() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.currentWord.collect { word ->
+                wordViewModel.currentWord.collect { word ->
                     if (word == null) {
                         binding.categoryText.setText(R.string.no_cards)
                         binding.knownButton.isEnabled = false
@@ -106,7 +113,7 @@ class CardsFragment : Fragment() {
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.isTranslationHidden.collect { isHidden ->
+                wordViewModel.isTranslationHidden.collect { isHidden ->
                     if (isHidden) {
                         binding.translationText.visibility = View.GONE
                         binding.showTranslationButtonText.setText(R.string.show_translation)
@@ -122,7 +129,7 @@ class CardsFragment : Fragment() {
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.isLoading.collect { isLoading ->
+                wordViewModel.isLoading.collect { isLoading ->
                     //binding.loadingProgressBar.visibility =
                     // if (isLoading) View.VISIBLE else View.GONE
                 }
@@ -131,7 +138,7 @@ class CardsFragment : Fragment() {
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.error.collect { errorMessage ->
+                wordViewModel.error.collect { errorMessage ->
                     errorMessage?.let {
                         Toast.makeText(
                             requireContext(),
@@ -142,29 +149,53 @@ class CardsFragment : Fragment() {
                 }
             }
         }
+
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED){
+                logoutViewModel.authState.collect { state ->
+                    when (state) {
+                        is AuthState.LoggedOut -> {
+                            val intent = Intent(requireContext(), LoginActivity::class.java)
+                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            startActivity(intent)
+                            requireActivity().finish()
+                        }
+                        is AuthState.Error -> {
+                            Toast.makeText(
+                                requireContext(),
+                                state.message,
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                        else -> {}
+
+                    }
+                }
+            }
+        }
     }
 
 
     private fun setUpClickListener() {
 
         binding.eyeIcon.setOnClickListener {
-            viewModel.toggleTranslation()
+            wordViewModel.toggleTranslation()
         }
         binding.showTranslationButtonText.setOnClickListener {
-            viewModel.toggleTranslation()
+            wordViewModel.toggleTranslation()
         }
         binding.knownButton.setOnClickListener {
             binding.knownButton.isEnabled = false
             binding.unknownButton.isEnabled = false
             lifecycleScope.launch {
-                viewModel.onKnowCard()
+                wordViewModel.onKnowCard()
             }
         }
         binding.unknownButton.setOnClickListener {
             binding.knownButton.isEnabled = false
             binding.unknownButton.isEnabled = false
             lifecycleScope.launch {
-                viewModel.onDontKnowCard()
+                wordViewModel.onDontKnowCard()
             }
         }
         binding.statsButton.setOnClickListener {
@@ -176,8 +207,7 @@ class CardsFragment : Fragment() {
             bottomSheet.show(parentFragmentManager, SettingsBottomSheet.Companion.TAG)
         }
         binding.exitButton.setOnClickListener {
-            startActivity(Intent(requireContext(), RegistrationActivity::class.java))
-            requireActivity().finish()
+            logoutViewModel.logout()
         }
     }
 

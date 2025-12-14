@@ -23,10 +23,13 @@ data class RegisterRequest(
             password.length < 8 -> ValidationResult.Error("Пароль минимум 8 символов")
             !password.any { it.isUpperCase() } ->
                 ValidationResult.Error("Пароль должен содержать заглавные буквы")
+
             !password.any { it.isLowerCase() } ->
                 ValidationResult.Error("Пароль должен содержать строчные буквы")
+
             !password.any { it.isDigit() } ->
                 ValidationResult.Error("Пароль должен содержать цифры")
+
             !password.any { "!@#\$%^&*()_+=-[]{}|;:,.<>?".contains(it) } ->
                 ValidationResult.Error("Пароль должен содержать спец символы")
 

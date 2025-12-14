@@ -9,20 +9,20 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.example.t_learnappmobile.R
-import com.example.t_learnappmobile.data.auth.AuthViewModel
 import com.example.t_learnappmobile.databinding.ActivityRegistrationBinding
+import com.example.t_learnappmobile.presentation.main.MainActivity
 import kotlinx.coroutines.launch
 
 class RegistrationActivity : AppCompatActivity() {
     private lateinit var binding: ActivityRegistrationBinding
-    private lateinit var viewModel: AuthViewModel
+    private lateinit var viewModel: RegistrationViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityRegistrationBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        viewModel = ViewModelProvider(this).get(AuthViewModel::class.java)
+        viewModel = ViewModelProvider(this).get(RegistrationViewModel::class.java)
 
         setupListeners()
         observeViewModel()
@@ -40,17 +40,20 @@ class RegistrationActivity : AppCompatActivity() {
                     is AuthState.Loading -> {
                         binding.btnSendCode.isEnabled = false
                     }
-                    is AuthState.VerificationCodeSent -> {
+
+                    is AuthState.Success -> {
                         binding.btnSendCode.isEnabled = true
-                        val email = binding.emailEditTextRegistration.text.toString().trim()
-                        val intent = Intent(this@RegistrationActivity, EmailVerificationActivity::class.java)
-                        intent.putExtra("email", email)
+                        val intent = Intent(this@RegistrationActivity, MainActivity::class.java)
+                        intent.putExtra("SKIP_AUTH_CHECK", true)
                         startActivity(intent)
+                        finish()
                     }
+
                     is AuthState.Error -> {
                         binding.btnSendCode.isEnabled = true
                         showErrorDialog(state.message)
                     }
+
                     else -> {
                         binding.btnSendCode.isEnabled = true
                     }
@@ -78,7 +81,11 @@ class RegistrationActivity : AppCompatActivity() {
             if (isFormValid()) {
                 viewModel.register(login, email, password)
             } else {
-                Toast.makeText(this, getString(R.string.error_fill_all_fields_correct), Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this,
+                    getString(R.string.error_fill_all_fields_correct),
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
 

@@ -22,8 +22,4 @@ class LogoutViewModel(application: Application) : AndroidViewModel(application) 
             _authState.value = result
         }
     }
-
-    fun resetState() {
-        _authState.value = AuthState.Idle
-    }
 }

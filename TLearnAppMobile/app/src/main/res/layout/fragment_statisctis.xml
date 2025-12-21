@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white"
+    android:background="?attr/colorSurface"
     android:orientation="vertical"
     android:paddingTop="0dp">
 
@@ -32,7 +32,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="@string/stats_learning"
-            android:textColor="@color/black"
+            android:textColor="?attr/colorOnSurface"
             android:textSize="20sp"
             android:textStyle="bold" />
 
@@ -44,7 +44,7 @@
             android:contentDescription="@string/close"
             android:scaleType="centerInside"
             android:src="@drawable/close_24px"
-            app:tint="@color/black" />
+            app:tint="?attr/colorOnSurface" />
     </LinearLayout>
 
     <ScrollView
@@ -59,7 +59,7 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
             android:elevation="4dp"
-            app:cardBackgroundColor="@color/white"
+            app:cardBackgroundColor="?attr/colorSurface"
             app:cardCornerRadius="16dp">
 
             <LinearLayout
@@ -87,7 +87,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginBottom="4dp"
                             android:text="@string/new_word"
-                            android:textColor="@color/gray"
+                            android:textColor="?android:textColorSecondary"
                             android:textSize="12sp" />
 
                         <TextView
@@ -95,7 +95,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="123"
-                            android:textColor="@color/black"
+                            android:textColor="?attr/colorOnSurface"
                             android:textSize="28sp"
                             android:textStyle="bold" />
                     </LinearLayout>
@@ -112,7 +112,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginBottom="4dp"
                             android:text="@string/in_process"
-                            android:textColor="@color/gray"
+                            android:textColor="?android:textColorSecondary"
                             android:textSize="12sp" />
 
                         <TextView
@@ -120,7 +120,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="123"
-                            android:textColor="@color/black"
+                            android:textColor="?attr/colorOnSurface"
                             android:textSize="28sp"
                             android:textStyle="bold" />
                     </LinearLayout>
@@ -137,7 +137,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginBottom="4dp"
                             android:text="@string/learned"
-                            android:textColor="@color/gray"
+                            android:textColor="?android:textColorSecondary"
                             android:textSize="12sp" />
 
                         <TextView
@@ -145,7 +145,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="123"
-                            android:textColor="@color/black"
+                            android:textColor="?attr/colorOnSurface"
                             android:textSize="28sp"
                             android:textStyle="bold" />
                     </LinearLayout>
@@ -155,7 +155,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
                     android:layout_marginVertical="12dp"
-                    android:background="@color/gray" />
+                    android:background="?android:textColorSecondary"
+                    android:alpha="0.3" />
 
                 <FrameLayout
                     android:id="@+id/chartContainer"

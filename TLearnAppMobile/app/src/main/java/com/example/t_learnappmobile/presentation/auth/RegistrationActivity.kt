@@ -18,6 +18,7 @@ class RegistrationActivity : AppCompatActivity() {
     private lateinit var viewModel: RegistrationViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
+
         super.onCreate(savedInstanceState)
         binding = ActivityRegistrationBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -51,7 +52,12 @@ class RegistrationActivity : AppCompatActivity() {
 
                     is AuthState.Error -> {
                         binding.btnSendCode.isEnabled = true
-                        showErrorDialog(state.message)
+                        val errorMessage = if (state.args.isEmpty()) {
+                            getString(state.messageResId)
+                        } else {
+                            getString(state.messageResId, *state.args)
+                        }
+                        showErrorDialog(errorMessage)
                     }
 
                     else -> {

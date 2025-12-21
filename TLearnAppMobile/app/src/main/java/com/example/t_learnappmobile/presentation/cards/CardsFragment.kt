@@ -163,7 +163,7 @@ class CardsFragment : Fragment() {
                         is AuthState.Error -> {
                             Toast.makeText(
                                 requireContext(),
-                                state.message,
+                                state.toString(),
                                 Toast.LENGTH_SHORT
                             ).show()
                         }
@@ -203,9 +203,13 @@ class CardsFragment : Fragment() {
             bottomSheet.show(parentFragmentManager, StatistisBottomSheet.Companion.TAG)
         }
         binding.settingsButton.setOnClickListener {
-            val bottomSheet = SettingsBottomSheet()
-            bottomSheet.show(parentFragmentManager, SettingsBottomSheet.Companion.TAG)
+            val settingsSheet = SettingsBottomSheet()
+            settingsSheet.onDictionaryChanged = {
+                wordViewModel.refreshCurrentCard()
+            }
+            settingsSheet.show(parentFragmentManager, SettingsBottomSheet.TAG)
         }
+
         binding.exitButton.setOnClickListener {
             logoutViewModel.logout()
         }
@@ -214,13 +218,5 @@ class CardsFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
-    }
-
-    fun setOnStatsClickListener(listener: () -> Unit) {
-        onStatsClickListener = listener
-    }
-
-    fun setOnSettingsClickListener(listener: () -> Unit) {
-        onSettingsClickListener = listener
     }
 }

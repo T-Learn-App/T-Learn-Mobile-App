@@ -13,10 +13,6 @@
     <string name="code_has_been_sent_to">"Код отправлен на: %s</string>
     <string name="repeat_after">Повторить через: %ds</string>
     <string name="code_is_expired">Код истёк</string>
-    <string name="dictionary_has_been_reset">Словарь сброшен</string>
-    <string name="data_has_been_reset">Данные сброшены</string>
-    <string name="dark_theme_is_selected">Ночная тема выбрана</string>
-    <string name="light_theme_is_selected">Дневная тема выбрана</string>
     <string name="t_learn">Вход в T-Learn</string>
     <string name="code_will_be">На указанную электронную почту будет отправлен код подтверждения</string>
     <string name="mail">Электронная почта</string>
@@ -93,5 +89,16 @@
     <string name="password_error_uppercase">• Прописные буквы</string>
     <string name="password_error_digits">• Цифры</string>
     <string name="password_error_special">• Спец символы</string>
+    <string name="error_validation">Ошибка валидации</string>
+    <string name="confirm_reset_dictionary_title">Удалить статистику словаря?</string>
+    <string name="confirm_reset_all_title">Удалить все данные?</string>
+    <string name="confirm_reset_all_message">Будут удалены все словари, прогресс и настройки. Это действие необратимо!</string>
+    <string name="confirm">Подтвердить</string>
+    <string name="cancel">Отменить</string>
+    <string name="success">Успешно</string>
+    <string name="dictionary_has_been_reset">Статистика словаря очищена</string>
+    <string name="data_has_been_reset">Все данные удалены</string>
+    <string name="dark_theme_is_selected">Темная тема выбрана</string>
+    <string name="light_theme_is_selected">Светлая тема выбрана</string>
 
 </resources>

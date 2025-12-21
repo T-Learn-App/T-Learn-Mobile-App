@@ -23,9 +23,7 @@ interface AuthApiService {
     ): Response<AuthResponse>
 
     @POST("auth/logout")
-    suspend fun logout(
-        @Header("Authorization") token: String
-    ): Response<LogoutResponse>
+    suspend fun logout(): Response<LogoutResponse>
 
     @POST("auth/check-email")
     suspend fun checkEmailExists(
@@ -38,6 +36,6 @@ interface AuthApiService {
     ): Response<Map<String, Boolean>>
 
     @GET("auth/ping")
-    suspend fun ping(@Header("Authorization") token: String): Response<Unit>
+    suspend fun ping(): Response<Unit>
 
 }

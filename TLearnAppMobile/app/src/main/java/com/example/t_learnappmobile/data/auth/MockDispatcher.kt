@@ -52,7 +52,7 @@ class MockDispatcher : Dispatcher() {
 
             val userId = "user_${System.currentTimeMillis()}"
             registeredUsers[userId] =
-                UserMockData(login, email, password, true)  // ✅ is_verified = true
+                UserMockData(login, email, password, true)
 
             return MockResponse()
                 .setResponseCode(200)

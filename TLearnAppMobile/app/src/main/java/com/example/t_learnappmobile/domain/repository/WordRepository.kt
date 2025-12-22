@@ -13,7 +13,7 @@ interface WordRepository {
     fun getRotationWords(): List<Word>
     fun addWord(word: Word)
 
-    suspend fun fetchWordBatch(vocabularyId: Int, batchSize: Int = 10): List<Word>?
+    suspend fun fetchWordBatch(userId: Int, vocabularyId: Int, batchSize: Int = 10): List<Word>?
     suspend fun sendRotationAction(wordId: Int, action: CardAction): Boolean
     suspend fun fetchStats(vocabularyId: Int) : VocabularyStats?
     fun nextWord()

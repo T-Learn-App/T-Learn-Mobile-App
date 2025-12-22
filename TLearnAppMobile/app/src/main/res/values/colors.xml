@@ -23,4 +23,5 @@
 
     <!-- Дополнительные цвета для themes.xml -->
     <color name="colorPrimaryDark">#FFC700</color>
+    <color name="colorButtonDontKnow">#000000</color>
 </resources>

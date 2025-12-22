@@ -4,8 +4,6 @@ package com.example.t_learnappmobile.data.auth.models
 import com.google.gson.annotations.SerializedName
 
 data class RegisterRequest(
-    @SerializedName("login")
-    val login: String,
     @SerializedName("email")
     val email: String,
     @SerializedName("password")
@@ -13,8 +11,6 @@ data class RegisterRequest(
 ) {
     fun validate(): ValidationResult {
         return when {
-            login.isBlank() -> ValidationResult.Error("Логин не может быть пустым")
-
             email.isBlank() -> ValidationResult.Error("Email не может быть пустым")
             !email.matches(Regex("^[A-Za-z0-9+_.-]+@(.+)$")) ->
                 ValidationResult.Error("Некорректный email")

@@ -30,8 +30,6 @@ class CardsFragment : Fragment() {
 
     private var _binding: FragmentCardBinding? = null
     private val binding get() = _binding!!
-    private var onStatsClickListener: (() -> Unit)? = null
-    private var onSettingsClickListener: (() -> Unit)? = null
 
     private lateinit var wordViewModel: WordViewModel
     private lateinit var logoutViewModel: LogoutViewModel

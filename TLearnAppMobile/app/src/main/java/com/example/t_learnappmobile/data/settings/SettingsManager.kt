@@ -28,8 +28,8 @@ class SettingsManager(private val context: Context) {
         return dictionaryManager
     }
 
-    fun clearDictionaryData() {
-        dictionaryManager.clearCurrentDictionaryStats()
+    fun clearDictionaryData(userId: Int) {
+        dictionaryManager.clearCurrentDictionaryStats(userId)
     }
 
     fun clearAllData() {

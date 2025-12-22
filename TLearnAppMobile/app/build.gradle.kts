@@ -144,4 +144,6 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
 
     implementation("com.google.protobuf:protobuf-javalite:3.21.12")
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
+    implementation("androidx.fragment:fragment-ktx:1.8.9")
 }

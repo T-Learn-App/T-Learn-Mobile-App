@@ -47,20 +47,16 @@ class AuthRepository(
 
 
     suspend fun register(
-        login: String,
         email: String,
         password: String
     ): AuthState {
-        val request = RegisterRequest(login, email, password)
+        val request = RegisterRequest( email, password)
         val validation = request.validate()
         if (validation !is ValidationResult.Success) {
             return AuthState.Error(R.string.error_validation, arrayOf((validation as ValidationResult.Error).message))
         }
 
         return try {
-            if (checkLoginExists(login)) {
-                return AuthState.Error(R.string.error_login_already_exists)
-            }
             if (checkEmailExists(email)) {
                 return AuthState.Error(R.string.error_login_already_exists)
             }
@@ -91,16 +87,17 @@ class AuthRepository(
                 }
             }
         } catch (e: Exception) {
+            e.printStackTrace()
             AuthState.Error(R.string.error_unknown_registration)
         }
     }
 
 
     suspend fun login(
-        login: String,
+        email: String,
         password: String
     ): AuthState {
-        val request = LoginRequest(login, password)
+        val request = LoginRequest(email, password)
 
         val validation = request.validate()
         if (validation !is ValidationResult.Success) {
@@ -157,12 +154,4 @@ class AuthRepository(
         }
     }
 
-    private suspend fun checkLoginExists(login: String): Boolean {
-        return try {
-            val response = apiService.checkLoginExists(mapOf("login" to login))
-            response.body()?.get("exists") ?: false
-        } catch (e: Exception) {
-            false
-        }
-    }
 }

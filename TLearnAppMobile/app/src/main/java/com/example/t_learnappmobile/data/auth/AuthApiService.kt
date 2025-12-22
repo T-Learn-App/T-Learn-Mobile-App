@@ -30,11 +30,6 @@ interface AuthApiService {
         @Body request: Map<String, String>
     ): Response<Map<String, Boolean>>
 
-    @POST("auth/check-login")
-    suspend fun checkLoginExists(
-        @Body request: Map<String, String>
-    ): Response<Map<String, Boolean>>
-
     @GET("auth/ping")
     suspend fun ping(): Response<Unit>
 

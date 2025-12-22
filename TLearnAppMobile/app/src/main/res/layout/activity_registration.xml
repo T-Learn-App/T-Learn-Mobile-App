@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/colorSurface"
+    android:background="@color/background_primary"
     android:gravity="center"
     android:orientation="vertical"
     android:paddingHorizontal="24dp">
@@ -39,33 +39,6 @@
                 android:layout_marginBottom="24dp"
                 android:orientation="vertical"
                 android:paddingHorizontal="12dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="6dp"
-                    android:text="@string/login"
-                    android:textColor="?attr/colorOnSurface"
-                    android:textSize="13sp" />
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/loginInputLayoutRegistration"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:hint="@string/login"
-                    android:textColorHint="?android:textColorSecondary"
-                    app:boxStrokeColor="?attr/colorPrimary"
-                    app:hintTextColor="?android:textColorSecondary">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/loginEditTextRegistration"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="textEmailAddress"
-                        android:textColor="?attr/colorOnSurface"
-                        android:textCursorDrawable="@null" />
-                </com.google.android.material.textfield.TextInputLayout>
-
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"

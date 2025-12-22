@@ -16,7 +16,9 @@ import com.example.t_learnappmobile.data.repository.ServiceLocator
 import com.example.t_learnappmobile.data.settings.SettingsManager
 import com.example.t_learnappmobile.databinding.FragmentSettingsBinding
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 class SettingsBottomSheet : BottomSheetDialogFragment() {
     private var _binding: FragmentSettingsBinding? = null
@@ -63,7 +65,8 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         binding.dictionarySpinner.adapter = adapter
 
-        val currentDictionary = dictionaryManager.getCurrentDictionary()
+        val userId = getUserId() ?: return
+        val currentDictionary = dictionaryManager.getCurrentDictionary(userId)
         val position = dictionaries.indexOfFirst { it.id == currentDictionary.id }
         if (position >= 0) {
             binding.dictionarySpinner.setSelection(position)
@@ -78,31 +81,42 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
                     id: Long
                 ) {
                     val selectedDictionary = dictionaries[position]
-                    dictionaryManager.setCurrentDictionary(selectedDictionary.id)
-                    reloadWordsForNewDictionary(selectedDictionary.vocabularyId)
+                    val userId = getUserId() ?: return
+                    dictionaryManager.setCurrentDictionary(userId, selectedDictionary.id)
+                    reloadWordsForNewDictionary(userId, selectedDictionary.vocabularyId)
                 }
 
                 override fun onNothingSelected(parent: AdapterView<*>?) {}
             }
     }
 
-    private fun reloadWordsForNewDictionary(vocabularyId: Int) {
+    private fun getUserId(): Int? {
+        return runBlocking {
+            ServiceLocator.tokenManager.getUserData().firstOrNull()?.id
+        }
+    }
+
+
+
+    private fun reloadWordsForNewDictionary(userId: Int, vocabularyId: Int) {
         lifecycleScope.launch {
-            ServiceLocator.wordRepository.fetchWordBatch(vocabularyId, batchSize = 10)
+            ServiceLocator.wordRepository.fetchWordBatch(userId, vocabularyId, batchSize = 10)
             onDictionaryChanged?.invoke()
         }
     }
+
 
     private fun setupListeners() {
         binding.btnClose.setOnClickListener { dismiss() }
 
         binding.btnResetDictionary.setOnClickListener {
-            val currentDict = dictionaryManager.getCurrentDictionary()
+            val userId = getUserId() ?: return@setOnClickListener
+            val currentDict = dictionaryManager.getCurrentDictionary(userId)
             showConfirmationDialog(
                 title = getString(R.string.confirm_reset_dictionary_title),
                 message = "Удалить статистику словаря \"${currentDict.name}\"?",
                 onConfirm = {
-                    settingsManager.clearDictionaryData()
+                    settingsManager.clearDictionaryData(userId)
                     showSuccessDialog(getString(R.string.dictionary_has_been_reset))
                 }
             )

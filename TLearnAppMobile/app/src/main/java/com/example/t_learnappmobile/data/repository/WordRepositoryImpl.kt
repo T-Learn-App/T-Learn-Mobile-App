@@ -44,7 +44,7 @@ class WordRepositoryImpl(
     }
 
 
-    override suspend fun fetchWordBatch(vocabularyId: Int, batchSize: Int): List<Word>? {
+    override suspend fun fetchWordBatch(userId: Int, vocabularyId: Int, batchSize: Int): List<Word>? {
         return try {
             val response = api.getBatch(vocabularyId, batchSize)
             if (response.isSuccessful && response.body() != null) {
@@ -52,12 +52,12 @@ class WordRepositoryImpl(
                 storage.updateWords(batch)
                 batch
             } else {
-                val mockBatch = getMockBatch(vocabularyId, batchSize)
+                val mockBatch = getMockBatch(userId, vocabularyId, batchSize)
                 storage.updateWords(mockBatch)
                 mockBatch
             }
         } catch (e: Exception) {
-            val mockBatch = getMockBatch(vocabularyId, batchSize)
+            val mockBatch = getMockBatch(userId, vocabularyId, batchSize)
             storage.updateWords(mockBatch)
             mockBatch
         }
@@ -81,8 +81,8 @@ class WordRepositoryImpl(
     }
 
 
-    private fun getMockBatch(vocabularyId: Int, batchSize: Int): List<Word> {
-        val currentDict = ServiceLocator.dictionaryManager.getCurrentDictionary()
+    private fun getMockBatch(userId: Int, vocabularyId: Int, batchSize: Int): List<Word> {
+        val currentDict = ServiceLocator.dictionaryManager.getCurrentDictionary(userId)
 
         val wordsMap = mapOf(
             1 to listOf("Hello", "Goodbye", "Please", "Thank you", "Sorry"),

@@ -11,17 +11,17 @@
         <item name="colorSecondaryVariant">@color/yellow_variant</item>
         <item name="colorOnSecondary">@color/black</item>
 
-        <!-- Цвета фона (темные) -->
-        <item name="android:colorBackground">@color/background_primary</item>
-        <item name="colorSurface">@color/surface</item>
+        <!-- Фон и поверхности -->
+        <item name="android:colorBackground">#0f172a</item>
+        <item name="colorSurface">#1e293b</item>
         <item name="colorOnSurface">@color/text_primary</item>
 
-        <!-- Текст (белый для темной темы) -->
+        <!-- Текст -->
         <item name="android:textColor">@color/text_primary</item>
         <item name="android:textColorPrimary">@color/text_primary</item>
-        <item name="android:textColorSecondary">@color/text_secondary</item>
+        <item name="android:textColorSecondary">#B0B0B0</item>
 
-        <!-- Убираем ActionBar -->
+        <!-- ActionBar убран -->
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
 
@@ -29,9 +29,9 @@
         <item name="android:windowFullscreen">true</item>
         <item name="android:windowContentOverlay">@null</item>
 
-        <!-- Статус бар (темный) -->
+        <!-- Статус-бар -->
         <item name="android:statusBarColor">@color/background_primary</item>
         <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
-
     </style>
+
 </resources>

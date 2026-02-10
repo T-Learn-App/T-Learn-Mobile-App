@@ -67,7 +67,6 @@ class AuthInterceptor(
                 tokenManager.getRefreshToken().firstOrNull()
             }
         } catch (e: Exception) {
-
             null
         }
     }

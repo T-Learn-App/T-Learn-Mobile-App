@@ -3,6 +3,7 @@ package com.example.t_learnappmobile.data.auth
 import android.content.Context
 import android.util.Log
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -18,10 +19,9 @@ class TokenManager(private val context: Context) {
     companion object {
         private val ACCESS_TOKEN_KEY = stringPreferencesKey("access_token")
         private val REFRESH_TOKEN_KEY = stringPreferencesKey("refresh_token")
-        private val USER_ID_KEY = stringPreferencesKey("user_id")
+        private val USER_ID_KEY = intPreferencesKey("user_id")
         private val USER_EMAIL_KEY = stringPreferencesKey("user_email")
-        private val USER_LOGIN_KEY = stringPreferencesKey("user_login")
-        private val USER_IS_VERIFIED_KEY = stringPreferencesKey("user_is_verified")
+
     }
 
     suspend fun saveTokens(accessToken: String, refreshToken: String?) {
@@ -37,8 +37,7 @@ class TokenManager(private val context: Context) {
         context.dataStore.edit { preferences ->
             preferences[USER_ID_KEY] = user.id
             preferences[USER_EMAIL_KEY] = user.email
-            preferences[USER_LOGIN_KEY] = user.login
-            preferences[USER_IS_VERIFIED_KEY] = user.isVerified.toString()
+
         }
 
     }
@@ -62,8 +61,6 @@ class TokenManager(private val context: Context) {
                 UserData(
                     id = id,
                     email = preferences[USER_EMAIL_KEY] ?: "",
-                    login = preferences[USER_LOGIN_KEY] ?: "",
-                    isVerified = preferences[USER_IS_VERIFIED_KEY]?.toBoolean() ?: false
                 )
             } else {
                 null
@@ -87,8 +84,6 @@ class TokenManager(private val context: Context) {
             preferences.remove(REFRESH_TOKEN_KEY)
             preferences.remove(USER_ID_KEY)
             preferences.remove(USER_EMAIL_KEY)
-            preferences.remove(USER_LOGIN_KEY)
-            preferences.remove(USER_IS_VERIFIED_KEY)
         }
     }
 }

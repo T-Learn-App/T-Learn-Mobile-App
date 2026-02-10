@@ -15,6 +15,7 @@ enum class PartOfSpeech() {
     ADJECTIVE("Прилагательное"),
     VERB("Глагол"),
     PRONOUN("Местоимение"),
+    INTERJECTION("Междометие"),
     ADVERB("Наречие");
 
     lateinit var russianName: String
@@ -40,7 +41,6 @@ data class Word (
 data class VocabularyStats(
     val vocabularyId: Int,
 
-    // может быть обьединить два поля ниже
     val alreadyKnown: Int,
     val memorized: Int,
 

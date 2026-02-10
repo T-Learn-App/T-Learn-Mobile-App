@@ -50,7 +50,12 @@ class LoginActivity : AppCompatActivity() {
 
                     is AuthState.Error -> {
                         binding.btnSendCode.isEnabled = true
-                        showErrorDialog(state.message)
+                        val errorMessage = if (state.args.isEmpty()) {
+                            getString(state.messageResId)
+                        } else {
+                            getString(state.messageResId, *state.args)
+                        }
+                        showErrorDialog(errorMessage)
                     }
 
                     else -> {

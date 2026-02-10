@@ -44,7 +44,7 @@ class WordRepositoryImpl(
     }
 
 
-    override suspend fun fetchWordBatch(vocabularyId: Int, batchSize: Int): List<Word>? {
+    override suspend fun fetchWordBatch(userId: Int, vocabularyId: Int, batchSize: Int): List<Word>? {
         return try {
             val response = api.getBatch(vocabularyId, batchSize)
             if (response.isSuccessful && response.body() != null) {
@@ -52,12 +52,12 @@ class WordRepositoryImpl(
                 storage.updateWords(batch)
                 batch
             } else {
-                val mockBatch = getMockBatch(vocabularyId, batchSize)
+                val mockBatch = getMockBatch(userId, vocabularyId, batchSize)
                 storage.updateWords(mockBatch)
                 mockBatch
             }
         } catch (e: Exception) {
-            val mockBatch = getMockBatch(vocabularyId, batchSize)
+            val mockBatch = getMockBatch(userId, vocabularyId, batchSize)
             storage.updateWords(mockBatch)
             mockBatch
         }
@@ -81,25 +81,33 @@ class WordRepositoryImpl(
     }
 
 
-    private fun getMockBatch(vocabularyId: Int, batchSize: Int): List<Word> {
-        val words = listOf(
-            "Hello", "World", "Book", "House", "School",
-            "Teacher", "Student", "Learn", "Study", "Apple"
+    private fun getMockBatch(userId: Int, vocabularyId: Int, batchSize: Int): List<Word> {
+        val currentDict = ServiceLocator.dictionaryManager.getCurrentDictionary(userId)
+
+        val wordsMap = mapOf(
+            1 to listOf("Hello", "Goodbye", "Please", "Thank you", "Sorry"),
+            2 to listOf("Computer", "Software", "Internet", "Data", "Algorithm"),
+            3 to listOf("Cool", "Awesome", "Bro", "Dude", "Sick")
         )
-        val translations = listOf(
-            "Привет", "Мир", "Книга", "Дом", "Школа",
-            "Учитель", "Студент", "Учиться", "Изучать", "Яблоко"
+
+        val translationsMap = mapOf(
+            1 to listOf("Привет", "До свидания", "Пожалуйста", "Спасибо", "Извините"),
+            2 to listOf("Компьютер", "ПО", "Интернет", "Данные", "Алгоритм"),
+            3 to listOf("Круто", "Отлично", "Братан", "Чувак", "Круто")
         )
+
+        val words = wordsMap[vocabularyId] ?: wordsMap[1]!!
+        val translations = translationsMap[vocabularyId] ?: translationsMap[1]!!
 
         return List(batchSize) { index ->
             Word(
                 id = index + 1,
                 vocabularyId = vocabularyId,
-                englishWord = words.getOrElse(index) { "Word${index + 1}" },
-                transcription = "[wɜːrd]",
-                partOfSpeech = PartOfSpeech.NOUN,
-                russianTranslation = translations.getOrElse(index) { "Слово${index + 1}" },
-                category = "English Basics",
+                englishWord = words.getOrElse(index % words.size) { "Word${index + 1}" },
+                transcription = "[həˈləʊ]",
+                partOfSpeech = PartOfSpeech.INTERJECTION,
+                russianTranslation = translations.getOrElse(index % translations.size) { "Слово${index + 1}" },
+                category = currentDict.name,
             )
         }
     }

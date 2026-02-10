@@ -4,7 +4,7 @@ package com.example.t_learnappmobile.data.auth.models
 import com.google.gson.annotations.SerializedName
 
 data class LoginRequest(
-    @SerializedName("login")
+    @SerializedName("email")
     val login: String,
     @SerializedName("password")
     val password: String

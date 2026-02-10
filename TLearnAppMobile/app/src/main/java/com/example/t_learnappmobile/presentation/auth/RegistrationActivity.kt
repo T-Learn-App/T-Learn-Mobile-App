@@ -18,6 +18,7 @@ class RegistrationActivity : AppCompatActivity() {
     private lateinit var viewModel: RegistrationViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
+
         super.onCreate(savedInstanceState)
         binding = ActivityRegistrationBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -51,7 +52,12 @@ class RegistrationActivity : AppCompatActivity() {
 
                     is AuthState.Error -> {
                         binding.btnSendCode.isEnabled = true
-                        showErrorDialog(state.message)
+                        val errorMessage = if (state.args.isEmpty()) {
+                            getString(state.messageResId)
+                        } else {
+                            getString(state.messageResId, *state.args)
+                        }
+                        showErrorDialog(errorMessage)
                     }
 
                     else -> {
@@ -66,20 +72,16 @@ class RegistrationActivity : AppCompatActivity() {
         binding.passwordEditTextRegistration.addTextChangedListener(
             PasswordValidationWatcher()
         )
-        binding.loginEditTextRegistration.addTextChangedListener(
-            InputValidationWatcher()
-        )
         binding.emailEditTextRegistration.addTextChangedListener(
             InputValidationWatcher()
         )
 
         binding.btnSendCode.setOnClickListener {
-            val login = binding.loginEditTextRegistration.text.toString().trim()
             val email = binding.emailEditTextRegistration.text.toString().trim()
             val password = binding.passwordEditTextRegistration.text.toString()
 
             if (isFormValid()) {
-                viewModel.register(login, email, password)
+                viewModel.register( email, password)
             } else {
                 Toast.makeText(
                     this,
@@ -96,12 +98,10 @@ class RegistrationActivity : AppCompatActivity() {
     }
 
     private fun isFormValid(): Boolean {
-        val login = binding.loginEditTextRegistration.text.toString().trim()
         val email = binding.emailEditTextRegistration.text.toString().trim()
         val password = binding.passwordEditTextRegistration.text.toString()
 
-        return login.isNotEmpty() &&
-                email.isNotEmpty() &&
+        return email.isNotEmpty() &&
                 password.length >= 8 &&
                 binding.passwordInputLayoutRegistration.error == null
     }

@@ -13,10 +13,10 @@ class RegistrationViewModel(application: Application) : AndroidViewModel(applica
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
     val authState: StateFlow<AuthState> = _authState
-    fun register(login: String, email: String, password: String) {
+    fun register( email: String, password: String) {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
-            val result = repository.register(login, email, password)
+            val result = repository.register(email, password)
             _authState.value = result
         }
     }

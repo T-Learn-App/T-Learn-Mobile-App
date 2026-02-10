@@ -12,7 +12,7 @@ import retrofit2.http.Header
 
 interface AuthApiService {
 
-    @POST("auth/register")
+    @POST("auth/login")
     suspend fun register(
         @Body request: RegisterRequest
     ): Response<AuthResponse>
@@ -23,21 +23,14 @@ interface AuthApiService {
     ): Response<AuthResponse>
 
     @POST("auth/logout")
-    suspend fun logout(
-        @Header("Authorization") token: String
-    ): Response<LogoutResponse>
+    suspend fun logout(): Response<LogoutResponse>
 
     @POST("auth/check-email")
     suspend fun checkEmailExists(
         @Body request: Map<String, String>
     ): Response<Map<String, Boolean>>
 
-    @POST("auth/check-login")
-    suspend fun checkLoginExists(
-        @Body request: Map<String, String>
-    ): Response<Map<String, Boolean>>
-
     @GET("auth/ping")
-    suspend fun ping(@Header("Authorization") token: String): Response<Unit>
+    suspend fun ping(): Response<Unit>
 
 }

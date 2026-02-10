@@ -12,7 +12,7 @@ import retrofit2.http.Header
 
 interface AuthApiService {
 
-    @POST("auth/register")
+    @POST("auth/login")
     suspend fun register(
         @Body request: RegisterRequest
     ): Response<AuthResponse>

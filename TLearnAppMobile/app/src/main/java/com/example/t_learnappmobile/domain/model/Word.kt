@@ -15,6 +15,7 @@ enum class PartOfSpeech() {
     ADJECTIVE("Прилагательное"),
     VERB("Глагол"),
     PRONOUN("Местоимение"),
+    INTERJECTION("Междометие"),
     ADVERB("Наречие");
 
     lateinit var russianName: String

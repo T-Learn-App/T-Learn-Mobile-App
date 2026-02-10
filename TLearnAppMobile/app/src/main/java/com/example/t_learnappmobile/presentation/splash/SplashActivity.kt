@@ -18,13 +18,25 @@ class SplashActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+
+
         viewModel = ViewModelProvider(this).get(SplashViewModel::class.java)
         observeAuthState()
         viewModel.checkAuthState()
     }
 
     private fun observeAuthState() {
+        /*
         lifecycleScope.launch {
+            viewModel.authState.collect { state ->
+                // ✅ Всегда MainActivity для тестов
+                startActivity(Intent(this@SplashActivity, MainActivity::class.java))
+                finish()
+            }
+        }
+    } */
+      lifecycleScope.launch {
             viewModel.authState.collect { state ->
                 when (state) {
                     is AuthState.Success -> {
@@ -44,5 +56,6 @@ class SplashActivity : AppCompatActivity() {
             }
         }
     }
+
 
 }

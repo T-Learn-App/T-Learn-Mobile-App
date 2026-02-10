@@ -16,11 +16,12 @@ class WordViewModel : ViewModel() {
 
     private val dictionaryManager = ServiceLocator.dictionaryManager
 
-private val tokenManager = ServiceLocator.tokenManager
+    private val tokenManager = ServiceLocator.tokenManager
     private fun formatTodayDate(): String {
         val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
         return sdf.format(java.util.Date())
     }
+
     private val repository: WordRepository = ServiceLocator.wordRepository
 
     private val _currentWord = MutableStateFlow<Word?>(null)
@@ -67,6 +68,7 @@ private val tokenManager = ServiceLocator.tokenManager
     fun toggleTranslation() {
         _isTranslationHidden.value = !_isTranslationHidden.value
     }
+
     private suspend fun getUserId(): Int? {
         return tokenManager.getUserData().firstOrNull()?.id
     }

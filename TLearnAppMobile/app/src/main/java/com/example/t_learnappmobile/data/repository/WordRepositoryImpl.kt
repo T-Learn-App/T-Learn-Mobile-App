@@ -104,8 +104,8 @@ class WordRepositoryImpl(
                 id = index + 1,
                 vocabularyId = vocabularyId,
                 englishWord = words.getOrElse(index % words.size) { "Word${index + 1}" },
-                transcription = "[wɜːrd]",
-                partOfSpeech = PartOfSpeech.NOUN,
+                transcription = "[həˈləʊ]",
+                partOfSpeech = PartOfSpeech.INTERJECTION,
                 russianTranslation = translations.getOrElse(index % translations.size) { "Слово${index + 1}" },
                 category = currentDict.name,
             )

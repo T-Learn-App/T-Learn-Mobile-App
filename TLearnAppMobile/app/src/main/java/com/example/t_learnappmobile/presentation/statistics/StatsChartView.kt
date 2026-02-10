@@ -23,6 +23,11 @@ class StatsChartView @JvmOverloads constructor(
         textAlign = Paint.Align.CENTER
     }
     private val rect = RectF()
+    @SuppressLint("SimpleDateFormat")
+    private val inFmt = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+
+    @SuppressLint("SimpleDateFormat")
+    private val outFmt = java.text.SimpleDateFormat("dd.MM", java.util.Locale.getDefault())
 
     fun setStats(stats: List<DailyStats>) {
         statsList = stats
@@ -46,8 +51,6 @@ class StatsChartView @JvmOverloads constructor(
         val barWidth = groupWidth * 0.2f
         val centerYOffset = height - paddingBottom - 40f
 
-        val inFmt = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
-        val outFmt = java.text.SimpleDateFormat("dd.MM", java.util.Locale.getDefault())
 
         statsList.forEachIndexed { index, s ->
             val centerX = paddingLeft + groupWidth * index + groupWidth / 2

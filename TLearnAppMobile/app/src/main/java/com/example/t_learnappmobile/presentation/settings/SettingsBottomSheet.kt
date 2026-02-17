@@ -72,22 +72,29 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
             binding.dictionarySpinner.setSelection(position)
         }
 
-        binding.dictionarySpinner.onItemSelectedListener =
-            object : AdapterView.OnItemSelectedListener {
-                override fun onItemSelected(
-                    parent: AdapterView<*>?,
-                    view: View?,
-                    position: Int,
-                    id: Long
-                ) {
-                    val selectedDictionary = dictionaries[position]
-                    val userId = getUserId() ?: return
-                    dictionaryManager.setCurrentDictionary(userId, selectedDictionary.id)
-                    reloadWordsForNewDictionary(userId, selectedDictionary.vocabularyId)
-                }
+        binding.dictionarySpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(
+                parent: AdapterView<*>?,
+                view: View?,
+                position: Int,
+                id: Long
+            ) {
+                val selectedDictionary = dictionaries[position]
+                val userId = getUserId() ?: return
+                dictionaryManager.setCurrentDictionary(userId, selectedDictionary.id)
 
-                override fun onNothingSelected(parent: AdapterView<*>?) {}
+                // Обновляем слова для новой категории
+                lifecycleScope.launch {
+                    val categoryId = selectedDictionary.vocabularyId.toLong()
+                    ServiceLocator.wordRepository.fetchWords(categoryId)   // ← правильный метод
+                    onDictionaryChanged?.invoke()
+                }
             }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+                // можно оставить пустым
+            }
+        }
     }
 
     private fun getUserId(): Int? {
@@ -98,12 +105,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
 
 
 
-    private fun reloadWordsForNewDictionary(userId: Int, vocabularyId: Int) {
-        lifecycleScope.launch {
-            ServiceLocator.wordRepository.fetchWordBatch(userId, vocabularyId, batchSize = 10)
-            onDictionaryChanged?.invoke()
-        }
-    }
+
 
 
     private fun setupListeners() {

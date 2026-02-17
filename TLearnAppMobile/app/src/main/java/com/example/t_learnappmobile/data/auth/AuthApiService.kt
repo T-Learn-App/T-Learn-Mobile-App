@@ -2,35 +2,33 @@ package com.example.t_learnappmobile.data.auth
 
 import com.example.t_learnappmobile.data.auth.models.AuthResponse
 import com.example.t_learnappmobile.data.auth.models.LoginRequest
-import com.example.t_learnappmobile.data.auth.models.LogoutResponse
-import com.example.t_learnappmobile.data.auth.models.RegisterRequest
+import com.example.t_learnappmobile.data.auth.models.RefreshRequest
 import retrofit2.Response
 import retrofit2.http.Body
-import retrofit2.http.GET
 import retrofit2.http.POST
-import retrofit2.http.Header
 
 interface AuthApiService {
 
-    @POST("auth/login")
-    suspend fun register(
-        @Body request: RegisterRequest
-    ): Response<AuthResponse>
+//    @POST("auth/login")
+//    suspend fun register(
+//        @Body request: RegisterRequest
+//    ): Response<AuthResponse>
 
-    @POST("auth/login")
-    suspend fun login(
-        @Body request: LoginRequest
-    ): Response<AuthResponse>
+    @POST("login")
+    suspend fun login(@Body request: LoginRequest): Response<AuthResponse>
 
-    @POST("auth/logout")
-    suspend fun logout(): Response<LogoutResponse>
+    @POST("token/refresh")
+    suspend fun refresh(@Body request: RefreshRequest): Response<AuthResponse>  // AuthRequest с refreshToken
 
-    @POST("auth/check-email")
-    suspend fun checkEmailExists(
-        @Body request: Map<String, String>
-    ): Response<Map<String, Boolean>>
+//    @POST("auth/logout")
+//    suspend fun logout(): Response<LogoutResponse>
 
-    @GET("auth/ping")
-    suspend fun ping(): Response<Unit>
+//    @POST("auth/check-email")
+//    suspend fun checkEmailExists(
+//        @Body request: Map<String, String>
+//    ): Response<Map<String, Boolean>>
+//
+//    @GET("auth/ping")
+//    suspend fun ping(): Response<Unit>
 
 }

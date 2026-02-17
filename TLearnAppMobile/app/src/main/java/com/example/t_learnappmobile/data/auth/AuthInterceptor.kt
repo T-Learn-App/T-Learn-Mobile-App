@@ -4,7 +4,9 @@ import android.util.Log
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
@@ -92,40 +94,29 @@ class AuthInterceptor(
     }
 
     private fun performTokenRefresh(): String? {
-        val refreshToken = getRefreshTokenSync()
-        if (refreshToken.isNullOrEmpty()) {
-            runBlocking { tokenManager.clearTokens() }
-            return null
-        }
+        val refreshToken = getRefreshTokenSync() ?: return null
+
         return try {
             val client = okhttp3.OkHttpClient.Builder()
                 .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
                 .build()
 
-            val requestBody = okhttp3.FormBody.Builder()
-                .add("refresh_token", refreshToken)
-                .build()
-
+            val body = """{"refreshToken": "$refreshToken"}""".toRequestBody("application/json".toMediaType())
             val request = Request.Builder()
-                .url(getBaseUrl() + "auth/refresh")
-                .post(requestBody)
+                .url(getBaseUrl() + "/token/refresh")  // ← без слеша в конце, если не нужен
+                .post(body)
                 .build()
 
             val response = client.newCall(request).execute()
 
-
             if (response.isSuccessful) {
-                val body = response.body?.string() ?: "{}"
-                val json = org.json.JSONObject(body)
+                val json = org.json.JSONObject(response.body?.string() ?: "{}")
+                val newAccess = json.optString("accessToken", null)
+                val newRefresh = json.optString("refreshToken", refreshToken)
 
-                val newAccessToken = json.optString("access_token", null)
-                val newRefreshToken = json.optString("refresh_token", refreshToken)
-
-                if (!newAccessToken.isNullOrEmpty()) {
-                    runBlocking {
-                        tokenManager.saveTokens(newAccessToken, newRefreshToken)
-                    }
-                    return newAccessToken
+                if (!newAccess.isNullOrEmpty()) {
+                    runBlocking { tokenManager.saveTokens(newAccess, newRefresh) }
+                    return newAccess
                 }
             }
             null
@@ -134,6 +125,7 @@ class AuthInterceptor(
             null
         }
     }
+
 
     private fun addTokenToRequest(request: Request, token: String): Request {
         return request.newBuilder()

@@ -1,13 +1,18 @@
 package com.example.t_learnappmobile.data.repository
 
 
-import com.example.t_learnappmobile.domain.model.CardAction
-import com.example.t_learnappmobile.domain.model.RotationAction
+import com.example.t_learnappmobile.data.repository.ServiceLocator.tokenManager
+import com.example.t_learnappmobile.domain.model.StatQueueDto
+import com.example.t_learnappmobile.domain.model.WordResponse
 import com.example.t_learnappmobile.domain.repository.WordRepository
+import com.example.t_learnappmobile.model.CardType
 import com.example.t_learnappmobile.model.PartOfSpeech
+import com.example.t_learnappmobile.model.TranslationDirection
 import com.example.t_learnappmobile.model.VocabularyStats
 import com.example.t_learnappmobile.model.Word
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.runBlocking
 
 
 class WordRepositoryImpl(
@@ -44,42 +49,57 @@ class WordRepositoryImpl(
     }
 
 
-    override suspend fun fetchWordBatch(userId: Int, vocabularyId: Int, batchSize: Int): List<Word>? {
+    override suspend fun fetchWords(categoryId: Long): List<Word> {
         return try {
-            val response = api.getBatch(vocabularyId, batchSize)
+            val token = getAccessTokenSync() ?: return getMockBatch(0, categoryId.toInt(), 10)
+
+            val response = api.getWordsByCategory("Bearer $token", categoryId)
+
             if (response.isSuccessful && response.body() != null) {
-                val batch = response.body()!!
-                storage.updateWords(batch)
-                batch
+                response.body()!!.words.map { mapBackendWord(it) }
             } else {
-                val mockBatch = getMockBatch(userId, vocabularyId, batchSize)
-                storage.updateWords(mockBatch)
-                mockBatch
+                getMockBatch(0, categoryId.toInt(), 10)
             }
         } catch (e: Exception) {
-            val mockBatch = getMockBatch(userId, vocabularyId, batchSize)
-            storage.updateWords(mockBatch)
-            mockBatch
+            getMockBatch(0, categoryId.toInt(), 10)
         }
     }
+    private fun mapBackendWord(w: WordResponse): Word {
+        return Word(
+            id = w.id,
+            vocabularyId = w.category.toInt(),
+            englishWord = w.word,
+            transcription = w.transcription,
+            partOfSpeech = mapPartOfSpeech(w.partOfSpeech),
+            russianTranslation = w.translation,
+            category = "Category ${w.category}",
+            cardType = CardType.NEW,           // бэкенд не различает NEW/ROTATION в ответе
+            repetitionStage = 0,
+            isLearned = false,
+            translationDirection = TranslationDirection.ENGLISH_TO_RUSSIAN
+        )
+    }
+    private fun mapPartOfSpeech(s: String): PartOfSpeech = when (s.lowercase()) {
+        "noun" -> PartOfSpeech.NOUN
+        "adjective" -> PartOfSpeech.ADJECTIVE
+        "verb" -> PartOfSpeech.VERB
+        "pronoun" -> PartOfSpeech.PRONOUN
+        "adverb" -> PartOfSpeech.ADVERB
+        else -> PartOfSpeech.INTERJECTION
+    }
 
-
-    override suspend fun sendRotationAction(wordId: Int, action: CardAction): Boolean {
+    override suspend fun completeWord(wordId: Long): Boolean {
         return try {
-            val response = api.sendAction(RotationAction(wordId, action.apiKey))
-            if (response.isSuccessful) {
-                true
-            } else {
-                println("API Error: ${response.code()} - ${response.message()}")
-                true
-            }
+            val token = getAccessTokenSync() ?: return false
+            val response = api.completeWord("Bearer $token", StatQueueDto(wordId))
+            response.isSuccessful
         } catch (e: Exception) {
-            println("Exception in sendRotationAction: ${e.message}")
-            e.printStackTrace()
-            true
+            false
         }
     }
 
+    private suspend fun getAccessTokenSync(): String? =
+        runBlocking { tokenManager.getAccessToken().firstOrNull() }
 
     private fun getMockBatch(userId: Int, vocabularyId: Int, batchSize: Int): List<Word> {
         val currentDict = ServiceLocator.dictionaryManager.getCurrentDictionary(userId)
@@ -101,7 +121,7 @@ class WordRepositoryImpl(
 
         return List(batchSize) { index ->
             Word(
-                id = index + 1,
+                id = index + 1.toLong(),
                 vocabularyId = vocabularyId,
                 englishWord = words.getOrElse(index % words.size) { "Word${index + 1}" },
                 transcription = "[həˈləʊ]",
@@ -112,7 +132,5 @@ class WordRepositoryImpl(
         }
     }
 
-    override suspend fun fetchStats(vocabularyId: Int): VocabularyStats? {
-        return null
-    }
+
 }

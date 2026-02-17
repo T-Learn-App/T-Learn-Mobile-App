@@ -3,6 +3,7 @@ package com.example.t_learnappmobile.presentation.cards
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.t_learnappmobile.data.repository.ServiceLocator
+import com.example.t_learnappmobile.data.repository.ServiceLocator.storage
 import com.example.t_learnappmobile.domain.model.CardAction
 import com.example.t_learnappmobile.domain.repository.WordRepository
 import com.example.t_learnappmobile.model.CardType
@@ -45,8 +46,9 @@ class WordViewModel : ViewModel() {
             _isLoading.value = true
             try {
                 val userId = getUserId() ?: return@launch
-                val vocabularyId = ServiceLocator.dictionaryManager.getCurrentVocabularyId(userId)
-                repository.fetchWordBatch(userId, vocabularyId, 10)
+                val categoryId = ServiceLocator.dictionaryManager.getCurrentVocabularyId(userId).toLong()
+                val words = repository.fetchWords(categoryId)
+                storage.updateWords(words)
                 observeCurrentWord()
             } catch (e: Exception) {
                 _error.value = e.message
@@ -75,16 +77,13 @@ class WordViewModel : ViewModel() {
 
     suspend fun onKnowCard() {
         val word = _currentWord.value ?: return
-        repository.sendRotationAction(word.id, CardAction.KNOW)
+        repository.completeWord(word.id)
+
 
         val userId = getUserId() ?: return
         val today = formatTodayDate()
-        val currentStats = dictionaryManager.getDailyStats(userId, today)
-
-        val learnedInc = if (word.cardType == CardType.NEW) 1 else 0
-        val updated = currentStats.copy(
-            learnedWords = currentStats.learnedWords + learnedInc
-        )
+        val current = dictionaryManager.getDailyStats(userId, today)
+        val updated = current.copy(learnedWords = current.learnedWords + 1)
         dictionaryManager.saveDailyStats(userId, updated)
 
         repository.nextWord()
@@ -92,31 +91,26 @@ class WordViewModel : ViewModel() {
 
     suspend fun onDontKnowCard() {
         val word = _currentWord.value ?: return
-        repository.sendRotationAction(word.id, CardAction.DONT_KNOW)
+        repository.completeWord(word.id)
+
         val userId = getUserId() ?: return
         val today = formatTodayDate()
-        val currentStats = dictionaryManager.getDailyStats(userId, today)
-
-
-        val newInc = if (word.cardType == CardType.NEW) 1 else 0
-        val inProgressInc = if (word.cardType == CardType.ROTATION) 1 else 0
-
-        val updated = currentStats.copy(
-            newWords = currentStats.newWords + newInc,
-            inProgressWords = currentStats.inProgressWords + inProgressInc
+        val current = dictionaryManager.getDailyStats(userId, today)
+        val updated = current.copy(
+            newWords = current.newWords + if (word.cardType == CardType.NEW) 1 else 0,
+            inProgressWords = current.inProgressWords + if (word.cardType == CardType.ROTATION) 1 else 0
         )
         dictionaryManager.saveDailyStats(userId, updated)
 
         repository.nextWord()
     }
-
     fun refreshCurrentCard() {
         viewModelScope.launch {
             _isLoading.value = true
             try {
                 val userId = getUserId() ?: return@launch
-                val vocabularyId = ServiceLocator.dictionaryManager.getCurrentVocabularyId(userId)
-                repository.fetchWordBatch(userId, vocabularyId, 10)
+                val categoryId = ServiceLocator.dictionaryManager.getCurrentVocabularyId(userId).toLong()
+                repository.fetchWords(categoryId)
             } catch (e: Exception) {
                 _error.value = e.message
             } finally {

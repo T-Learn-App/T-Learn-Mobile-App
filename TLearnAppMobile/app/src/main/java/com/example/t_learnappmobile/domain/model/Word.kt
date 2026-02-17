@@ -22,7 +22,7 @@ enum class PartOfSpeech() {
     constructor(russian: String) : this() { this.russianName = russian}
 }
 data class Word (
-    val id: Int,
+    val id: Long,
     val vocabularyId: Int,
     val englishWord: String,
     val transcription: String,

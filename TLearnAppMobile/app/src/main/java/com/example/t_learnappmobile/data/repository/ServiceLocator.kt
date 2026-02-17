@@ -1,8 +1,11 @@
 package com.example.t_learnappmobile.data.repository
 
 import android.content.Context
+import androidx.room.Room
 import com.example.t_learnappmobile.data.auth.*
 import com.example.t_learnappmobile.data.dictionary.DictionaryManager
+import com.example.t_learnappmobile.data.statistics.DailyStatsDao
+import com.example.t_learnappmobile.data.statistics.StatsDatabase
 import com.example.t_learnappmobile.domain.repository.WordRepository
 import com.google.gson.GsonBuilder
 import okhttp3.OkHttpClient
@@ -15,6 +18,8 @@ object ServiceLocator {
     lateinit var authRepository: AuthRepository
     lateinit var dictionaryManager: DictionaryManager
     private lateinit var authApiService: AuthApiService
+    lateinit var statsDatabase: StatsDatabase
+    lateinit var dailyStatsDao: DailyStatsDao
 
     private const val BACKEND_URL = "http://10.0.2.2:8080/"
 
@@ -35,7 +40,15 @@ object ServiceLocator {
 
     fun initContextAwareDependencies(context: Context) {
         tokenManager = TokenManager(context)
+        statsDatabase = Room.databaseBuilder(
+            context.applicationContext,
+            StatsDatabase::class.java,
+            "stats_database"
+        ).build()
+        dailyStatsDao = statsDatabase.dailyStatsDao()
+
         dictionaryManager = DictionaryManager(context)
+
         authApiService = createAuthApiService(context, tokenManager)
         authRepository = AuthRepository(authApiService, tokenManager)
     }

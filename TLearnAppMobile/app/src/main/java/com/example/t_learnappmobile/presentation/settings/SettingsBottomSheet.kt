@@ -116,8 +116,10 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
                 title = getString(R.string.confirm_reset_dictionary_title),
                 message = "Удалить статистику словаря \"${currentDict.name}\"?",
                 onConfirm = {
-                    settingsManager.clearDictionaryData(userId)
-                    showSuccessDialog(getString(R.string.dictionary_has_been_reset))
+                    lifecycleScope.launch {
+                        settingsManager.clearDictionaryData(userId)
+                        showSuccessDialog(getString(R.string.dictionary_has_been_reset))
+                    }
                 }
             )
         }
@@ -127,11 +129,13 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
                 title = getString(R.string.confirm_reset_all_title),
                 message = getString(R.string.confirm_reset_all_message),
                 onConfirm = {
-                    settingsManager.clearAllData()
-                    binding.dictionarySpinner.setSelection(0)
-                    currentTheme = SettingsManager.THEME_SYSTEM
-                    updateThemeSelection(currentTheme)
-                    showSuccessDialog(getString(R.string.data_has_been_reset))
+                    lifecycleScope.launch {
+                        settingsManager.clearAllData()
+                        binding.dictionarySpinner.setSelection(0)
+                        currentTheme = SettingsManager.THEME_SYSTEM
+                        updateThemeSelection(currentTheme)
+                        showSuccessDialog(getString(R.string.data_has_been_reset))
+                    }
                 }
             )
         }

@@ -3,15 +3,17 @@ package com.example.t_learnappmobile.data.dictionary
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
+import com.example.t_learnappmobile.data.repository.ServiceLocator
 import com.example.t_learnappmobile.data.statistics.DailyStats
 import java.text.SimpleDateFormat
 import java.util.*
+import com.example.t_learnappmobile.data.statistics.DailyStatsDao
 
 class DictionaryManager(private val context: Context) {
 
     private val prefs: SharedPreferences =
         context.getSharedPreferences("dictionary_prefs", Context.MODE_PRIVATE)
-
+    private val statsDao: DailyStatsDao by lazy { ServiceLocator.dailyStatsDao }
     companion object {
         private const val KEY_DICTIONARY_STATS = "dictionary_stats_"
         private const val KEY_STATS_PREFIX = "stats_"
@@ -19,39 +21,64 @@ class DictionaryManager(private val context: Context) {
 
     private fun keyCurrentDictionary(userId: Int?) = "current_dictionary_id_user$userId"
 
-    fun saveDailyStats(userId: Int, stats: DailyStats) {
+    suspend fun saveDailyStats(userId: Int, stats: DailyStats) {
         val currentDict = getCurrentDictionary(userId)
-        val key = "${KEY_STATS_PREFIX}${userId}_${currentDict.id}_${stats.date}"
-        prefs.edit {
-            putInt("${key}_new", stats.newWords)
-            putInt("${key}_inProgress", stats.inProgressWords)
-            putInt("${key}_learned", stats.learnedWords)
-        }
-    }
-
-    fun getDailyStats(userId: Int, date: String): DailyStats {
-        val currentDict = getCurrentDictionary(userId)
-        val key = "${KEY_STATS_PREFIX}${userId}_${currentDict.id}_${date}"
-        return DailyStats(
-            date = date,
-            newWords = prefs.getInt("${key}_new", 0),
-            inProgressWords = prefs.getInt("${key}_inProgress", 0),
-            learnedWords = prefs.getInt("${key}_learned", 0)
+        val entity = com.example.t_learnappmobile.data.statistics.DailyStatsEntity(
+            userId = userId,
+            dictionaryId = currentDict.id,
+            date = stats.date,
+            newWords = stats.newWords,
+            inProgressWords = stats.inProgressWords,
+            learnedWords = stats.learnedWords
         )
+        statsDao.insertOrUpdate(entity)
     }
-
-    fun getLastWeekStats(userId: Int): List<DailyStats> {
-        val calendar = Calendar.getInstance()
-        val stats = mutableListOf<DailyStats>()
-        repeat(7) {
-            val dateStr = formatDate(calendar.time)
-            stats.add(getDailyStats(userId, dateStr))
-            calendar.add(Calendar.DAY_OF_YEAR, -1)
+    suspend fun getDailyStats(userId: Int, date: String): DailyStats {
+        val currentDict = getCurrentDictionary(userId)
+        val entity = statsDao.getByDate(userId, currentDict.id, date)
+        return if (entity != null) {
+            DailyStats(
+                date = entity.date,
+                newWords = entity.newWords,
+                inProgressWords = entity.inProgressWords,
+                learnedWords = entity.learnedWords
+            )
+        } else {
+            DailyStats(date = date)
         }
-        return stats.reversed()
     }
 
-    fun getWeekLabel(userId: Int): String {
+    suspend fun getLastWeekStats(userId: Int): List<DailyStats> {
+        val currentDict = getCurrentDictionary(userId)
+
+        val cal = Calendar.getInstance()
+        val today = formatDate(cal.time)
+        cal.add(Calendar.DAY_OF_YEAR, -6)
+        val sixDaysAgo = formatDate(cal.time)
+
+        val entities = statsDao.getStatsForPeriod(userId, currentDict.id, sixDaysAgo, today)
+        val entityMap = entities.associateBy { it.date }
+
+        val dates = mutableListOf<String>()
+        val dateCal = Calendar.getInstance()
+        dateCal.add(Calendar.DAY_OF_YEAR, -6)
+        repeat(7) {
+            dates.add(formatDate(dateCal.time))
+            dateCal.add(Calendar.DAY_OF_YEAR, 1)
+        }
+
+        return dates.map { date ->
+            val e = entityMap[date]
+            DailyStats(
+                date = date,
+                newWords = e?.newWords ?: 0,
+                inProgressWords = e?.inProgressWords ?: 0,
+                learnedWords = e?.learnedWords ?: 0
+            )
+        }
+    }
+
+    suspend fun getWeekLabel(userId: Int): String {
         val week = getLastWeekStats(userId)
         if (week.isEmpty()) return ""
         val first = week.first().date
@@ -59,18 +86,25 @@ class DictionaryManager(private val context: Context) {
         val inFmt = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         val outFmt = SimpleDateFormat("dd.MM", Locale.getDefault())
         return try {
-            val firstStr = outFmt.format(inFmt.parse(first)!!)
-            val lastStr = outFmt.format(inFmt.parse(last)!!)
-            "$firstStr - $lastStr"
+            "${outFmt.format(inFmt.parse(first)!!)} - ${outFmt.format(inFmt.parse(last)!!)}"
         } catch (e: Exception) {
             ""
         }
     }
+    suspend fun clearCurrentDictionaryStats(userId: Int) {
+        val currentDict = getCurrentDictionary(userId)
+        statsDao.deleteForDictionary(userId, currentDict.id)
+    }
+
+    suspend fun clearAllDictionaries() {
+        prefs.edit { clear() }
+        statsDao.deleteAll()
+    }
 
     private fun formatDate(date: Date): String {
-        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        return sdf.format(date)
+        return SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(date)
     }
+
 
 
     fun getDictionaries(): List<Dictionary> {
@@ -110,12 +144,5 @@ class DictionaryManager(private val context: Context) {
 
     fun getCurrentVocabularyId(userId: Int): Int = getCurrentDictionary(userId).vocabularyId
 
-    fun clearCurrentDictionaryStats(userId: Int) {
-        val currentDict = getCurrentDictionary(userId)
-        prefs.edit { remove("${KEY_DICTIONARY_STATS}${currentDict.id}") }
-    }
 
-    fun clearAllDictionaries() {
-        prefs.edit { clear() }
-    }
 }

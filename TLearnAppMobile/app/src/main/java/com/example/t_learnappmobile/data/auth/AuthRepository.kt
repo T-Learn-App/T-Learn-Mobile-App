@@ -12,7 +12,7 @@ class AuthRepository(
 ) {
 
     companion object {
-        private const val MOCK_MODE = false  // ← Поменять на false после тестов
+        private const val MOCK_MODE = true  // ← Поменять на false после тестов
     }
 
     suspend fun checkAuthState(): AuthState {

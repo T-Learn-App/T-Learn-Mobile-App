@@ -28,11 +28,11 @@ class SettingsManager(private val context: Context) {
         return dictionaryManager
     }
 
-    fun clearDictionaryData(userId: Int) {
+    suspend fun clearDictionaryData(userId: Int) {
         dictionaryManager.clearCurrentDictionaryStats(userId)
     }
 
-    fun clearAllData() {
+    suspend fun clearAllData() {
         prefs.edit { clear() }
         dictionaryManager.clearAllDictionaries()
         AppCompatDelegate.setDefaultNightMode(THEME_SYSTEM)

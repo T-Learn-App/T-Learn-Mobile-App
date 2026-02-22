@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.example.t_learnappmobile.data.auth.*
 import com.example.t_learnappmobile.data.dictionary.DictionaryManager
+import com.example.t_learnappmobile.data.leaderboard.LeaderboardManager
 import com.example.t_learnappmobile.data.statistics.DailyStatsDao
 import com.example.t_learnappmobile.data.statistics.StatsDatabase
 import com.example.t_learnappmobile.domain.repository.WordRepository
@@ -20,7 +21,7 @@ object ServiceLocator {
     private lateinit var authApiService: AuthApiService
     lateinit var statsDatabase: StatsDatabase
     lateinit var dailyStatsDao: DailyStatsDao
-
+    lateinit var leaderboardManager: LeaderboardManager
     private const val BACKEND_URL = "http://10.0.2.2:8080/"
 
     val api: WordApi by lazy {
@@ -52,6 +53,7 @@ object ServiceLocator {
 
         authApiService = createAuthApiService(context, tokenManager)
         authRepository = AuthRepository(authApiService, tokenManager)
+        leaderboardManager = LeaderboardManager()
     }
 
     private fun createAuthApiService(context: Context, tokenManager: TokenManager): AuthApiService {

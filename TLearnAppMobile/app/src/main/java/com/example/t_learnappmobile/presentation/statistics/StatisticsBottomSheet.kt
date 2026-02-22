@@ -11,8 +11,12 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.example.t_learnappmobile.databinding.FragmentStatisctisBinding
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import kotlinx.coroutines.launch
-
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.t_learnappmobile.R
+import com.example.t_learnappmobile.data.leaderboard.LeaderboardPlayer
+import com.example.t_learnappmobile.presentation.statistics.LeaderboardAdapter
 class StatisticsBottomSheet : BottomSheetDialogFragment() {
+    private lateinit var leaderboardAdapter: LeaderboardAdapter
 
     private var _binding: FragmentStatisctisBinding? = null
     private val binding get() = _binding!!
@@ -31,8 +35,17 @@ class StatisticsBottomSheet : BottomSheetDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupUI()
+        setupLeaderboard() // ✅ ДОБАВЬ
         observeViewModel()
     }
+
+
+    private fun setupLeaderboard() {
+        binding.leaderboardRecyclerView.layoutManager = LinearLayoutManager(requireContext())
+        leaderboardAdapter = LeaderboardAdapter(emptyList())
+        binding.leaderboardRecyclerView.adapter = leaderboardAdapter
+    }
+
 
     private fun setupUI() {
         binding.btnClose.setOnClickListener { dismiss() }
@@ -60,6 +73,24 @@ class StatisticsBottomSheet : BottomSheetDialogFragment() {
                         binding.statsChart.setStats(stats)
                     }
                 }
+                launch {
+                    viewModel.leaderboardPlayers.collect { players ->
+                        leaderboardAdapter = LeaderboardAdapter(players)
+                        binding.leaderboardRecyclerView.adapter = leaderboardAdapter
+                    }
+                }
+
+                launch {
+                    viewModel.yourPosition.collect { yourPos ->
+                        yourPos?.let {
+                            binding.yourPositionText.text = "#${it.position}"
+                            binding.yourNameText.text = it.name
+                            binding.yourScoreText.text = it.score.toString()
+                            binding.yourAvatarImage.setImageResource(R.drawable.gray_button_rounded)
+                        }
+                    }
+                }
+
             }
         }
     }

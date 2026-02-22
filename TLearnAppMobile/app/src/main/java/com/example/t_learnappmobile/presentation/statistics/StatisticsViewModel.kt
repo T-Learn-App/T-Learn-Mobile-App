@@ -1,8 +1,9 @@
 package com.example.t_learnappmobile.presentation.statistics
 
-
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.t_learnappmobile.data.leaderboard.LeaderboardManager
+import com.example.t_learnappmobile.data.leaderboard.LeaderboardPlayer
 import com.example.t_learnappmobile.data.repository.ServiceLocator
 import com.example.t_learnappmobile.data.statistics.DailyStats
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,9 +12,11 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+
 class StatisticsViewModel : ViewModel() {
     private val dictionaryManager = ServiceLocator.dictionaryManager
     private val tokenManager = ServiceLocator.tokenManager
+    private val leaderboardManager = LeaderboardManager()
 
     private val _weekStats = MutableStateFlow<List<DailyStats>>(emptyList())
     val weekStats: StateFlow<List<DailyStats>> = _weekStats
@@ -24,8 +27,16 @@ class StatisticsViewModel : ViewModel() {
     private val _currentDictionaryName = MutableStateFlow("Conversational")
     val currentDictionaryName: StateFlow<String> = _currentDictionaryName
 
+    // ✅ Лидерборд
+    private val _leaderboardPlayers = MutableStateFlow<List<LeaderboardPlayer>>(emptyList())
+    val leaderboardPlayers: StateFlow<List<LeaderboardPlayer>> = _leaderboardPlayers
+
+    private val _yourPosition = MutableStateFlow<LeaderboardPlayer?>(null)
+    val yourPosition: StateFlow<LeaderboardPlayer?> = _yourPosition
+
     init {
         loadWeekStats()
+        loadLeaderboard()
         viewModelScope.launch {
             dictionaryManager.currentVocabularyIdFlow
                 .filterNotNull()
@@ -39,17 +50,14 @@ class StatisticsViewModel : ViewModel() {
             val userId = tokenManager.getUserData().firstOrNull()?.id ?: return@launch
             val currentDict = dictionaryManager.getCurrentDictionary(userId)
 
-            // ✅ Название словаря
             _currentDictionaryName.value = currentDict.name
-
-            // ✅ НОВЫЕ СЛОВА = всего слов - выученные
             val totalWordsInDict = currentDict.wordsCount
             val totalLearned = dictionaryManager.getTotalLearnedWords(userId)
             val newWordsTotal = totalWordsInDict - totalLearned
 
             val stats = dictionaryManager.getLastWeekStats(userId)
             val updatedStats = stats.map { daily ->
-                daily.copy(newWords = newWordsTotal) // ✅ Фиксируем новые слова
+                daily.copy(newWords = newWordsTotal)
             }
 
             _weekStats.value = updatedStats
@@ -58,6 +66,17 @@ class StatisticsViewModel : ViewModel() {
                 inProgress = stats.sumOf { it.inProgressWords },
                 learned = stats.sumOf { it.learnedWords }
             )
+        }
+    }
+
+    private fun loadLeaderboard() {
+        viewModelScope.launch {
+            val userId = tokenManager.getUserData().firstOrNull()?.id ?: 1
+            val players = leaderboardManager.loadLeaderboard()
+            _leaderboardPlayers.value = players
+
+            val yourPos = leaderboardManager.getYourPosition(userId)
+            _yourPosition.value = yourPos
         }
     }
 

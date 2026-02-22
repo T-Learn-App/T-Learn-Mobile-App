@@ -7,18 +7,19 @@
     android:orientation="vertical"
     android:paddingTop="0dp">
 
+    <!-- Drag handle -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center"
         android:paddingVertical="12dp">
-
         <View
             android:layout_width="40dp"
             android:layout_height="4dp"
             android:background="@drawable/drag_handle_24px" />
     </LinearLayout>
 
+    <!-- Header с названием словаря -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -28,10 +29,11 @@
         android:paddingVertical="12dp">
 
         <TextView
+            android:id="@+id/dictionaryNameText"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="@string/stats_learning"
+            android:text="Conversational"
             android:textColor="?attr/colorOnSurface"
             android:textSize="20sp"
             android:textStyle="bold" />
@@ -50,7 +52,6 @@
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
         android:paddingHorizontal="24dp"
         android:paddingVertical="16dp">
 
@@ -59,6 +60,7 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
+            <!-- Карточка с общей статистикой -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -74,6 +76,7 @@
                     android:paddingHorizontal="24dp"
                     android:paddingVertical="20dp">
 
+                    <!-- НОВЫЕ СЛОВА (всего - выученные) -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -99,12 +102,13 @@
                                 android:id="@+id/newWordsCount"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="@string/_0"
+                                android:text="0"
                                 android:textColor="?attr/colorOnSurface"
                                 android:textSize="28sp"
                                 android:textStyle="bold" />
                         </LinearLayout>
 
+                        <!-- СЛОВА В ПРОЦЕССЕ -->
                         <LinearLayout
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
@@ -124,12 +128,13 @@
                                 android:id="@+id/inProgressCount"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="@string/_0"
+                                android:text="0"
                                 android:textColor="?attr/colorOnSurface"
                                 android:textSize="28sp"
                                 android:textStyle="bold" />
                         </LinearLayout>
 
+                        <!-- ВЫУЧЕННЫЕ СЛОВА -->
                         <LinearLayout
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
@@ -149,7 +154,7 @@
                                 android:id="@+id/learnedWordsCount"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="@string/_0"
+                                android:text="0"
                                 android:textColor="?attr/colorOnSurface"
                                 android:textSize="28sp"
                                 android:textStyle="bold" />
@@ -163,6 +168,7 @@
                         android:alpha="0.3"
                         android:background="?android:textColorSecondary" />
 
+                    <!-- ДИАГРАММА: 2 столбца (выученные + в процессе) -->
                     <FrameLayout
                         android:id="@+id/chartContainer"
                         android:layout_width="match_parent"
@@ -175,7 +181,6 @@
                     </FrameLayout>
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
-
         </LinearLayout>
     </ScrollView>
 </LinearLayout>

@@ -69,7 +69,6 @@ class StatsChartView @JvmOverloads constructor(
                 canvas.drawRoundRect(rect, 6f, 6f, barPaint)
             }
 
-            drawBar(s.newWords, -1f, "#2196F3".toColorInt())
             drawBar(s.inProgressWords, 0f, "#FF9800".toColorInt())
             drawBar(s.learnedWords, 1f, "#4CAF50".toColorInt())
 

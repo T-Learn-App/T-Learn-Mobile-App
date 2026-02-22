@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 class StatisticsViewModel : ViewModel() {
-
     private val dictionaryManager = ServiceLocator.dictionaryManager
     private val tokenManager = ServiceLocator.tokenManager
 
@@ -22,41 +21,43 @@ class StatisticsViewModel : ViewModel() {
     private val _totalStats = MutableStateFlow(TotalStats(0, 0, 0))
     val totalStats: StateFlow<TotalStats> = _totalStats
 
-    private val _weekLabel = MutableStateFlow("")
-    val weekLabel: StateFlow<String> = _weekLabel
+    private val _currentDictionaryName = MutableStateFlow("Conversational")
+    val currentDictionaryName: StateFlow<String> = _currentDictionaryName
 
     init {
-        // Начальная загрузка при создании ViewModel
         loadWeekStats()
-
-        // Реакция на каждое изменение словаря
         viewModelScope.launch {
             dictionaryManager.currentVocabularyIdFlow
                 .filterNotNull()
                 .distinctUntilChanged()
-                .collect { _ ->
-                    loadWeekStats()           // ← перезагружаем статистику
-                }
+                .collect { loadWeekStats() }
         }
     }
 
     fun loadWeekStats() {
         viewModelScope.launch {
             val userId = tokenManager.getUserData().firstOrNull()?.id ?: return@launch
+            val currentDict = dictionaryManager.getCurrentDictionary(userId)
+
+            // ✅ Название словаря
+            _currentDictionaryName.value = currentDict.name
+
+            // ✅ НОВЫЕ СЛОВА = всего слов - выученные
+            val totalWordsInDict = currentDict.wordsCount
+            val totalLearned = dictionaryManager.getTotalLearnedWords(userId)
+            val newWordsTotal = totalWordsInDict - totalLearned
 
             val stats = dictionaryManager.getLastWeekStats(userId)
-            _weekStats.value = stats
-
-            val total = stats.fold(TotalStats(0, 0, 0)) { acc, d ->
-                TotalStats(
-                    acc.new + d.newWords,
-                    acc.inProgress + d.inProgressWords,
-                    acc.learned + d.learnedWords
-                )
+            val updatedStats = stats.map { daily ->
+                daily.copy(newWords = newWordsTotal) // ✅ Фиксируем новые слова
             }
-            _totalStats.value = total
 
-            _weekLabel.value = dictionaryManager.getWeekLabel(userId)
+            _weekStats.value = updatedStats
+            _totalStats.value = TotalStats(
+                new = newWordsTotal,
+                inProgress = stats.sumOf { it.inProgressWords },
+                learned = stats.sumOf { it.learnedWords }
+            )
         }
     }
 

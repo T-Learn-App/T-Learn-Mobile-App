@@ -8,10 +8,15 @@ import com.example.t_learnappmobile.data.statistics.DailyStats
 import java.text.SimpleDateFormat
 import java.util.*
 import com.example.t_learnappmobile.data.statistics.DailyStatsDao
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 class DictionaryManager(private val context: Context) {
+    // Добавьте в DictionaryManager.kt:
+    fun formatTodayDate(): String {
+        return SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+    }
 
     private val prefs: SharedPreferences =
         context.getSharedPreferences("dictionary_prefs", Context.MODE_PRIVATE)
@@ -57,6 +62,40 @@ class DictionaryManager(private val context: Context) {
             )
         } else {
             DailyStats(date = date)
+        }
+    }
+
+    // ✅ МОК: Создает тестовые данные при первом запуске
+    suspend fun generateMockStats(userId: Int) {
+        val currentDict = getCurrentDictionary(userId)
+        val dates = mutableListOf<String>()
+        val dateCal = Calendar.getInstance()
+        dateCal.add(Calendar.DAY_OF_YEAR, -6)
+        repeat(7) {
+            dates.add(formatDate(dateCal.time))
+            dateCal.add(Calendar.DAY_OF_YEAR, 1)
+        }
+
+        // ✅ РЕАЛИСТИЧНЫЕ мок-данные за неделю
+        val mockData = listOf(
+            Triple(dates[0], 3, 2),  // 22.02: 3 новых, 2 в процессе
+            Triple(dates[1], 5, 1),  // 23.02: 5 новых, 1 в процессе
+            Triple(dates[2], 2, 4),  // 24.02: 2 новых, 4 в процессе
+            Triple(dates[3], 4, 3),  // 25.02: 4 новых, 3 в процессе
+            Triple(dates[4], 1, 5),  // 26.02: 1 новый, 5 в процессе
+            Triple(dates[5], 6, 0),  // 27.02: 6 новых, 0 в процессе
+            Triple(dates[6], 0, 7)   // 28.02: 0 новых, 7 в процессе
+        )
+
+        mockData.forEach { (date, newWords, inProgress) ->
+            val stats = DailyStats(
+                date = date,
+                newWords = newWords,
+                inProgressWords = inProgress,
+                learnedWords = (1..newWords).random() // случайное кол-во выученных
+            )
+            saveDailyStats(userId, stats)
+            delay(50) // имитация задержки
         }
     }
 
@@ -117,9 +156,15 @@ class DictionaryManager(private val context: Context) {
         return SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(date)
     }
 
-    // ✅ ИСПРАВЛЕНИЕ: используем getDictionaries()
     fun getDictionaryName(dictionaryId: Long): String {
         return getDictionaries().find { it.id.toLong() == dictionaryId }?.name ?: "Неизвестный словарь"
+    }
+
+    // ✅ УЛУЧШЕННАЯ заглушка с мок-данными
+    suspend fun getTotalLearnedWords(userId: Int): Int {
+        val currentDict = getCurrentDictionary(userId)
+        // ✅ Имитируем выученные слова (20% от общего количества)
+        return (currentDict.wordsCount * 0.2).toInt().coerceAtLeast(2)
     }
 
     fun getDictionaries(): List<Dictionary> {
@@ -127,7 +172,7 @@ class DictionaryManager(private val context: Context) {
             Dictionary(
                 id = 1,
                 vocabularyId = 1,
-                name = "Conversional",
+                name = "Conversational",
                 description = "Разговорные слова",
                 wordsCount = 25
             ),

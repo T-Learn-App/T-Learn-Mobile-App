@@ -43,7 +43,11 @@ class StatisticsBottomSheet : BottomSheetDialogFragment() {
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-
+                launch {
+                    viewModel.currentDictionaryName.collect { name ->
+                        binding.dictionaryNameText.text = name  // ✅ Название словаря
+                    }
+                }
                 launch {
                     viewModel.totalStats.collect { totals ->
                         binding.newWordsCount.text = totals.new.toString()
@@ -51,7 +55,6 @@ class StatisticsBottomSheet : BottomSheetDialogFragment() {
                         binding.learnedWordsCount.text = totals.learned.toString()
                     }
                 }
-
                 launch {
                     viewModel.weekStats.collect { stats ->
                         binding.statsChart.setStats(stats)
@@ -60,6 +63,7 @@ class StatisticsBottomSheet : BottomSheetDialogFragment() {
             }
         }
     }
+
 
     override fun onDestroyView() {
         super.onDestroyView()

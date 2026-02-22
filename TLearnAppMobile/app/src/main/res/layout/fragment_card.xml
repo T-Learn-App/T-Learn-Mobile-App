@@ -56,6 +56,16 @@
                     app:tint="?attr/colorOnSurface" />
 
                 <ImageButton
+                    android:id="@+id/gameButton"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+
+                    android:src="@drawable/show_chart_24px"
+                    app:tint="?attr/colorOnSurface" />
+
+
+                <ImageButton
                     android:id="@+id/settingsButton"
                     android:layout_width="40dp"
                     android:layout_height="40dp"

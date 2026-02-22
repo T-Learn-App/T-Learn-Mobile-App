@@ -65,32 +65,32 @@ class CardsFragment : Fragment() {
                         return@collect
                     }
 
-                    // ✅ ВСЕГДА показываем ТЕКУЩИЙ выбранный словарь
+                    // Название текущего словаря
                     val currentDictName = runCatching {
                         val userId = ServiceLocator.tokenManager.getUserData().firstOrNull()?.id
                         userId?.let { dictionaryManager.getCurrentDictionary(it).name } ?: "Conversional"
                     }.getOrElse { "Conversional" }
-
                     binding.categoryText.text = currentDictName
 
                     binding.knownButton.isEnabled = true
                     binding.unknownButton.isEnabled = true
+
+                    // ✅ ИСПРАВЛЕНИЕ: правильный текст кнопок по типу карточки
                     when (word.cardType) {
                         CardType.NEW -> {
                             binding.wordLabel.visibility = View.VISIBLE
                             binding.wordLabel.setText(R.string.new_word)
-                            binding.knownButton.setText(R.string.i_know_that_word)
-                            binding.unknownButton.setText(R.string.i_dont_know_that_word)
+                            binding.knownButton.setText(R.string.i_know_that_word)           // "Я знаю это слово"
+                            binding.unknownButton.setText(R.string.i_dont_know_that_word)    // "Я не знаю это слово"
                         }
-
                         CardType.ROTATION -> {
                             binding.wordLabel.visibility = View.VISIBLE
-                            binding.wordLabel.text =
-                                getString(R.string.replay_stage, word.repetitionStage)
-                            binding.knownButton.setText(R.string.i_remember_that_word)
-                            binding.unknownButton.setText(R.string.i_didnt_remember_that_word)
+                            binding.wordLabel.text = getString(R.string.replay_stage, word.repetitionStage)
+                            binding.knownButton.setText(R.string.i_remember_that_word)       // "Я запомнил это слово"
+                            binding.unknownButton.setText(R.string.i_didnt_remember_that_word) // "Я не запомнил это слово"
                         }
                     }
+
 
                     when (word.translationDirection) {
                         TranslationDirection.ENGLISH_TO_RUSSIAN -> {

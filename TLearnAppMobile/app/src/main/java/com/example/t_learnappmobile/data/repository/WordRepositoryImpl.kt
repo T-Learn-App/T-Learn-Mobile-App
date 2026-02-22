@@ -74,6 +74,21 @@ class WordRepositoryImpl(
         return fetchedWords
     }
     private fun mapBackendWord(w: WordResponse): Word {
+        // ✅ ПРАВИЛЬНАЯ логика: чередуем типы карточек
+        val wordIndex = (w.id % 5).toInt()  // 0,1,2,3,4
+        val cardType = when (wordIndex) {
+            0, 1 -> CardType.NEW              // 40% новые слова
+            2, 3, 4 -> CardType.ROTATION      // 60% ротация
+            else -> CardType.NEW
+        }
+
+        val repetitionStage = when (wordIndex) {
+            2 -> 1
+            3 -> 2
+            4 -> 3
+            else -> 0
+        }
+
         return Word(
             id = w.id,
             vocabularyId = w.category.toInt(),
@@ -82,11 +97,16 @@ class WordRepositoryImpl(
             partOfSpeech = mapPartOfSpeech(w.partOfSpeech),
             russianTranslation = w.translation,
             category = "Category ${w.category}",
-            cardType = CardType.NEW,           // бэкенд не различает NEW/ROTATION в ответе
-            repetitionStage = 0,
+            cardType = cardType,           // ✅ НОВЫЙ или ROTATION
+            repetitionStage = repetitionStage,  // ✅ 0,1,2,3
             isLearned = false,
             translationDirection = TranslationDirection.ENGLISH_TO_RUSSIAN
         )
+    }
+
+    private fun isWordLearned(wordId: Long): Boolean {
+        // Пока упрощенно - чередуем типы для демонстрации
+        return (wordId % 3).toInt() == 0  // Каждое 3-е слово = ROTATION
     }
     private fun mapPartOfSpeech(s: String): PartOfSpeech = when (s.lowercase()) {
         "noun" -> PartOfSpeech.NOUN
@@ -129,6 +149,7 @@ class WordRepositoryImpl(
         val translations = translationsMap[vocabularyId] ?: translationsMap[1]!!
 
         return List(batchSize) { index ->
+            val isRotation = index % 3 != 0  // 2/3 карточки = ROTATION
             Word(
                 id = index + 1.toLong(),
                 vocabularyId = vocabularyId,
@@ -137,6 +158,8 @@ class WordRepositoryImpl(
                 partOfSpeech = PartOfSpeech.INTERJECTION,
                 russianTranslation = translations.getOrElse(index % translations.size) { "Слово${index + 1}" },
                 category = currentDict.name,
+                cardType = if (isRotation) CardType.ROTATION else CardType.NEW,  // ✅ РАЗНЫЕ типы!
+                repetitionStage = if (isRotation) (index % 3 + 1) else 0
             )
         }
     }

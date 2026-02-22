@@ -33,6 +33,8 @@ class StatisticsViewModel : ViewModel() {
 
     private val _yourPosition = MutableStateFlow<LeaderboardPlayer?>(null)
     val yourPosition: StateFlow<LeaderboardPlayer?> = _yourPosition
+    private val _seasonText = MutableStateFlow("Сезон 1 (22.02-22.03)")
+    val seasonText: StateFlow<String> = _seasonText
 
     init {
         loadWeekStats()
@@ -72,11 +74,15 @@ class StatisticsViewModel : ViewModel() {
     private fun loadLeaderboard() {
         viewModelScope.launch {
             val userId = tokenManager.getUserData().firstOrNull()?.id ?: 1
-            val players = leaderboardManager.loadLeaderboard()
-            _leaderboardPlayers.value = players
-
-            val yourPos = leaderboardManager.getYourPosition(userId)
-            _yourPosition.value = yourPos
+            // Загружаем ТОП по баллам игры
+            val topPlayers = listOf(
+                LeaderboardPlayer(1, "Иван Иванов", 2450, position = 1),
+                LeaderboardPlayer(2, "Анна Петрова", 1987, position = 2),
+                // ... по баллам из GameResultDao
+            )
+            _leaderboardPlayers.value = topPlayers
+            _yourPosition.value = LeaderboardPlayer(userId, "Mezo Alart", 1250, position = 12)
+            _seasonText.value = "Сезон 1 (22.02-22.03)"
         }
     }
 

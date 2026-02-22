@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
@@ -21,6 +22,7 @@ import com.example.t_learnappmobile.model.TranslationDirection
 import com.example.t_learnappmobile.presentation.auth.AuthState
 import com.example.t_learnappmobile.presentation.auth.LoginActivity
 import com.example.t_learnappmobile.presentation.auth.LogoutViewModel
+import com.example.t_learnappmobile.presentation.game.GameFragment
 
 
 import com.example.t_learnappmobile.presentation.settings.SettingsBottomSheet
@@ -214,6 +216,10 @@ class CardsFragment : Fragment() {
         binding.exitButton.setOnClickListener {
             logoutViewModel.logout()
         }
+        binding.gameButton.setOnClickListener {
+            val gameFragment = GameFragment()
+            gameFragment.show(parentFragmentManager, "GameFragment")
+        }
     }
 
     override fun onDestroyView() {
@@ -221,3 +227,5 @@ class CardsFragment : Fragment() {
         _binding = null
     }
 }
+
+

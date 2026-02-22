@@ -8,6 +8,9 @@ import android.view.View
 import com.example.t_learnappmobile.data.statistics.DailyStats
 import androidx.core.graphics.toColorInt
 
+
+// Кастомный View для рисования графика статистики. Наследуется от View, чтобы рисовать на Canvas (холсте Android)
+// @JvmOverloads для совместимости с Java
 class StatsChartView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

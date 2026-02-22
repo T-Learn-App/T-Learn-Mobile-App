@@ -7,12 +7,14 @@ import com.example.t_learnappmobile.data.repository.ServiceLocator
 import com.example.t_learnappmobile.data.statistics.DailyStats
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
-
 class StatisticsViewModel : ViewModel() {
 
     private val dictionaryManager = ServiceLocator.dictionaryManager
+    private val tokenManager = ServiceLocator.tokenManager
 
     private val _weekStats = MutableStateFlow<List<DailyStats>>(emptyList())
     val weekStats: StateFlow<List<DailyStats>> = _weekStats
@@ -23,14 +25,25 @@ class StatisticsViewModel : ViewModel() {
     private val _weekLabel = MutableStateFlow("")
     val weekLabel: StateFlow<String> = _weekLabel
 
-    private val tokenManager = ServiceLocator.tokenManager
     init {
+        // Начальная загрузка при создании ViewModel
         loadWeekStats()
+
+        // Реакция на каждое изменение словаря
+        viewModelScope.launch {
+            dictionaryManager.currentVocabularyIdFlow
+                .filterNotNull()
+                .distinctUntilChanged()
+                .collect { _ ->
+                    loadWeekStats()           // ← перезагружаем статистику
+                }
+        }
     }
 
     fun loadWeekStats() {
         viewModelScope.launch {
             val userId = tokenManager.getUserData().firstOrNull()?.id ?: return@launch
+
             val stats = dictionaryManager.getLastWeekStats(userId)
             _weekStats.value = stats
 
@@ -42,6 +55,7 @@ class StatisticsViewModel : ViewModel() {
                 )
             }
             _totalStats.value = total
+
             _weekLabel.value = dictionaryManager.getWeekLabel(userId)
         }
     }

@@ -38,6 +38,7 @@ object ServiceLocator {
         WordRepositoryImpl(api, storage)
     }
 
+
     fun initContextAwareDependencies(context: Context) {
         tokenManager = TokenManager(context)
         statsDatabase = Room.databaseBuilder(

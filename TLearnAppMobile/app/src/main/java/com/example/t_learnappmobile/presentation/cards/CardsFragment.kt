@@ -12,6 +12,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.example.t_learnappmobile.R
+import com.example.t_learnappmobile.data.dictionary.DictionaryManager
+import com.example.t_learnappmobile.data.repository.ServiceLocator
 
 import com.example.t_learnappmobile.databinding.FragmentCardBinding
 import com.example.t_learnappmobile.model.CardType
@@ -22,19 +24,18 @@ import com.example.t_learnappmobile.presentation.auth.LogoutViewModel
 
 
 import com.example.t_learnappmobile.presentation.settings.SettingsBottomSheet
-import com.example.t_learnappmobile.presentation.statistics.StatistisBottomSheet
+import com.example.t_learnappmobile.presentation.statistics.StatisticsBottomSheet
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
 class CardsFragment : Fragment() {
-
 
     private var _binding: FragmentCardBinding? = null
     private val binding get() = _binding!!
 
     private lateinit var wordViewModel: WordViewModel
     private lateinit var logoutViewModel: LogoutViewModel
-
-
+    private lateinit var dictionaryManager: DictionaryManager
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -48,6 +49,7 @@ class CardsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         wordViewModel = ViewModelProvider(this).get(WordViewModel::class.java)
         logoutViewModel = ViewModelProvider(requireActivity()).get(LogoutViewModel::class.java)
+        dictionaryManager = ServiceLocator.dictionaryManager  // ✅ ПРЯМО dictionaryManager
         observeViewModel()
         setUpClickListener()
     }
@@ -63,12 +65,16 @@ class CardsFragment : Fragment() {
                         return@collect
                     }
 
+                    // ✅ ВСЕГДА показываем ТЕКУЩИЙ выбранный словарь
+                    val currentDictName = runCatching {
+                        val userId = ServiceLocator.tokenManager.getUserData().firstOrNull()?.id
+                        userId?.let { dictionaryManager.getCurrentDictionary(it).name } ?: "Conversional"
+                    }.getOrElse { "Conversional" }
+
+                    binding.categoryText.text = currentDictName
+
                     binding.knownButton.isEnabled = true
                     binding.unknownButton.isEnabled = true
-
-                    binding.categoryText.text = getString(R.string.type, word.category)
-
-
                     when (word.cardType) {
                         CardType.NEW -> {
                             binding.wordLabel.visibility = View.VISIBLE
@@ -104,7 +110,6 @@ class CardsFragment : Fragment() {
 
                     binding.translationText.visibility = View.GONE
                     binding.showTranslationButtonText.setText(R.string.show_translation)
-
                 }
             }
         }
@@ -166,16 +171,13 @@ class CardsFragment : Fragment() {
                             ).show()
                         }
                         else -> {}
-
                     }
                 }
             }
         }
     }
 
-
     private fun setUpClickListener() {
-
         binding.eyeIcon.setOnClickListener {
             wordViewModel.toggleTranslation()
         }
@@ -197,13 +199,14 @@ class CardsFragment : Fragment() {
             }
         }
         binding.statsButton.setOnClickListener {
-            val bottomSheet = StatistisBottomSheet()
-            bottomSheet.show(parentFragmentManager, StatistisBottomSheet.Companion.TAG)
+            val bottomSheet = StatisticsBottomSheet()
+            bottomSheet.show(parentFragmentManager, StatisticsBottomSheet.Companion.TAG)
         }
         binding.settingsButton.setOnClickListener {
             val settingsSheet = SettingsBottomSheet()
+            // ✅ КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: перезагружаем слова при смене словаря
             settingsSheet.onDictionaryChanged = {
-                wordViewModel.refreshCurrentCard()
+                wordViewModel.fetchWords() // Загружаем слова нового словаря
             }
             settingsSheet.show(parentFragmentManager, SettingsBottomSheet.TAG)
         }

@@ -19,15 +19,15 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-
 class SettingsBottomSheet : BottomSheetDialogFragment() {
-    private var _binding: FragmentSettingsBinding? = null
-    private val binding get() = _binding!!
+
+    private var binding: FragmentSettingsBinding? = null
+    private val _binding get() = binding!!
 
     private lateinit var settingsManager: SettingsManager
     private lateinit var dictionaryManager: DictionaryManager
-    private var currentTheme: Int = SettingsManager.THEME_SYSTEM
 
+    private var currentTheme: Int = SettingsManager.THEME_SYSTEM
     private var dictionaries: List<Dictionary> = emptyList()
 
     var onDictionaryChanged: (() -> Unit)? = null
@@ -37,18 +37,16 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = FragmentSettingsBinding.inflate(inflater, container, false)
-        return binding.root
+        binding = FragmentSettingsBinding.inflate(inflater, container, false)
+        return _binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
         settingsManager = SettingsManager(requireContext())
         dictionaryManager = settingsManager.getDictionaryManager()
         dictionaries = dictionaryManager.getDictionaries()
         currentTheme = settingsManager.getTheme()
-
         setupDictionarySpinner()
         updateThemeSelection(currentTheme)
         setupListeners()
@@ -56,45 +54,39 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
 
     private fun setupDictionarySpinner() {
         val dictionaryNames = dictionaries.map { it.name }
-
         val adapter = ArrayAdapter(
             requireContext(),
             android.R.layout.simple_spinner_item,
             dictionaryNames
         )
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        binding.dictionarySpinner.adapter = adapter
+        _binding.dictionarySpinner.adapter = adapter
 
         val userId = getUserId() ?: return
         val currentDictionary = dictionaryManager.getCurrentDictionary(userId)
         val position = dictionaries.indexOfFirst { it.id == currentDictionary.id }
-        if (position >= 0) {
-            binding.dictionarySpinner.setSelection(position)
-        }
+        if (position != -1) _binding.dictionarySpinner.setSelection(position)
 
-        binding.dictionarySpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(
-                parent: AdapterView<*>?,
-                view: View?,
-                position: Int,
-                id: Long
-            ) {
-                val selectedDictionary = dictionaries[position]
-                val userId = getUserId() ?: return
-                dictionaryManager.setCurrentDictionary(userId, selectedDictionary.id)
+        _binding.dictionarySpinner.onItemSelectedListener =
+            object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(
+                    parent: AdapterView<*>?,
+                    view: View?,
+                    position: Int,
+                    id: Long
+                ) {
+                    val selectedDictionary = dictionaries[position]
+                    val userId = getUserId() ?: return
 
-                // Обновляем слова для новой категории
-                lifecycleScope.launch {
-                    val categoryId = selectedDictionary.vocabularyId.toLong()
-                    ServiceLocator.wordRepository.fetchWords(categoryId)   // ← правильный метод
+                    // Устанавливаем выбранный словарь - это обновит статистику автоматически
+                    dictionaryManager.setCurrentDictionary(userId, selectedDictionary.id)
+
+                    // Уведомляем родительский фрагмент/активити о смене словаря
                     onDictionaryChanged?.invoke()
                 }
-            }
 
-            override fun onNothingSelected(parent: AdapterView<*>?) {
-                // можно оставить пустым
+                override fun onNothingSelected(parent: AdapterView<*>?) {}
             }
-        }
     }
 
     private fun getUserId(): Int? {
@@ -103,52 +95,47 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
         }
     }
 
-
-
-
-
-
     private fun setupListeners() {
-        binding.btnClose.setOnClickListener { dismiss() }
+        _binding.btnClose.setOnClickListener { dismiss() }
 
-        binding.btnResetDictionary.setOnClickListener {
+        _binding.btnResetDictionary.setOnClickListener {
             val userId = getUserId() ?: return@setOnClickListener
             val currentDict = dictionaryManager.getCurrentDictionary(userId)
             showConfirmationDialog(
                 title = getString(R.string.confirm_reset_dictionary_title),
-                message = "Удалить статистику словаря \"${currentDict.name}\"?",
+                message = currentDict.name ?: "",
                 onConfirm = {
                     lifecycleScope.launch {
                         settingsManager.clearDictionaryData(userId)
-                        showSuccessDialog(getString(R.string.dictionary_has_been_reset))
                     }
+                    showSuccessDialog(getString(R.string.dictionary_has_been_reset))
                 }
             )
         }
 
-        binding.btnResetAll.setOnClickListener {
+        _binding.btnResetAll.setOnClickListener {
             showConfirmationDialog(
                 title = getString(R.string.confirm_reset_all_title),
                 message = getString(R.string.confirm_reset_all_message),
                 onConfirm = {
                     lifecycleScope.launch {
                         settingsManager.clearAllData()
-                        binding.dictionarySpinner.setSelection(0)
-                        currentTheme = SettingsManager.THEME_SYSTEM
-                        updateThemeSelection(currentTheme)
-                        showSuccessDialog(getString(R.string.data_has_been_reset))
                     }
+                    _binding.dictionarySpinner.setSelection(0)
+                    currentTheme = SettingsManager.THEME_SYSTEM
+                    updateThemeSelection(currentTheme)
+                    showSuccessDialog(getString(R.string.data_has_been_reset))
                 }
             )
         }
 
-        binding.darkThemeButton.setOnClickListener {
+        _binding.darkThemeButton.setOnClickListener {
             currentTheme = SettingsManager.THEME_DARK
             settingsManager.setTheme(currentTheme)
             updateThemeSelection(currentTheme)
         }
 
-        binding.lightThemeButton.setOnClickListener {
+        _binding.lightThemeButton.setOnClickListener {
             currentTheme = SettingsManager.THEME_LIGHT
             settingsManager.setTheme(currentTheme)
             updateThemeSelection(currentTheme)
@@ -158,17 +145,21 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
     private fun updateThemeSelection(theme: Int) {
         when (theme) {
             AppCompatDelegate.MODE_NIGHT_NO -> {
-                binding.lightThemeButton.setBackgroundResource(R.drawable.selected_theme_bg)
-                binding.darkThemeButton.setBackgroundResource(android.R.color.transparent)
+                _binding.lightThemeButton.setBackgroundResource(R.drawable.selected_theme_bg)
+                _binding.darkThemeButton.setBackgroundResource(android.R.color.transparent)
             }
             AppCompatDelegate.MODE_NIGHT_YES -> {
-                binding.lightThemeButton.setBackgroundResource(android.R.color.transparent)
-                binding.darkThemeButton.setBackgroundResource(R.drawable.selected_theme_bg)
+                _binding.lightThemeButton.setBackgroundResource(android.R.color.transparent)
+                _binding.darkThemeButton.setBackgroundResource(R.drawable.selected_theme_bg)
             }
         }
     }
 
-    private fun showConfirmationDialog(title: String, message: String, onConfirm: () -> Unit) {
+    private fun showConfirmationDialog(
+        title: String,
+        message: String,
+        onConfirm: () -> Unit
+    ) {
         AlertDialog.Builder(requireContext())
             .setTitle(title)
             .setMessage(message)
@@ -187,7 +178,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        _binding = null
+        binding = null
     }
 
     companion object {

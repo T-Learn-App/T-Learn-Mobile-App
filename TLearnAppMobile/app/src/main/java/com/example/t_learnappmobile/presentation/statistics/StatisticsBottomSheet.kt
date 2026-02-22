@@ -12,7 +12,7 @@ import com.example.t_learnappmobile.databinding.FragmentStatisctisBinding
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import kotlinx.coroutines.launch
 
-class StatistisBottomSheet : BottomSheetDialogFragment() {
+class StatisticsBottomSheet : BottomSheetDialogFragment() {
 
     private var _binding: FragmentStatisctisBinding? = null
     private val binding get() = _binding!!

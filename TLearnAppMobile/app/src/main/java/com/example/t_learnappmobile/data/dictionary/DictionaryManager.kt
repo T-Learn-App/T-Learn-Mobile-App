@@ -8,15 +8,26 @@ import com.example.t_learnappmobile.data.statistics.DailyStats
 import java.text.SimpleDateFormat
 import java.util.*
 import com.example.t_learnappmobile.data.statistics.DailyStatsDao
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 class DictionaryManager(private val context: Context) {
 
     private val prefs: SharedPreferences =
         context.getSharedPreferences("dictionary_prefs", Context.MODE_PRIVATE)
     private val statsDao: DailyStatsDao by lazy { ServiceLocator.dailyStatsDao }
+
     companion object {
         private const val KEY_DICTIONARY_STATS = "dictionary_stats_"
         private const val KEY_STATS_PREFIX = "stats_"
+    }
+
+    private val _currentVocabularyId = MutableStateFlow<Int?>(null)
+    val currentVocabularyIdFlow: StateFlow<Int?> = _currentVocabularyId
+
+    fun setCurrentDictionary(userId: Int, dictionaryId: Int) {
+        prefs.edit { putInt(keyCurrentDictionary(userId), dictionaryId) }
+        _currentVocabularyId.value = getCurrentVocabularyId(userId)
     }
 
     private fun keyCurrentDictionary(userId: Int?) = "current_dictionary_id_user$userId"
@@ -33,6 +44,7 @@ class DictionaryManager(private val context: Context) {
         )
         statsDao.insertOrUpdate(entity)
     }
+
     suspend fun getDailyStats(userId: Int, date: String): DailyStats {
         val currentDict = getCurrentDictionary(userId)
         val entity = statsDao.getByDate(userId, currentDict.id, date)
@@ -50,7 +62,6 @@ class DictionaryManager(private val context: Context) {
 
     suspend fun getLastWeekStats(userId: Int): List<DailyStats> {
         val currentDict = getCurrentDictionary(userId)
-
         val cal = Calendar.getInstance()
         val today = formatDate(cal.time)
         cal.add(Calendar.DAY_OF_YEAR, -6)
@@ -91,6 +102,7 @@ class DictionaryManager(private val context: Context) {
             ""
         }
     }
+
     suspend fun clearCurrentDictionaryStats(userId: Int) {
         val currentDict = getCurrentDictionary(userId)
         statsDao.deleteForDictionary(userId, currentDict.id)
@@ -105,7 +117,10 @@ class DictionaryManager(private val context: Context) {
         return SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(date)
     }
 
-
+    // ✅ ИСПРАВЛЕНИЕ: используем getDictionaries()
+    fun getDictionaryName(dictionaryId: Long): String {
+        return getDictionaries().find { it.id.toLong() == dictionaryId }?.name ?: "Неизвестный словарь"
+    }
 
     fun getDictionaries(): List<Dictionary> {
         return listOf(
@@ -138,11 +153,5 @@ class DictionaryManager(private val context: Context) {
         return getDictionaries().find { it.id == currentId } ?: getDictionaries().first()
     }
 
-    fun setCurrentDictionary(userId: Int, dictionaryId: Int) {
-        prefs.edit { putInt(keyCurrentDictionary(userId), dictionaryId) }
-    }
-
     fun getCurrentVocabularyId(userId: Int): Int = getCurrentDictionary(userId).vocabularyId
-
-
 }

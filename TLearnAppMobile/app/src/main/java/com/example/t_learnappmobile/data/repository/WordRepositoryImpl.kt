@@ -50,19 +50,28 @@ class WordRepositoryImpl(
 
 
     override suspend fun fetchWords(categoryId: Long): List<Word> {
-        return try {
-            val token = getAccessTokenSync() ?: return getMockBatch(0, categoryId.toInt(), 10)
+        var fetchedWords: List<Word>
 
-            val response = api.getWordsByCategory("Bearer $token", categoryId)
-
-            if (response.isSuccessful && response.body() != null) {
-                response.body()!!.words.map { mapBackendWord(it) }
+        try {
+            val token = getAccessTokenSync()
+            if (token != null) {
+                val response = api.getWordsByCategory("Bearer $token", categoryId)
+                if (response.isSuccessful && response.body() != null) {
+                    fetchedWords = response.body()!!.words.map { mapBackendWord(it) }
+                } else {
+                    fetchedWords = getMockBatch(0, categoryId.toInt(), 10)
+                }
             } else {
-                getMockBatch(0, categoryId.toInt(), 10)
+                fetchedWords = getMockBatch(0, categoryId.toInt(), 10)
             }
         } catch (e: Exception) {
-            getMockBatch(0, categoryId.toInt(), 10)
+            fetchedWords = getMockBatch(0, categoryId.toInt(), 10)
         }
+
+        // Самое важное — сохраняем именно то, что только что получили!
+        storage.updateWords(fetchedWords)
+
+        return fetchedWords
     }
     private fun mapBackendWord(w: WordResponse): Word {
         return Word(

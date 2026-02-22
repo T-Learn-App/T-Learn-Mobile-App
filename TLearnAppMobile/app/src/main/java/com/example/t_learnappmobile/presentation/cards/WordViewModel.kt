@@ -10,19 +10,15 @@ import com.example.t_learnappmobile.model.CardType
 import com.example.t_learnappmobile.model.Word
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
 class WordViewModel : ViewModel() {
 
     private val dictionaryManager = ServiceLocator.dictionaryManager
-
     private val tokenManager = ServiceLocator.tokenManager
-    private fun formatTodayDate(): String {
-        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
-        return sdf.format(java.util.Date())
-    }
-
     private val repository: WordRepository = ServiceLocator.wordRepository
 
     private val _currentWord = MutableStateFlow<Word?>(null)
@@ -38,27 +34,13 @@ class WordViewModel : ViewModel() {
     val error: StateFlow<String?> = _error
 
     init {
-        loadWords()
+        observeCurrentCard()
+        observeDictionaryChanges()
+        loadInitialWords()
     }
 
-    private fun loadWords() {
-        viewModelScope.launch {
-            _isLoading.value = true
-            try {
-                val userId = getUserId() ?: return@launch
-                val categoryId = ServiceLocator.dictionaryManager.getCurrentVocabularyId(userId).toLong()
-                val words = repository.fetchWords(categoryId)
-                storage.updateWords(words)
-                observeCurrentWord()
-            } catch (e: Exception) {
-                _error.value = e.message
-            } finally {
-                _isLoading.value = false
-            }
-        }
-    }
-
-    private fun observeCurrentWord() {
+    // ✅ 1. Подписка на текущую карточку
+    private fun observeCurrentCard() {
         viewModelScope.launch {
             repository.getCurrentCardFlow().collect { word ->
                 _currentWord.value = word
@@ -67,18 +49,71 @@ class WordViewModel : ViewModel() {
         }
     }
 
-    fun toggleTranslation() {
-        _isTranslationHidden.value = !_isTranslationHidden.value
+    // ✅ 2. Подписка на смену словаря (уже было)
+    private fun observeDictionaryChanges() {
+        viewModelScope.launch {
+            dictionaryManager.currentVocabularyIdFlow
+                .filterNotNull()
+                .distinctUntilChanged()
+                .collect { catId ->
+                    loadWordsForCategory(catId.toLong())
+                }
+        }
+    }
+
+    // ✅ 3. Загрузка начальных слов
+    private fun loadInitialWords() {
+        viewModelScope.launch {
+            val userId = getUserId()
+            if (userId != null) {
+                val initialCategory = dictionaryManager.getCurrentVocabularyId(userId).toLong()
+                loadWordsForCategory(initialCategory)
+            }
+        }
+    }
+
+    // ✅ 4. Публичный метод для перезагрузки слов (для CardsFragment)
+    fun fetchWords() {
+        viewModelScope.launch {
+            val userId = getUserId() ?: return@launch
+            val categoryId = dictionaryManager.getCurrentVocabularyId(userId).toLong()
+            loadWordsForCategory(categoryId)
+        }
+    }
+
+    private suspend fun loadWordsForCategory(categoryId: Long) {
+        _isLoading.value = true
+        _currentWord.value = null
+        _error.value = null
+
+        try {
+            val words = repository.fetchWords(categoryId)
+            storage.updateWords(words)
+            // Сбрасываем на первую карточку
+            repository.nextWord() // или storage.resetIndex() если есть
+        } catch (e: Exception) {
+            _error.value = e.message ?: "Не удалось загрузить слова"
+        } finally {
+            _isLoading.value = false
+        }
+    }
+
+    private fun formatTodayDate(): String {
+        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+        return sdf.format(java.util.Date())
     }
 
     private suspend fun getUserId(): Int? {
         return tokenManager.getUserData().firstOrNull()?.id
     }
 
+    fun toggleTranslation() {
+        _isTranslationHidden.value = !_isTranslationHidden.value
+    }
+
     suspend fun onKnowCard() {
         val word = _currentWord.value ?: return
         repository.completeWord(word.id)
-
 
         val userId = getUserId() ?: return
         val today = formatTodayDate()
@@ -103,19 +138,5 @@ class WordViewModel : ViewModel() {
         dictionaryManager.saveDailyStats(userId, updated)
 
         repository.nextWord()
-    }
-    fun refreshCurrentCard() {
-        viewModelScope.launch {
-            _isLoading.value = true
-            try {
-                val userId = getUserId() ?: return@launch
-                val categoryId = ServiceLocator.dictionaryManager.getCurrentVocabularyId(userId).toLong()
-                repository.fetchWords(categoryId)
-            } catch (e: Exception) {
-                _error.value = e.message
-            } finally {
-                _isLoading.value = false
-            }
-        }
     }
 }

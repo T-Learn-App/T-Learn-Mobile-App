@@ -74,14 +74,13 @@ class StatisticsViewModel : ViewModel() {
     private fun loadLeaderboard() {
         viewModelScope.launch {
             val userId = tokenManager.getUserData().firstOrNull()?.id ?: 1
-            // Загружаем ТОП по баллам игры
-            val topPlayers = listOf(
-                LeaderboardPlayer(1, "Иван Иванов", 2450, position = 1),
-                LeaderboardPlayer(2, "Анна Петрова", 1987, position = 2),
-                // ... по баллам из GameResultDao
-            )
+
+            // ✅ Реальная загрузка из LeaderboardManager
+            val topPlayers = leaderboardManager.loadLeaderboard()
             _leaderboardPlayers.value = topPlayers
-            _yourPosition.value = LeaderboardPlayer(userId, "Mezo Alart", 1250, position = 12)
+
+            val yourPosition = leaderboardManager.getYourPosition(userId)
+            _yourPosition.value = yourPosition
             _seasonText.value = "Сезон 1 (22.02-22.03)"
         }
     }

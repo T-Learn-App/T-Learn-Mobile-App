@@ -2,6 +2,7 @@ package com.example.t_learnappmobile.presentation.game
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.t_learnappmobile.data.game.GameResultEntity
 import com.example.t_learnappmobile.data.repository.ServiceLocator
 import com.example.t_learnappmobile.domain.model.GameMode
 import com.example.t_learnappmobile.domain.model.GameWord
@@ -22,22 +23,32 @@ class GameViewModel : ViewModel() {
     private var gameWords: List<GameWord> = emptyList()
     private var timerJob: Job? = null
     private var currentWordIndex = 0
+    private var allWordsForWrongAnswers: List<String> = emptyList() // пул русских слов
 
     fun startGame(mode: GameMode) {
         viewModelScope.launch {
-            val words = ServiceLocator.wordRepository.getNewWords() +
-                    ServiceLocator.wordRepository.getRotationWords()
+            // Загружаем реальные слова из репозитория
+            val newWords = ServiceLocator.wordRepository.getNewWords()
+            val rotationWords = ServiceLocator.wordRepository.getRotationWords()
 
-            gameWords = words.shuffled().take(15).map {
-                GameWord(it.id, it.englishWord, it.russianTranslation)
-            }
+            // ✅ КОНВЕРТАЦИЯ в GameWord
+            gameWords = (newWords + rotationWords)
+                .map { word ->
+                    GameWord(word.id, word.englishWord, word.russianTranslation)
+                }
+                .shuffled()
+                .take(15)
+
+            // Собираем все русские переводы для неправильных ответов
+            allWordsForWrongAnswers = (newWords + rotationWords)
+                .map { it.russianTranslation }
 
             currentWordIndex = 0
             _uiState.value = GameState(
                 gameMode = mode,
                 isGameActive = true,
                 totalWords = gameWords.size,
-                wordsLeft = gameWords.size
+                wordsLeft = if (mode == GameMode.WORDS) 15 else 0
             )
 
             loadNextWord()
@@ -45,17 +56,23 @@ class GameViewModel : ViewModel() {
         }
     }
 
+
     private fun startTimer(mode: GameMode) {
         timerJob?.cancel()
         timerJob = viewModelScope.launch {
-            if (mode == GameMode.TIME) {
-                var time = 120
-                while (time > 0 && _uiState.value.isGameActive && isActive) {
-                    _uiState.value = _uiState.value.copy(timer = time)
-                    delay(1000)
-                    time--
+            when (mode) {
+                GameMode.TIME -> {
+                    var time = 120
+                    while (time > 0 && _uiState.value.isGameActive && isActive) {
+                        _uiState.value = _uiState.value.copy(timer = time)
+                        delay(1000)
+                        time--
+                    }
+                    endGame()
                 }
-                endGame()
+                GameMode.WORDS -> {
+                    // Логика по словам - таймер не нужен
+                }
             }
         }
     }
@@ -64,13 +81,19 @@ class GameViewModel : ViewModel() {
         val state = _uiState.value
         if (!state.isGameActive || state.currentWord == null) return
 
-        val points = if (selectedIndex == state.correctOptionIndex) 100 else 0
+        val isCorrect = selectedIndex == state.correctOptionIndex
+        val points = if (isCorrect) 100 else 0
         val newScore = state.score + points
 
         viewModelScope.launch {
-            if (currentWordIndex + 1 < gameWords.size) {
+            if (currentWordIndex + 1 < gameWords.size &&
+                (state.gameMode == GameMode.TIME || state.wordsLeft > 1)) {
+
                 currentWordIndex++
-                _uiState.value = state.copy(score = newScore)
+                _uiState.value = state.copy(
+                    score = newScore,
+                    wordsLeft = state.wordsLeft - 1
+                )
                 loadNextWord()
             } else {
                 endGame(newScore)
@@ -99,20 +122,25 @@ class GameViewModel : ViewModel() {
     }
 
     private fun getRandomWrongAnswer(correct: String): String {
-        val wrongAnswers = listOf(
-            "Дом", "Кот", "Собака", "Машина", "Чай", "Кофе", "Книга",
-            "Стол", "Окно", "Дверь", "Река", "Гора", "Дерево", "Небо"
-        )
-        return wrongAnswers.filter { it != correct }.random()
+        return allWordsForWrongAnswers
+            .filter { it != correct }
+            .shuffled()
+            .first()
     }
 
     private suspend fun endGame(finalScore: Int = _uiState.value.score) {
         timerJob?.cancel()
+
+        // ✅ РЕАЛЬНОЕ сохранение результата в БД
         val userId = ServiceLocator.tokenManager.getUserData().firstOrNull()?.id ?: 1
-        // Сохраняем результат в БД для лидерборда
-        viewModelScope.launch {
-            // ServiceLocator.gameResultDao.insert(GameResultEntity(...))
-        }
+        val result = GameResultEntity(
+            userId = userId,
+            score = finalScore,
+            wordsCount = gameWords.size,
+            timestamp = System.currentTimeMillis()
+        )
+        ServiceLocator.gameResultDao.insert(result)
+
         _uiState.value = _uiState.value.copy(
             isGameActive = false,
             score = finalScore

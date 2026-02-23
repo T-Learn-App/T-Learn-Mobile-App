@@ -57,20 +57,34 @@ class GameFragment : BottomSheetDialogFragment() {
     }
 
     private fun updateUI(state: GameState) {
-        binding.gameWordText.text = state.currentWord?.english ?: ""
-        binding.wordCounterText.text = "${state.currentWordIndex}/${state.totalWords}"
-        binding.timerText.text = String.format("%02d:%02d", state.timer / 60, state.timer % 60)
-        binding.scoreText.text = state.score.toString()
-        binding.gameModeText.text = when (state.gameMode) {
-            GameMode.TIME -> "ВРЕМЯ"
-            GameMode.WORDS -> "СЛОВА"
-        }
+        binding.option1Card.isEnabled = state.isGameActive
+        binding.option2Card.isEnabled = state.isGameActive
+        binding.closeGameButton.visibility = if (state.showResults) View.VISIBLE else View.GONE
 
-        if (state.options.isNotEmpty()) {
-            binding.option1Text.text = state.options[0]
-            binding.option2Text.text = state.options[1]
+        if (state.isGameActive && state.currentWord != null) {
+            // ✅ ИГРА
+            binding.gameWordText.text = state.currentWord.english
+            binding.wordCounterText.text = "${state.currentWordIndex}/${state.totalWords}"
+            binding.timerText.text = String.format("%02d:%02d", state.timer / 60, state.timer % 60)
+            binding.scoreText.text = state.score.toString()
+
+            if (state.options.isNotEmpty()) {
+                binding.option1Text.text = state.options[0]
+                binding.option2Text.text = state.options[1]
+            }
+        } else if (state.showResults) {
+            // ✅ РЕЗУЛЬТАТЫ
+            binding.gameWordText.text = "🎉 ИГРА ОКОНЧЕНА! 🎉"
+            binding.scoreText.text = "${state.score} очков"
+            binding.wordCounterText.text = "Слов изучено: ${state.totalWords}"
+            binding.timerText.text = when (state.gameMode) {
+                GameMode.TIME -> "ВРЕМЕННОЙ РЕЖИМ"
+                GameMode.WORDS -> "РЕЖИМ СЛОВ"
+            }
         }
     }
+
+
 
     override fun onDestroyView() {
         super.onDestroyView()

@@ -130,6 +130,14 @@
                 android:textSize="18sp"
                 android:textStyle="bold" />
         </androidx.cardview.widget.CardView>
+        <Button
+            android:id="@+id/closeGameButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ЗАКРЫТЬ"
+            android:visibility="gone"
+            android:layout_gravity="center" />
+
     </LinearLayout>
 
 </LinearLayout>

@@ -40,8 +40,8 @@ object ServiceLocator {
     // ✅ ПУБЛИЧНЫЙ репозиторий для ViewModel'ов
     val wordRepository: WordRepository by lazy {
         WordRepositoryImpl(api, storage)
-    }
 
+    }
 
     fun initContextAwareDependencies(context: Context) {
         tokenManager = TokenManager(context)
@@ -62,7 +62,9 @@ object ServiceLocator {
             context.applicationContext,
             GameDatabase::class.java,
             "game_database"
-        ).build()
+        )
+            .fallbackToDestructiveMigration()  // ✅ ДОБАВИТЬ!
+            .build()
         gameResultDao = gameDatabase.gameResultDao()
 
         leaderboardManager = LeaderboardManager()

@@ -70,20 +70,19 @@ class StatisticsViewModel : ViewModel() {
             )
         }
     }
-
+    // StatisticsViewModel.kt
     private fun loadLeaderboard() {
         viewModelScope.launch {
             val userId = tokenManager.getUserData().firstOrNull()?.id ?: 1
 
-            // ✅ Реальная загрузка из LeaderboardManager
             val topPlayers = leaderboardManager.loadLeaderboard()
             _leaderboardPlayers.value = topPlayers
 
             val yourPosition = leaderboardManager.getYourPosition(userId)
             _yourPosition.value = yourPosition
-            _seasonText.value = "Сезон 1 (22.02-22.03)"
         }
     }
+
 
     data class TotalStats(val new: Int, val inProgress: Int, val learned: Int)
 }

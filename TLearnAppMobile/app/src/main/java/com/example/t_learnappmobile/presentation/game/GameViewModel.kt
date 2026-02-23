@@ -27,32 +27,40 @@ class GameViewModel : ViewModel() {
 
     fun startGame(mode: GameMode) {
         viewModelScope.launch {
-            // Загружаем реальные слова из репозитория
-            val newWords = ServiceLocator.wordRepository.getNewWords()
-            val rotationWords = ServiceLocator.wordRepository.getRotationWords()
+            try {
+                // Загружаем слова
+                val newWords = ServiceLocator.wordRepository.getNewWords()
+                val rotationWords = ServiceLocator.wordRepository.getRotationWords()
 
-            // ✅ КОНВЕРТАЦИЯ в GameWord
-            gameWords = (newWords + rotationWords)
-                .map { word ->
-                    GameWord(word.id, word.englishWord, word.russianTranslation)
+                if (newWords.isEmpty() && rotationWords.isEmpty()) {
+                    // Fallback если слов нет
+                    gameWords = listOf(
+                        GameWord(1, "Hello", "Привет"),
+                        GameWord(2, "World", "Мир")
+                    )
+                } else {
+                    gameWords = (newWords + rotationWords)
+                        .map { GameWord(it.id, it.englishWord, it.russianTranslation) }
+                        .shuffled()
+                        .take(15)
                 }
-                .shuffled()
-                .take(15)
 
-            // Собираем все русские переводы для неправильных ответов
-            allWordsForWrongAnswers = (newWords + rotationWords)
-                .map { it.russianTranslation }
+                allWordsForWrongAnswers = gameWords.map { it.russian } +
+                        listOf("Дом", "Кот", "Собака") // fallback
 
-            currentWordIndex = 0
-            _uiState.value = GameState(
-                gameMode = mode,
-                isGameActive = true,
-                totalWords = gameWords.size,
-                wordsLeft = if (mode == GameMode.WORDS) 15 else 0
-            )
+                currentWordIndex = 0
+                _uiState.value = GameState(
+                    gameMode = mode,
+                    isGameActive = true,
+                    totalWords = gameWords.size
+                )
 
-            loadNextWord()
-            startTimer(mode)
+                loadNextWord()
+                startTimer(mode)
+            } catch (e: Exception) {
+                // Игнорируем ошибки репозитория
+                e.printStackTrace()
+            }
         }
     }
 
@@ -128,24 +136,40 @@ class GameViewModel : ViewModel() {
             .first()
     }
 
+    // GameViewModel.kt - метод endGame
     private suspend fun endGame(finalScore: Int = _uiState.value.score) {
         timerJob?.cancel()
 
-        // ✅ РЕАЛЬНОЕ сохранение результата в БД
-        val userId = ServiceLocator.tokenManager.getUserData().firstOrNull()?.id ?: 1
-        val result = GameResultEntity(
-            userId = userId,
-            score = finalScore,
-            wordsCount = gameWords.size,
-            timestamp = System.currentTimeMillis()
-        )
-        ServiceLocator.gameResultDao.insert(result)
+        try {
+            val userId = ServiceLocator.tokenManager.getUserData().firstOrNull()?.id ?: 1
+
+            ServiceLocator.gameResultDao.insert(
+                GameResultEntity(
+                    userId = userId,
+                    sessionScore = finalScore,  // ✅ Только ЭТО поле!
+                    wordsCount = gameWords.size,
+                    timestamp = System.currentTimeMillis()
+                )
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
 
         _uiState.value = _uiState.value.copy(
             isGameActive = false,
+            showResults = true,
             score = finalScore
         )
     }
+
+
+
+    // ✅ НОВЫЙ метод для закрытия экрана
+    fun finishGame() {
+        _uiState.value = _uiState.value.copy(showResults = false)
+    }
+
+
 
     override fun onCleared() {
         super.onCleared()

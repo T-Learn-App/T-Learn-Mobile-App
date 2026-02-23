@@ -13,5 +13,6 @@ data class GameState(
     val gameMode: GameMode = GameMode.TIME,
     val isGameActive: Boolean = false,
     val options: List<String> = emptyList(),
-    val correctOptionIndex: Int = 0
+    val correctOptionIndex: Int = 0,
+    val showResults: Boolean = false  // ✅ НОВОЕ
 )

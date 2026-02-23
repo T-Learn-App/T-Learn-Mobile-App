@@ -1,0 +1,89 @@
+package com.example.t_learnappmobile.data.repository
+
+import android.content.Context
+import androidx.room.Room
+import com.example.t_learnappmobile.data.auth.*
+import com.example.t_learnappmobile.data.dictionary.DictionaryManager
+import com.example.t_learnappmobile.data.game.GameDatabase
+import com.example.t_learnappmobile.data.game.GameResultDao
+import com.example.t_learnappmobile.data.leaderboard.LeaderboardManager
+import com.example.t_learnappmobile.data.statistics.DailyStatsDao
+import com.example.t_learnappmobile.data.statistics.StatsDatabase
+import com.example.t_learnappmobile.domain.repository.WordRepository
+import com.google.gson.GsonBuilder
+import okhttp3.OkHttpClient
+import okhttp3.mockwebserver.MockWebServer
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
+object ServiceLocator {
+    lateinit var tokenManager: TokenManager
+    lateinit var authRepository: AuthRepository
+    lateinit var dictionaryManager: DictionaryManager
+    private lateinit var authApiService: AuthApiService
+    lateinit var statsDatabase: StatsDatabase
+    lateinit var dailyStatsDao: DailyStatsDao
+    lateinit var leaderboardManager: LeaderboardManager
+    lateinit var gameResultDao: GameResultDao
+    private const val BACKEND_URL = "http://10.0.2.2:8080/"
+
+    val api: WordApi by lazy {
+        Retrofit.Builder()
+            .baseUrl(BACKEND_URL)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(WordApi::class.java)
+    }
+
+    val storage: WordsStorage by lazy { WordsStorage() }
+
+    // ✅ ПУБЛИЧНЫЙ репозиторий для ViewModel'ов
+    val wordRepository: WordRepository by lazy {
+        WordRepositoryImpl(api, storage)
+
+    }
+
+    fun initContextAwareDependencies(context: Context) {
+        tokenManager = TokenManager(context)
+        statsDatabase = Room.databaseBuilder(
+            context.applicationContext,
+            StatsDatabase::class.java,
+            "stats_database"
+        ).build()
+        dailyStatsDao = statsDatabase.dailyStatsDao()
+
+        dictionaryManager = DictionaryManager(context)
+
+        authApiService = createAuthApiService(context, tokenManager)
+        authRepository = AuthRepository(authApiService, tokenManager)
+
+
+        val gameDatabase = Room.databaseBuilder(
+            context.applicationContext,
+            GameDatabase::class.java,
+            "game_database"
+        )
+            .fallbackToDestructiveMigration()  // ✅ ДОБАВИТЬ!
+            .build()
+        gameResultDao = gameDatabase.gameResultDao()
+
+        leaderboardManager = LeaderboardManager()
+    }
+
+    private fun createAuthApiService(context: Context, tokenManager: TokenManager): AuthApiService {
+        val okHttpClient = OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .addInterceptor(AuthInterceptor(tokenManager) { BACKEND_URL })
+            .addInterceptor(NetworkMonitorInterceptor(context))
+            .build()
+
+        return Retrofit.Builder()
+            .baseUrl(BACKEND_URL)
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(AuthApiService::class.java)
+    }
+}

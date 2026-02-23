@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <style name="Theme.TLearnAppMobile" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Основные цвета -->
+        <item name="colorPrimary">@color/yellow_primary</item>
+        <item name="colorPrimaryVariant">@color/yellow_variant</item>
+        <item name="colorOnPrimary">@color/black</item>
+
+        <item name="colorSecondary">@color/yellow_primary</item>
+        <item name="colorSecondaryVariant">@color/yellow_variant</item>
+        <item name="colorOnSecondary">@color/black</item>
+
+        <!-- Фон и поверхности -->
+        <item name="android:colorBackground">#0f172a</item>
+        <item name="colorSurface">#1e293b</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+
+        <!-- Текст -->
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">#B0B0B0</item>
+
+        <!-- ActionBar убран -->
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+
+        <!-- Полноэкранный режим -->
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+
+        <!-- Статус-бар -->
+        <item name="android:statusBarColor">@color/background_primary</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+    </style>
+
+</resources>

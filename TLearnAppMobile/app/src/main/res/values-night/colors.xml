@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Цвета для тёмной темы -->
+    <color name="background_primary">#0f172a</color>
+    <color name="background_secondary">#1e293b</color>
+    <color name="surface">#B0B0B0</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#B0B0B0</color>
+    <color name="colorButtonDontKnow">#0f172a</color>
+
+</resources>

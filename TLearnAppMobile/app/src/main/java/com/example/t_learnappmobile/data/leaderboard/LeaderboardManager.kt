@@ -4,7 +4,7 @@ import com.example.t_learnappmobile.data.repository.ServiceLocator
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-// LeaderboardManager.kt
+import kotlinx.coroutines.flow.firstOrNull
 class LeaderboardManager {
     private val _players = MutableStateFlow<List<LeaderboardPlayer>>(emptyList())
     val players: StateFlow<List<LeaderboardPlayer>> = _players
@@ -14,7 +14,7 @@ class LeaderboardManager {
         val playersWithPositions = results.mapIndexed { index, result ->
             LeaderboardPlayer(
                 id = result.userId,
-                name = getUserName(result.userId),
+                name = getUserFullName(result.userId),
                 score = result.totalScore,
                 position = index + 1
             )
@@ -23,20 +23,25 @@ class LeaderboardManager {
         return playersWithPositions
     }
 
+    private suspend fun getUserFullName(userId: Int): String {
+        val userData = ServiceLocator.tokenManager.getUserData().firstOrNull()
+        return if (userData?.id == userId) {
+            "${userData.firstName ?: ""} ${userData.lastName ?: ""}".trim()
+        } else {
+            "Игрок $userId"
+        }
+    }
+
     suspend fun getYourPosition(userId: Int): LeaderboardPlayer {
         val totalScore = ServiceLocator.gameResultDao.getUserTotalScore(userId)
         val info = ServiceLocator.gameResultDao.getUserLeaderboardInfo(userId)
+        val userData = ServiceLocator.tokenManager.getUserData().firstOrNull()
 
         return LeaderboardPlayer(
             id = userId,
-            name = "Mezo Alart",
+            name = "${userData?.firstName ?: ""} ${userData?.lastName ?: ""}".trim().ifEmpty { "Игрок $userId" },
             score = totalScore,
             position = info?.position ?: 0
         )
-    }
-
-    private fun getUserName(userId: Int): String = when (userId) {
-        1 -> "Mezo Alart"
-        else -> "Игрок $userId"
     }
 }

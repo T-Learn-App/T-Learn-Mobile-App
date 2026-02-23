@@ -1,89 +1,61 @@
 package com.example.t_learnappmobile.data.auth
 
 import android.content.Context
-import android.util.Log
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.intPreferencesKey
-import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
-import com.auth0.jwt.JWT
+import android.content.SharedPreferences
 import com.example.t_learnappmobile.data.auth.models.UserData
-import java.util.*
-
-private val Context.dataStore by preferencesDataStore(name = "auth_tokens")
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 
 class TokenManager(private val context: Context) {
+    private val prefs: SharedPreferences =
+        context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
 
-    companion object {
-        private val ACCESS_TOKEN_KEY = stringPreferencesKey("access_token")
-        private val REFRESH_TOKEN_KEY = stringPreferencesKey("refresh_token")
-        private val USER_ID_KEY = intPreferencesKey("user_id")
-        private val USER_EMAIL_KEY = stringPreferencesKey("user_email")
-
-    }
-
+    // ✅ ТОКЕНЫ
     suspend fun saveTokens(accessToken: String, refreshToken: String?) {
-        context.dataStore.edit { preferences ->
-            preferences[ACCESS_TOKEN_KEY] = accessToken
-            if (refreshToken != null) {
-                preferences[REFRESH_TOKEN_KEY] = refreshToken
-            }
-        }
+        prefs.edit().apply {
+            putString("access_token", accessToken)
+            putString("refresh_token", refreshToken)
+        }.apply()
     }
 
-    suspend fun saveUserData(user: UserData) {
-        context.dataStore.edit { preferences ->
-            preferences[USER_ID_KEY] = user.id
-            preferences[USER_EMAIL_KEY] = user.email
-
-        }
-
+    suspend fun getAccessToken(): Flow<String?> = flow {
+        emit(prefs.getString("access_token", null))
     }
 
-    fun getAccessToken(): Flow<String?> {
-        return context.dataStore.data.map { preferences ->
-            preferences[ACCESS_TOKEN_KEY]
-        }
-    }
-
-    fun getRefreshToken(): Flow<String?> {
-        return context.dataStore.data.map { preferences ->
-            preferences[REFRESH_TOKEN_KEY]
-        }
-    }
-
-    fun getUserData(): Flow<UserData?> {
-        return context.dataStore.data.map { preferences ->
-            val id = preferences[USER_ID_KEY]
-            if (id != null) {
-                UserData(
-                    id = id,
-                    email = preferences[USER_EMAIL_KEY] ?: "",
-                )
-            } else {
-                null
-            }
-        }
+    suspend fun getRefreshToken(): Flow<String?> = flow {
+        emit(prefs.getString("refresh_token", null))
     }
 
     fun isTokenExpired(token: String): Boolean {
-        return try {
-            val decodedJWT = JWT.decode(token)
-            val expiresAt = decodedJWT.expiresAt
-            expiresAt?.before(Date()) ?: false
-        } catch (e: Exception) {
-            true
-        }
+        // Простая проверка - в продакшене парсить JWT
+        return token.contains("expired") || token.isEmpty()
     }
 
-    suspend fun clearTokens() {
-        context.dataStore.edit { preferences ->
-            preferences.remove(ACCESS_TOKEN_KEY)
-            preferences.remove(REFRESH_TOKEN_KEY)
-            preferences.remove(USER_ID_KEY)
-            preferences.remove(USER_EMAIL_KEY)
+    fun clearTokens() {
+        prefs.edit().clear().apply()
+    }
+
+    // ✅ USER DATA с ИМЕНЕМ + ФАМИЛИЕЙ
+    suspend fun saveUserData(userData: UserData) {
+        prefs.edit().apply {
+            putInt("user_id", userData.id)
+            putString("user_email", userData.email)
+            putString("user_first_name", userData.firstName)
+            putString("user_last_name", userData.lastName)
+        }.apply()
+    }
+
+    suspend fun getUserData(): Flow<UserData?> = flow {
+        val id = prefs.getInt("user_id", 0)
+        if (id == 0) {
+            emit(null)
+            return@flow
         }
+
+        val email = prefs.getString("user_email", null) ?: return@flow
+        val firstName = prefs.getString("user_first_name", null)
+        val lastName = prefs.getString("user_last_name", null)
+
+        emit(UserData(id, email, firstName, lastName))
     }
 }

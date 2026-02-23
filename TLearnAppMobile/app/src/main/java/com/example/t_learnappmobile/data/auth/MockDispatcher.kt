@@ -9,14 +9,11 @@ import kotlin.text.startsWith
 class MockDispatcher : Dispatcher() {
     private val registeredUsers = mutableMapOf<String, UserMockData>()
 
-    data class UserMockData(
-        val email: String,
-        val password: String
-    )
+
 
     override fun dispatch(request: RecordedRequest): MockResponse {
         return when {
-            request.path?.contains("auth/register") == true -> handleRegister(request)
+
             request.path?.contains("auth/login") == true -> handleLogin(request)   // ← нужно
             request.path?.contains("auth/refresh") == true -> createRefreshResponse()
             request.path?.contains("auth/check-email") == true -> handleCheckEmail(request)
@@ -25,45 +22,6 @@ class MockDispatcher : Dispatcher() {
     }
 
 
-    private fun handleRegister(request: RecordedRequest): MockResponse {
-        try {
-            val body = request.body.readUtf8()
-            val json = org.json.JSONObject(body)
-            val email = json.getString("email")
-            val password = json.getString("password")
-
-
-            if (registeredUsers.values.any { it.email == email }) {
-                return MockResponse()
-                    .setResponseCode(409)
-                    .setBody("""{"error":"Email уже используется"}""")
-            }
-
-
-            val userId = (System.currentTimeMillis() % Int.MAX_VALUE).toInt()
-            registeredUsers[userId.toString()] = UserMockData(email, password)
-
-            return MockResponse()
-                .setResponseCode(200)
-                .setBody(
-                    """
-                {
-                  "access_token": "mock_access_token_${userId}",
-                  "refresh_token": "mock_refresh_token_${userId}",
-                  "user": {
-                    "id": ${userId},
-                    "email": "${email}"
-                  }
-                }
-            """.trimIndent()
-                )
-
-        } catch (e: Exception) {
-            return MockResponse()
-                .setResponseCode(400)
-                .setBody("""{"error":"Invalid request"}""")
-        }
-    }
     private fun handleLogin(request: RecordedRequest): MockResponse {
         return try {
             val body = request.body.readUtf8()
@@ -71,7 +29,9 @@ class MockDispatcher : Dispatcher() {
             val email = json.getString("email")
             val password = json.getString("password")
 
-            val userEntry = registeredUsers.entries.find { it.value.email == email && it.value.password == password }
+            val userEntry = registeredUsers.entries.find {
+                it.value.email == email && it.value.password == password
+            }
 
             if (userEntry == null) {
                 MockResponse()
@@ -87,6 +47,13 @@ class MockDispatcher : Dispatcher() {
                 .setBody("""{"error":"Invalid request"}""")
         }
     }
+
+    data class UserMockData(
+        val email: String,
+        val password: String,
+        val firstName: String = "Игрок",
+        val lastName: String = ""
+    )
 
 
 

@@ -3,7 +3,9 @@ package com.example.t_learnappmobile.data.auth
 import com.example.t_learnappmobile.R
 import com.example.t_learnappmobile.data.auth.models.LoginRequest
 import com.example.t_learnappmobile.data.auth.models.RefreshRequest
+import com.example.t_learnappmobile.data.auth.models.RegisterRequest
 import com.example.t_learnappmobile.data.auth.models.UserData
+import com.example.t_learnappmobile.data.auth.models.ValidationResult
 import com.example.t_learnappmobile.presentation.auth.AuthState
 import kotlinx.coroutines.flow.firstOrNull
 
@@ -61,7 +63,45 @@ class AuthRepository(
         } catch (e: Exception) {
             AuthState.Error(R.string.error_network)
         }
+    }suspend fun register(email: String, password: String, firstName: String, lastName: String): AuthState {
+        if (MOCK_MODE) {
+            val userId = (System.currentTimeMillis() % 1000 + 1).toInt()
+            val userData = UserData(id = userId, email = email, firstName = firstName, lastName = lastName)
+            tokenManager.saveTokens("mock_access_$userId", "mock_refresh_$userId")
+            tokenManager.saveUserData(userData)
+            return AuthState.Success(userData)
+        }
+
+        val request = RegisterRequest(email, password, firstName, lastName)
+
+        return try {
+            // ✅ Мок-регистрация (пока нет реального API)
+            val userId = (System.currentTimeMillis() % 1000 + 1).toInt()
+            val userData = UserData(id = userId, email = email, firstName = firstName, lastName = lastName)
+            tokenManager.saveTokens("mock_register_access_$userId", "mock_register_refresh_$userId")
+            tokenManager.saveUserData(userData)
+            AuthState.Success(userData)
+
+            // TODO: Раскомментировать для реального API
+
+            val response = apiService.register(request)
+            if (response.isSuccessful && response.body() != null) {
+                val auth = response.body()!!
+                tokenManager.saveTokens(auth.accessToken, auth.refreshToken)
+                tokenManager.saveUserData(UserData(id = 0, email = email, firstName = firstName, lastName = lastName))
+                AuthState.Success(UserData(id = 0, email = email, firstName = firstName, lastName = lastName))
+            } else {
+                when (response.code()) {
+                    409 -> AuthState.Error(R.string.error_network)
+                    else -> AuthState.Error(R.string.error_registration_failed)
+                }
+            }
+
+        } catch (e: Exception) {
+            AuthState.Error(R.string.error_network)
+        }
     }
+
 
     suspend fun refreshToken(): Boolean {
         val refreshToken = tokenManager.getRefreshToken().firstOrNull() ?: return false

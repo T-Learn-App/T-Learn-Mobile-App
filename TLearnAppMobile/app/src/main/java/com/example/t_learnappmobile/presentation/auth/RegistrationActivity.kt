@@ -69,25 +69,22 @@ class RegistrationActivity : AppCompatActivity() {
     }
 
     private fun setupListeners() {
-        binding.passwordEditTextRegistration.addTextChangedListener(
-            PasswordValidationWatcher()
-        )
-        binding.emailEditTextRegistration.addTextChangedListener(
-            InputValidationWatcher()
-        )
+        // ✅ Валидация всех полей
+        binding.passwordEditTextRegistration.addTextChangedListener(PasswordValidationWatcher())
+        binding.emailEditTextRegistration.addTextChangedListener(InputValidationWatcher())
+        binding.firstNameEditText.addTextChangedListener(InputValidationWatcher())      // ✅ Новое
+        binding.lastNameEditText.addTextChangedListener(InputValidationWatcher())       // ✅ Новое
 
         binding.btnSendCode.setOnClickListener {
             val email = binding.emailEditTextRegistration.text.toString().trim()
             val password = binding.passwordEditTextRegistration.text.toString()
+            val firstName = binding.firstNameEditText.text.toString().trim()           // ✅ Новое
+            val lastName = binding.lastNameEditText.text.toString().trim()             // ✅ Новое
 
-            if (isFormValid()) {
-                viewModel.register( email, password)
+            if (isFormValid(email, password, firstName, lastName)) {
+                viewModel.register(email, password, firstName, lastName)              // ✅ 4 параметра
             } else {
-                Toast.makeText(
-                    this,
-                    getString(R.string.error_fill_all_fields_correct),
-                    Toast.LENGTH_SHORT
-                ).show()
+                Toast.makeText(this, getString(R.string.error_fill_all_fields_correct), Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -97,18 +94,28 @@ class RegistrationActivity : AppCompatActivity() {
         }
     }
 
-    private fun isFormValid(): Boolean {
-        val email = binding.emailEditTextRegistration.text.toString().trim()
-        val password = binding.passwordEditTextRegistration.text.toString()
-
+    private fun isFormValid(email: String, password: String, firstName: String, lastName: String): Boolean {
         return email.isNotEmpty() &&
                 password.length >= 8 &&
+                firstName.isNotEmpty() &&                                                 // ✅ Новое
+                lastName.isNotEmpty() &&                                                  // ✅ Новое
                 binding.passwordInputLayoutRegistration.error == null
     }
 
     private fun updateButtonState() {
-        binding.btnSendCode.isEnabled = isFormValid()
+        val email = binding.emailEditTextRegistration.text.toString().trim()
+        val password = binding.passwordEditTextRegistration.text.toString()
+        val firstName = binding.firstNameEditText.text.toString().trim()
+        val lastName = binding.lastNameEditText.text.toString().trim()
+
+        binding.btnSendCode.isEnabled = email.isNotEmpty() &&
+                password.length >= 8 &&
+                firstName.isNotEmpty() &&
+                lastName.isNotEmpty() &&
+                binding.passwordInputLayoutRegistration.error == null
     }
+
+
 
     private fun showErrorDialog(message: String) {
         android.app.AlertDialog.Builder(this)

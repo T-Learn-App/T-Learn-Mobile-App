@@ -1,6 +1,5 @@
 package com.example.t_learnappmobile.data.auth
 
-import android.util.Log
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor

@@ -113,6 +113,10 @@
     <string name="leaderboard">Лидерборд</string>
     <string name="current_season">Сезон 1</string>
     <string name="game_mode">Режим: Время</string>
+    <string name="error_name_empty">Имя не может быть пустым</string>
+    <string name="error_surname_empty">Фамилия не может быть пустой</string>
+
+
 
 
 

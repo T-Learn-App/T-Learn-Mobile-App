@@ -102,7 +102,7 @@ class AuthInterceptor(
 
             val body = """{"refreshToken": "$refreshToken"}""".toRequestBody("application/json".toMediaType())
             val request = Request.Builder()
-                .url(getBaseUrl() + "/token/refresh")  // ← без слеша в конце, если не нужен
+                .url(getBaseUrl() + "/token/refresh")
                 .post(body)
                 .build()
 

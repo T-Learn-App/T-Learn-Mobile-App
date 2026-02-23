@@ -27,7 +27,7 @@ class StatisticsViewModel : ViewModel() {
     private val _currentDictionaryName = MutableStateFlow("Conversational")
     val currentDictionaryName: StateFlow<String> = _currentDictionaryName
 
-    // ✅ Лидерборд
+
     private val _leaderboardPlayers = MutableStateFlow<List<LeaderboardPlayer>>(emptyList())
     val leaderboardPlayers: StateFlow<List<LeaderboardPlayer>> = _leaderboardPlayers
 
@@ -70,7 +70,7 @@ class StatisticsViewModel : ViewModel() {
             )
         }
     }
-    // StatisticsViewModel.kt
+
     private fun loadLeaderboard() {
         viewModelScope.launch {
             val userId = tokenManager.getUserData().firstOrNull()?.id ?: 1

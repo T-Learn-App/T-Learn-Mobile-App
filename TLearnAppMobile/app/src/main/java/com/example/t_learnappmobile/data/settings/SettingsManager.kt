@@ -25,7 +25,6 @@ class SettingsManager(private val context: Context) {
         AppCompatDelegate.setDefaultNightMode(mode)
     }
 
-    // ✅ Новые методы для профиля
     fun saveUserProfile(firstName: String, lastName: String) {
         prefs.edit {
             putString("user_first_name", firstName)

@@ -39,7 +39,7 @@ class WordViewModel : ViewModel() {
         loadInitialWords()
     }
 
-    // ✅ 1. Подписка на текущую карточку
+
     private fun observeCurrentCard() {
         viewModelScope.launch {
             repository.getCurrentCardFlow().collect { word ->
@@ -49,7 +49,7 @@ class WordViewModel : ViewModel() {
         }
     }
 
-    // ✅ 2. Подписка на смену словаря (уже было)
+
     private fun observeDictionaryChanges() {
         viewModelScope.launch {
             dictionaryManager.currentVocabularyIdFlow
@@ -61,7 +61,7 @@ class WordViewModel : ViewModel() {
         }
     }
 
-    // ✅ 3. Загрузка начальных слов
+
     private fun loadInitialWords() {
         viewModelScope.launch {
             val userId = getUserId()
@@ -72,7 +72,7 @@ class WordViewModel : ViewModel() {
         }
     }
 
-    // ✅ 4. Публичный метод для перезагрузки слов (для CardsFragment)
+
     fun fetchWords() {
         viewModelScope.launch {
             val userId = getUserId() ?: return@launch
@@ -89,8 +89,8 @@ class WordViewModel : ViewModel() {
         try {
             val words = repository.fetchWords(categoryId)
             storage.updateWords(words)
-            // Сбрасываем на первую карточку
-            repository.nextWord() // или storage.resetIndex() если есть
+
+            repository.nextWord()
         } catch (e: Exception) {
             _error.value = e.message ?: "Не удалось загрузить слова"
         } finally {

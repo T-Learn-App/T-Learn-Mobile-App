@@ -69,7 +69,6 @@ class RegistrationActivity : AppCompatActivity() {
     }
 
     private fun setupListeners() {
-        // ✅ Валидация всех полей
         binding.passwordEditTextRegistration.addTextChangedListener(PasswordValidationWatcher())
         binding.emailEditTextRegistration.addTextChangedListener(InputValidationWatcher())
         binding.firstNameEditText.addTextChangedListener(InputValidationWatcher())      // ✅ Новое

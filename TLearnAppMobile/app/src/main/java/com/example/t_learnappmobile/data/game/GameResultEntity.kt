@@ -4,13 +4,13 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.example.t_learnappmobile.domain.model.GameResult
 
-// GameResultEntity.kt
+
 @Entity(tableName = "game_results")
 data class GameResultEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val userId: Int,
-    val sessionScore: Int,  // ✅ ТОЛЬКО ЭТО!
+    val sessionScore: Int,
     val wordsCount: Int,
     val timestamp: Long
 )

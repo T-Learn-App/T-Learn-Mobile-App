@@ -115,7 +115,6 @@ class WordRepositoryImpl(
             false
         }
 
-        // ✅ АВТОМАТИЧЕСКИ обновляем статистику при завершении слова
         if (success) {
             updateStatsAfterWordCompletion(wordId)
         }
@@ -123,7 +122,7 @@ class WordRepositoryImpl(
         return success
     }
 
-    // ✅ НОВАЯ ЛОГИКА: обновление статистики при завершении карточки
+
     private suspend fun updateStatsAfterWordCompletion(wordId: Long) {
         val currentWord = storage.getCurrentWord()
         if (currentWord == null || currentWord.id != wordId) return
@@ -135,13 +134,13 @@ class WordRepositoryImpl(
         val currentStats = dictionaryManager.getDailyStats(userId, today)
 
         val updatedStats = when {
-            // ✅ НОВОЕ СЛОВО: "Знаю" → learnedWords++, "Не знаю" → newWords++
+
             currentWord.cardType == CardType.NEW -> currentStats.copy(
                 learnedWords = currentStats.learnedWords + if (isKnowAction(wordId)) 1 else 0,
                 newWords = currentStats.newWords + if (!isKnowAction(wordId)) 1 else 0
             )
 
-            // ✅ РОТАЦИЯ: "Запомнил" → learnedWords++, "Не запомнил" → inProgressWords++
+
             currentWord.cardType == CardType.ROTATION -> currentStats.copy(
                 learnedWords = currentStats.learnedWords + if (isKnowAction(wordId)) 1 else 0,
                 inProgressWords = currentStats.inProgressWords + if (!isKnowAction(wordId)) 1 else 0
@@ -153,9 +152,9 @@ class WordRepositoryImpl(
         dictionaryManager.saveDailyStats(userId, updatedStats)
     }
 
-    // ✅ Определяем было ли действие "Знаю/Запомнил"
+
     private fun isKnowAction(wordId: Long): Boolean {
-        // Имитация: четные ID = "Знаю", нечетные = "Не знаю"
+
         return wordId % 2 == 0L
     }
 

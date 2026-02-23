@@ -12,7 +12,6 @@ interface AuthApiService {
     @POST("auth/login")
     suspend fun login(@Body request: LoginRequest): Response<AuthResponse>
 
-    // ✅ ДОБАВИТЬ ЭТОТ МЕТОД
     @POST("auth/register")
     suspend fun register(@Body request: RegisterRequest): Response<AuthResponse>
 

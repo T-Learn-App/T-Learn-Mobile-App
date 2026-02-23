@@ -37,7 +37,6 @@ object ServiceLocator {
 
     val storage: WordsStorage by lazy { WordsStorage() }
 
-    // ✅ ПУБЛИЧНЫЙ репозиторий для ViewModel'ов
     val wordRepository: WordRepository by lazy {
         WordRepositoryImpl(api, storage)
 
@@ -63,7 +62,7 @@ object ServiceLocator {
             GameDatabase::class.java,
             "game_database"
         )
-            .fallbackToDestructiveMigration()  // ✅ ДОБАВИТЬ!
+            .fallbackToDestructiveMigration()
             .build()
         gameResultDao = gameDatabase.gameResultDao()
 

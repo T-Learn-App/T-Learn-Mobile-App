@@ -10,7 +10,7 @@ class TokenManager(private val context: Context) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
 
-    // ✅ ТОКЕНЫ
+
     suspend fun saveTokens(accessToken: String, refreshToken: String?) {
         prefs.edit().apply {
             putString("access_token", accessToken)
@@ -27,7 +27,6 @@ class TokenManager(private val context: Context) {
     }
 
     fun isTokenExpired(token: String): Boolean {
-        // Простая проверка - в продакшене парсить JWT
         return token.contains("expired") || token.isEmpty()
     }
 
@@ -35,7 +34,7 @@ class TokenManager(private val context: Context) {
         prefs.edit().clear().apply()
     }
 
-    // ✅ USER DATA с ИМЕНЕМ + ФАМИЛИЕЙ
+
     suspend fun saveUserData(userData: UserData) {
         prefs.edit().apply {
             putInt("user_id", userData.id)

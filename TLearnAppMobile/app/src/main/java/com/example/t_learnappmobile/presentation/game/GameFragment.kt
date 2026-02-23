@@ -18,7 +18,7 @@ class GameFragment : BottomSheetDialogFragment() {
     private var _binding: FragmentGameBinding? = null
     private val binding get() = _binding!!
 
-    // ✅ ОБЪЯВИЛИ viewModel!
+
     private val viewModel: GameViewModel by viewModels()
 
     override fun onCreateView(
@@ -45,10 +45,10 @@ class GameFragment : BottomSheetDialogFragment() {
             viewModel.selectAnswer(1)
         }
 
-        // ✅ КНОПКА ЗАКРЫТИЯ
+
         binding.closeGameButton.setOnClickListener {
             viewModel.closeResults()
-            dismiss()  // Закрываем BottomSheet
+            dismiss()
         }
     }
 
@@ -69,7 +69,7 @@ class GameFragment : BottomSheetDialogFragment() {
         binding.option2Card.isEnabled = state.isGameActive
 
         if (state.isGameActive && state.currentWord != null) {
-            // ИГРА
+
             binding.closeGameButton.visibility = View.GONE
             binding.option1Card.visibility = View.VISIBLE
             binding.option2Card.visibility = View.VISIBLE
@@ -85,13 +85,13 @@ class GameFragment : BottomSheetDialogFragment() {
             }
 
         } else if (state.showResults) {
-            // ✅ КОМПАКТНЫЙ КВАДРАТИК СЧЕТА
+
             binding.gameWordText.text = "🎉 ${state.score} очков!"
             binding.wordCounterText.text = "10 слов завершено"
             binding.timerText.text = ""
             binding.scoreText.text = ""
 
-            // СКРЫВАЕМ кнопки ответов
+
             binding.option1Card.visibility = View.GONE
             binding.option2Card.visibility = View.GONE
             binding.closeGameButton.visibility = View.VISIBLE

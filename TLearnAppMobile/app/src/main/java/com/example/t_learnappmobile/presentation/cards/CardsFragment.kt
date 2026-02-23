@@ -51,7 +51,7 @@ class CardsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         wordViewModel = ViewModelProvider(this).get(WordViewModel::class.java)
         logoutViewModel = ViewModelProvider(requireActivity()).get(LogoutViewModel::class.java)
-        dictionaryManager = ServiceLocator.dictionaryManager  // ✅ ПРЯМО dictionaryManager
+        dictionaryManager = ServiceLocator.dictionaryManager
         observeViewModel()
         setUpClickListener()
     }
@@ -67,7 +67,7 @@ class CardsFragment : Fragment() {
                         return@collect
                     }
 
-                    // Название текущего словаря
+
                     val currentDictName = runCatching {
                         val userId = ServiceLocator.tokenManager.getUserData().firstOrNull()?.id
                         userId?.let { dictionaryManager.getCurrentDictionary(it).name } ?: "Conversional"
@@ -77,19 +77,19 @@ class CardsFragment : Fragment() {
                     binding.knownButton.isEnabled = true
                     binding.unknownButton.isEnabled = true
 
-                    // ✅ ИСПРАВЛЕНИЕ: правильный текст кнопок по типу карточки
+
                     when (word.cardType) {
                         CardType.NEW -> {
                             binding.wordLabel.visibility = View.VISIBLE
                             binding.wordLabel.setText(R.string.new_word)
-                            binding.knownButton.setText(R.string.i_know_that_word)           // "Я знаю это слово"
-                            binding.unknownButton.setText(R.string.i_dont_know_that_word)    // "Я не знаю это слово"
+                            binding.knownButton.setText(R.string.i_know_that_word)
+                            binding.unknownButton.setText(R.string.i_dont_know_that_word)
                         }
                         CardType.ROTATION -> {
                             binding.wordLabel.visibility = View.VISIBLE
                             binding.wordLabel.text = getString(R.string.replay_stage, word.repetitionStage)
-                            binding.knownButton.setText(R.string.i_remember_that_word)       // "Я запомнил это слово"
-                            binding.unknownButton.setText(R.string.i_didnt_remember_that_word) // "Я не запомнил это слово"
+                            binding.knownButton.setText(R.string.i_remember_that_word)
+                            binding.unknownButton.setText(R.string.i_didnt_remember_that_word)
                         }
                     }
 
@@ -135,8 +135,7 @@ class CardsFragment : Fragment() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 wordViewModel.isLoading.collect { isLoading ->
-                    //binding.loadingProgressBar.visibility =
-                    // if (isLoading) View.VISIBLE else View.GONE
+
                 }
             }
         }
@@ -206,9 +205,9 @@ class CardsFragment : Fragment() {
         }
         binding.settingsButton.setOnClickListener {
             val settingsSheet = SettingsBottomSheet()
-            // ✅ КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: перезагружаем слова при смене словаря
+
             settingsSheet.onDictionaryChanged = {
-                wordViewModel.fetchWords() // Загружаем слова нового словаря
+                wordViewModel.fetchWords()
             }
             settingsSheet.show(parentFragmentManager, SettingsBottomSheet.TAG)
         }

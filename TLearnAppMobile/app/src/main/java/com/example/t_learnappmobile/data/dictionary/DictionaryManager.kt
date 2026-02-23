@@ -13,7 +13,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 class DictionaryManager(private val context: Context) {
-    // Добавьте в DictionaryManager.kt:
     fun formatTodayDate(): String {
         return SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
     }
@@ -65,7 +64,6 @@ class DictionaryManager(private val context: Context) {
         }
     }
 
-    // ✅ МОК: Создает тестовые данные при первом запуске
     suspend fun generateMockStats(userId: Int) {
         val currentDict = getCurrentDictionary(userId)
         val dates = mutableListOf<String>()
@@ -76,15 +74,14 @@ class DictionaryManager(private val context: Context) {
             dateCal.add(Calendar.DAY_OF_YEAR, 1)
         }
 
-        // ✅ РЕАЛИСТИЧНЫЕ мок-данные за неделю
         val mockData = listOf(
-            Triple(dates[0], 3, 2),  // 22.02: 3 новых, 2 в процессе
-            Triple(dates[1], 5, 1),  // 23.02: 5 новых, 1 в процессе
-            Triple(dates[2], 2, 4),  // 24.02: 2 новых, 4 в процессе
-            Triple(dates[3], 4, 3),  // 25.02: 4 новых, 3 в процессе
-            Triple(dates[4], 1, 5),  // 26.02: 1 новый, 5 в процессе
-            Triple(dates[5], 6, 0),  // 27.02: 6 новых, 0 в процессе
-            Triple(dates[6], 0, 7)   // 28.02: 0 новых, 7 в процессе
+            Triple(dates[0], 3, 2),
+            Triple(dates[1], 5, 1),
+            Triple(dates[2], 2, 4),
+            Triple(dates[3], 4, 3),
+            Triple(dates[4], 1, 5),
+            Triple(dates[5], 6, 0),
+            Triple(dates[6], 0, 7)
         )
 
         mockData.forEach { (date, newWords, inProgress) ->
@@ -92,10 +89,10 @@ class DictionaryManager(private val context: Context) {
                 date = date,
                 newWords = newWords,
                 inProgressWords = inProgress,
-                learnedWords = (1..newWords).random() // случайное кол-во выученных
+                learnedWords = (1..newWords).random()
             )
             saveDailyStats(userId, stats)
-            delay(50) // имитация задержки
+            delay(50)
         }
     }
 
@@ -160,10 +157,9 @@ class DictionaryManager(private val context: Context) {
         return getDictionaries().find { it.id.toLong() == dictionaryId }?.name ?: "Неизвестный словарь"
     }
 
-    // ✅ УЛУЧШЕННАЯ заглушка с мок-данными
+
     suspend fun getTotalLearnedWords(userId: Int): Int {
         val currentDict = getCurrentDictionary(userId)
-        // ✅ Имитируем выученные слова (20% от общего количества)
         return (currentDict.wordsCount * 0.2).toInt().coerceAtLeast(2)
     }
 

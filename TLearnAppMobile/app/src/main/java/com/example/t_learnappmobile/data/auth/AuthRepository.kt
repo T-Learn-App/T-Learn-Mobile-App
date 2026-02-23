@@ -16,7 +16,7 @@ class AuthRepository(
 
     
     companion object {
-        private const val MOCK_MODE = true   // ← поставь false, если бэкенд работает
+        private const val MOCK_MODE = true
     }
 
     suspend fun checkAuthState(): AuthState {
@@ -27,7 +27,7 @@ class AuthRepository(
 
         val token = tokenManager.getAccessToken().firstOrNull() ?: return AuthState.LoggedOut
 
-        // Нет ping → просто проверяем, есть ли токен и не истёк ли он
+
         if (tokenManager.isTokenExpired(token)) {
             tokenManager.clearTokens()
             return AuthState.LoggedOut
@@ -44,7 +44,7 @@ class AuthRepository(
         }
 
         val request = LoginRequest(email, password)
-        // validate() — если есть, оставь; если нет — удали
+
 
         return try {
             val response = apiService.login(request)
@@ -52,8 +52,7 @@ class AuthRepository(
             if (response.isSuccessful && response.body() != null) {
                 val auth = response.body()!!
                 tokenManager.saveTokens(auth.accessToken, auth.refreshToken)
-                // user теперь не приходит → сохраняем вручную или получаем отдельно
-                tokenManager.saveUserData(UserData(id = 0, email = email)) // id пока 0, потом обнови
+                tokenManager.saveUserData(UserData(id = 0, email = email))
                 AuthState.Success(UserData(id = 0, email = email))
             } else {
                 when (response.code()) {
@@ -76,14 +75,14 @@ class AuthRepository(
         val request = RegisterRequest(email, password, firstName, lastName)
 
         return try {
-            // ✅ Мок-регистрация (пока нет реального API)
+
             val userId = (System.currentTimeMillis() % 1000 + 1).toInt()
             val userData = UserData(id = userId, email = email, firstName = firstName, lastName = lastName)
             tokenManager.saveTokens("mock_register_access_$userId", "mock_register_refresh_$userId")
             tokenManager.saveUserData(userData)
             AuthState.Success(userData)
 
-            // TODO: Раскомментировать для реального API
+
 
             val response = apiService.register(request)
             if (response.isSuccessful && response.body() != null) {
@@ -126,7 +125,7 @@ class AuthRepository(
     suspend fun logout(): AuthState {
         tokenManager.clearTokens()
         return AuthState.LoggedOut
-        // если бэкенд требует POST /logout — добавь позже
+
     }
 
     private suspend fun saveMockTokens() {

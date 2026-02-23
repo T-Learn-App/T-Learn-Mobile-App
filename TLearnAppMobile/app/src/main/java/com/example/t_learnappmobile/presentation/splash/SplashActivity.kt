@@ -27,15 +27,7 @@ class SplashActivity : AppCompatActivity() {
     }
 
     private fun observeAuthState() {
-        /*
-        lifecycleScope.launch {
-            viewModel.authState.collect { state ->
-                // ✅ Всегда MainActivity для тестов
-                startActivity(Intent(this@SplashActivity, MainActivity::class.java))
-                finish()
-            }
-        }
-    } */
+
       lifecycleScope.launch {
             viewModel.authState.collect { state ->
                 when (state) {

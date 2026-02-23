@@ -7,11 +7,6 @@ interface GameResultDao {
     @Insert
     suspend fun insert(result: GameResultEntity)
 
-    // ❌ УДАЛИЛИ getTopResults() - он ломает компиляцию
-    // @Query("SELECT * FROM game_results ORDER BY totalScore DESC LIMIT 10")
-    // suspend fun getTopResults(): List<GameResultEntity>
-
-    // ✅ ✅ ✅ СУММА ВСЕХ игр пользователя
     @Query("SELECT COALESCE(SUM(sessionScore), 0) FROM game_results WHERE userId = :userId")
     suspend fun getUserTotalScore(userId: Int): Int
 
@@ -42,7 +37,6 @@ interface GameResultDao {
 }
 
 
-// ✅ Data классы для запросов (НЕ Entity!)
 data class UserLeaderboardInfo(
     val userId: Int,
     val totalScore: Int,

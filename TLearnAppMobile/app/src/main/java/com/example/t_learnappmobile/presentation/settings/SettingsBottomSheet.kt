@@ -54,10 +54,10 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
     }
 
     private fun setupUI() {
-        // ✅ Словарь
+
         setupDictionarySpinner()
 
-        // ✅ Тема
+
         updateThemeSelection(settingsManager.getTheme())
     }
 
@@ -102,10 +102,10 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
     }
 
     private fun setupListeners() {
-        // ✅ Закрытие
+
         binding.btnClose.setOnClickListener { dismiss() }
 
-        // ✅ Сохранение профиля
+
         binding.btnSaveProfile.setOnClickListener {
             val firstName = binding.nameEditText.text.toString().trim()
             val lastName = binding.surnameEditText.text.toString().trim()
@@ -120,7 +120,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
             }
         }
 
-        // ✅ Сброс словаря
+
         binding.btnResetDictionary.setOnClickListener {
             val userId = getUserId() ?: return@setOnClickListener
             val currentDict = dictionaryManager.getCurrentDictionary(userId)
@@ -136,7 +136,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
             )
         }
 
-        // ✅ Сброс всего
+
         binding.btnResetAll.setOnClickListener {
             showConfirmationDialog(
                 title = getString(R.string.confirm_reset_all_title),
@@ -152,7 +152,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
             )
         }
 
-        // ✅ Темы
+
         binding.lightThemeButton.setOnClickListener {
             settingsManager.setTheme(SettingsManager.THEME_LIGHT)
             updateThemeSelection(SettingsManager.THEME_LIGHT)

@@ -14,5 +14,5 @@ data class GameState(
     val isGameActive: Boolean = false,
     val options: List<String> = emptyList(),
     val correctOptionIndex: Int = 0,
-    val showResults: Boolean = false  // ✅ НОВОЕ
+    val showResults: Boolean = false
 )

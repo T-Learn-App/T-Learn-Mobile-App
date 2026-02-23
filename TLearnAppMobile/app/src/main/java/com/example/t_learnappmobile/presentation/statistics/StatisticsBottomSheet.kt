@@ -35,7 +35,7 @@ class StatisticsBottomSheet : BottomSheetDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupUI()
-        setupLeaderboard() // ✅ ДОБАВЬ
+        setupLeaderboard()
         observeViewModel()
     }
 
@@ -58,7 +58,7 @@ class StatisticsBottomSheet : BottomSheetDialogFragment() {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
                     viewModel.currentDictionaryName.collect { name ->
-                        binding.dictionaryNameText.text = name  // ✅ Название словаря
+                        binding.dictionaryNameText.text = name
                     }
                 }
                 launch {

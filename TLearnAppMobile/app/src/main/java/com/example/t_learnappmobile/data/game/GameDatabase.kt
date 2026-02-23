@@ -22,7 +22,7 @@ object GameDatabaseProvider {
 
     fun getDatabase(context: Context): GameDatabase {
         return INSTANCE ?: synchronized(this) {
-            // ✅ ФИКС: удаляем старую БД ПЕРЕД созданием
+
             context.deleteDatabase("game_database")
 
             val instance = Room.databaseBuilder(

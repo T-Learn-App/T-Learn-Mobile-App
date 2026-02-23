@@ -24,7 +24,7 @@ class GameViewModel : ViewModel() {
     private var gameWords: List<GameWord> = emptyList()
     private var timerJob: Job? = null
     private var currentWordIndex = 0
-    private var allWordsForWrongAnswers: List<String> = emptyList() // пул русских слов
+    private var allWordsForWrongAnswers: List<String> = emptyList()
 
     fun startGame(mode: GameMode) {
         viewModelScope.launch {
@@ -34,7 +34,7 @@ class GameViewModel : ViewModel() {
                 val rotationWords = ServiceLocator.wordRepository.getRotationWords()
 
                 if (newWords.isEmpty() && rotationWords.isEmpty()) {
-                    // Fallback если слов нет
+
                     gameWords = listOf(
                         GameWord(1, "Hello", "Привет"),
                         GameWord(2, "World", "Мир")
@@ -47,7 +47,7 @@ class GameViewModel : ViewModel() {
                 }
 
                 allWordsForWrongAnswers = gameWords.map { it.russian } +
-                        listOf("Дом", "Кот", "Собака") // fallback
+                        listOf("Дом", "Кот", "Собака")
 
                 currentWordIndex = 0
                 _uiState.value = GameState(
@@ -59,7 +59,7 @@ class GameViewModel : ViewModel() {
                 loadNextWord()
                 startTimer(mode)
             } catch (e: Exception) {
-                // Игнорируем ошибки репозитория
+
                 e.printStackTrace()
             }
         }
@@ -80,7 +80,7 @@ class GameViewModel : ViewModel() {
                     endGame()
                 }
                 GameMode.WORDS -> {
-                    // Логика по словам - таймер не нужен
+
                 }
             }
         }
@@ -97,7 +97,7 @@ class GameViewModel : ViewModel() {
         viewModelScope.launch {
             currentWordIndex++
 
-            // ✅ АВТО-ЗАКРЫТИЕ ПОСЛЕ 10 СЛОВ
+
             if (currentWordIndex >= MAX_WORDS) {
                 endGame(newScore)
                 return@launch
@@ -138,7 +138,7 @@ class GameViewModel : ViewModel() {
             .first()
     }
 
-    // GameViewModel.kt - метод endGame
+
     private suspend fun endGame(finalScore: Int = _uiState.value.score) {
         timerJob?.cancel()
 
@@ -156,7 +156,7 @@ class GameViewModel : ViewModel() {
             e.printStackTrace()
         }
 
-        // ✅ ПОКАЗЫВАЕМ КОМПАКТНЫЙ КВАДРАТИК
+
         _uiState.value = _uiState.value.copy(
             isGameActive = false,
             showResults = true,
@@ -167,10 +167,10 @@ class GameViewModel : ViewModel() {
 
 
     fun closeResults() {
-        _uiState.value = GameState()  // ✅ СБРОС состояния
+        _uiState.value = GameState()
     }
 
-    // ✅ НОВЫЙ метод для закрытия экрана
+
     fun finishGame() {
         _uiState.value = _uiState.value.copy(showResults = false)
     }

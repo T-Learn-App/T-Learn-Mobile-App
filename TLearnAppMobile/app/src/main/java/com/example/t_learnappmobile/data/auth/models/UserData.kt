@@ -11,5 +11,5 @@ data class UserData(
     val firstName: String? = null,
     @SerializedName("lastName")
     val lastName: String? = null,
-    val fullName: String? = null  // для совместимости
+    val fullName: String? = null
 )

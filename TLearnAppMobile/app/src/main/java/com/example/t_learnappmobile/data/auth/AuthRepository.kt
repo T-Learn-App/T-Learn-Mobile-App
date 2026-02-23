@@ -14,6 +14,7 @@ class AuthRepository(
     private val tokenManager: TokenManager,
 ) {
 
+    
     companion object {
         private const val MOCK_MODE = true   // ← поставь false, если бэкенд работает
     }

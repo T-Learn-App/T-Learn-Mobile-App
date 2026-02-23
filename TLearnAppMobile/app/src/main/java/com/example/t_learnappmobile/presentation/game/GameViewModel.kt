@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 import kotlin.random.Random
 
 class GameViewModel : ViewModel() {
+    private val MAX_WORDS = 10
     private val _uiState = MutableStateFlow(GameState())
     val uiState: StateFlow<GameState> = _uiState.asStateFlow()
 
@@ -94,18 +95,19 @@ class GameViewModel : ViewModel() {
         val newScore = state.score + points
 
         viewModelScope.launch {
-            if (currentWordIndex + 1 < gameWords.size &&
-                (state.gameMode == GameMode.TIME || state.wordsLeft > 1)) {
+            currentWordIndex++
 
-                currentWordIndex++
-                _uiState.value = state.copy(
-                    score = newScore,
-                    wordsLeft = state.wordsLeft - 1
-                )
-                loadNextWord()
-            } else {
+            // ✅ АВТО-ЗАКРЫТИЕ ПОСЛЕ 10 СЛОВ
+            if (currentWordIndex >= MAX_WORDS) {
                 endGame(newScore)
+                return@launch
             }
+
+            _uiState.value = state.copy(
+                score = newScore,
+                currentWordIndex = currentWordIndex
+            )
+            loadNextWord()
         }
     }
 
@@ -142,12 +144,11 @@ class GameViewModel : ViewModel() {
 
         try {
             val userId = ServiceLocator.tokenManager.getUserData().firstOrNull()?.id ?: 1
-
             ServiceLocator.gameResultDao.insert(
                 GameResultEntity(
                     userId = userId,
-                    sessionScore = finalScore,  // ✅ Только ЭТО поле!
-                    wordsCount = gameWords.size,
+                    sessionScore = finalScore,
+                    wordsCount = MAX_WORDS,
                     timestamp = System.currentTimeMillis()
                 )
             )
@@ -155,14 +156,19 @@ class GameViewModel : ViewModel() {
             e.printStackTrace()
         }
 
+        // ✅ ПОКАЗЫВАЕМ КОМПАКТНЫЙ КВАДРАТИК
         _uiState.value = _uiState.value.copy(
             isGameActive = false,
             showResults = true,
-            score = finalScore
+            score = finalScore,
+            totalWords = MAX_WORDS
         )
     }
 
 
+    fun closeResults() {
+        _uiState.value = GameState()  // ✅ СБРОС состояния
+    }
 
     // ✅ НОВЫЙ метод для закрытия экрана
     fun finishGame() {

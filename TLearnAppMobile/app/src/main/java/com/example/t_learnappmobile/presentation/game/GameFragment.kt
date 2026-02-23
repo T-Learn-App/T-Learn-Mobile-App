@@ -17,6 +17,8 @@ import kotlinx.coroutines.launch
 class GameFragment : BottomSheetDialogFragment() {
     private var _binding: FragmentGameBinding? = null
     private val binding get() = _binding!!
+
+    // ✅ ОБЪЯВИЛИ viewModel!
     private val viewModel: GameViewModel by viewModels()
 
     override fun onCreateView(
@@ -32,7 +34,7 @@ class GameFragment : BottomSheetDialogFragment() {
         super.onViewCreated(view, savedInstanceState)
         setupUI()
         observeViewModel()
-        viewModel.startGame(GameMode.TIME) // по умолчанию
+        viewModel.startGame(GameMode.TIME)
     }
 
     private fun setupUI() {
@@ -41,6 +43,12 @@ class GameFragment : BottomSheetDialogFragment() {
         }
         binding.option2Card.setOnClickListener {
             viewModel.selectAnswer(1)
+        }
+
+        // ✅ КНОПКА ЗАКРЫТИЯ
+        binding.closeGameButton.setOnClickListener {
+            viewModel.closeResults()
+            dismiss()  // Закрываем BottomSheet
         }
     }
 
@@ -59,12 +67,15 @@ class GameFragment : BottomSheetDialogFragment() {
     private fun updateUI(state: GameState) {
         binding.option1Card.isEnabled = state.isGameActive
         binding.option2Card.isEnabled = state.isGameActive
-        binding.closeGameButton.visibility = if (state.showResults) View.VISIBLE else View.GONE
 
         if (state.isGameActive && state.currentWord != null) {
-            // ✅ ИГРА
+            // ИГРА
+            binding.closeGameButton.visibility = View.GONE
+            binding.option1Card.visibility = View.VISIBLE
+            binding.option2Card.visibility = View.VISIBLE
+
             binding.gameWordText.text = state.currentWord.english
-            binding.wordCounterText.text = "${state.currentWordIndex}/${state.totalWords}"
+            binding.wordCounterText.text = "${state.currentWordIndex}/10"
             binding.timerText.text = String.format("%02d:%02d", state.timer / 60, state.timer % 60)
             binding.scoreText.text = state.score.toString()
 
@@ -72,19 +83,20 @@ class GameFragment : BottomSheetDialogFragment() {
                 binding.option1Text.text = state.options[0]
                 binding.option2Text.text = state.options[1]
             }
+
         } else if (state.showResults) {
-            // ✅ РЕЗУЛЬТАТЫ
-            binding.gameWordText.text = "🎉 ИГРА ОКОНЧЕНА! 🎉"
-            binding.scoreText.text = "${state.score} очков"
-            binding.wordCounterText.text = "Слов изучено: ${state.totalWords}"
-            binding.timerText.text = when (state.gameMode) {
-                GameMode.TIME -> "ВРЕМЕННОЙ РЕЖИМ"
-                GameMode.WORDS -> "РЕЖИМ СЛОВ"
-            }
+            // ✅ КОМПАКТНЫЙ КВАДРАТИК СЧЕТА
+            binding.gameWordText.text = "🎉 ${state.score} очков!"
+            binding.wordCounterText.text = "10 слов завершено"
+            binding.timerText.text = ""
+            binding.scoreText.text = ""
+
+            // СКРЫВАЕМ кнопки ответов
+            binding.option1Card.visibility = View.GONE
+            binding.option2Card.visibility = View.GONE
+            binding.closeGameButton.visibility = View.VISIBLE
         }
     }
-
-
 
     override fun onDestroyView() {
         super.onDestroyView()

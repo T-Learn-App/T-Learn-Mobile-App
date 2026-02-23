@@ -130,13 +130,20 @@
                 android:textSize="18sp"
                 android:textStyle="bold" />
         </androidx.cardview.widget.CardView>
+
+        <!-- В конец LinearLayout с вариантами ответа -->
         <Button
             android:id="@+id/closeGameButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="120dp"
+            android:layout_height="50dp"
+            android:layout_gravity="center"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/yellow_button_rounded"
             android:text="ЗАКРЫТЬ"
-            android:visibility="gone"
-            android:layout_gravity="center" />
+            android:textColor="@color/black"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
 
     </LinearLayout>
 

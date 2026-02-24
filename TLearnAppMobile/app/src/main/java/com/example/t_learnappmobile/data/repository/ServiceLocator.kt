@@ -1,5 +1,6 @@
 package com.example.t_learnappmobile.data.repository
 
+import android.annotation.SuppressLint
 import android.content.Context
 import androidx.room.Room
 import com.example.t_learnappmobile.data.auth.*
@@ -10,72 +11,112 @@ import com.example.t_learnappmobile.data.leaderboard.LeaderboardManager
 import com.example.t_learnappmobile.data.statistics.DailyStatsDao
 import com.example.t_learnappmobile.data.statistics.StatsDatabase
 import com.example.t_learnappmobile.domain.repository.WordRepository
-import com.google.gson.GsonBuilder
+import kotlin.require
 import okhttp3.OkHttpClient
-import okhttp3.mockwebserver.MockWebServer
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
+
+/*
+* ServiceLocator - это singleton, реализующий паттерн Service Locator.
+* Объект, который хранит зависимости и позволяет их извлекать при
+* необходимости.
+* */
+@SuppressLint("StaticFieldLeak")
 object ServiceLocator {
+    // Application Context
+    @SuppressLint("StaticFieldLeak")
+    lateinit var appContext: Context
+
+    // Публичные для совместимости с проектом (ApplicationContext внутри!)
+    @SuppressLint("StaticFieldLeak")
     lateinit var tokenManager: TokenManager
-    lateinit var authRepository: AuthRepository
+
+    @SuppressLint("StaticFieldLeak")
     lateinit var dictionaryManager: DictionaryManager
-    private lateinit var authApiService: AuthApiService
+
+    // Репозитории
+    @SuppressLint("StaticFieldLeak")
+    lateinit var authRepository: AuthRepository
+
+    val wordRepository: WordRepository by lazy {
+        requireInitialized()
+        WordRepositoryImpl(api, storage)
+    }
+
+    // Базы данных
+    @SuppressLint("StaticFieldLeak")
     lateinit var statsDatabase: StatsDatabase
+
     lateinit var dailyStatsDao: DailyStatsDao
-    lateinit var leaderboardManager: LeaderboardManager
+    lateinit var gameDatabase: GameDatabase
     lateinit var gameResultDao: GameResultDao
+
+    // Менеджеры без контекста
+    lateinit var leaderboardManager: LeaderboardManager
+
+    // API (lazy)
     private const val BACKEND_URL = "http://10.0.2.2:8080/"
 
     val api: WordApi by lazy {
+        requireInitialized()
         Retrofit.Builder()
             .baseUrl(BACKEND_URL)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(WordApi::class.java)
     }
-
     val storage: WordsStorage by lazy { WordsStorage() }
 
-    val wordRepository: WordRepository by lazy {
-        WordRepositoryImpl(api, storage)
+    // Приватные API сервисы
+    private lateinit var authApiService: AuthApiService
 
-    }
+    // Инициализация (вызывается только в Application.onCreate()
+    fun initContextAwareDependencies(appContext: Context) {
+        require(!this::appContext.isInitialized) {
+            "ServiceLocator уже инициализирован"
+        }
+        this.appContext = appContext.applicationContext
 
-    fun initContextAwareDependencies(context: Context) {
-        tokenManager = TokenManager(context)
+        // Stats Database
         statsDatabase = Room.databaseBuilder(
-            context.applicationContext,
+            appContext,
             StatsDatabase::class.java,
             "stats_database"
-        ).build()
+        )
+            .fallbackToDestructiveMigrationOnDowngrade()
+            .build()
         dailyStatsDao = statsDatabase.dailyStatsDao()
 
-        dictionaryManager = DictionaryManager(context)
-
-        authApiService = createAuthApiService(context, tokenManager)
-        authRepository = AuthRepository(authApiService, tokenManager)
-
-
-        val gameDatabase = Room.databaseBuilder(
-            context.applicationContext,
+        // Game Database
+        gameDatabase = Room.databaseBuilder(
+            appContext,
             GameDatabase::class.java,
             "game_database"
         )
-            .fallbackToDestructiveMigration()
+            .fallbackToDestructiveMigration() // только для разработки
             .build()
         gameResultDao = gameDatabase.gameResultDao()
 
+        // Менеджеры с ApplicationContext
+        tokenManager = TokenManager(appContext)
+        dictionaryManager = DictionaryManager(appContext)
         leaderboardManager = LeaderboardManager()
+
+        // Auth API
+        authApiService = createAuthApiService()
+        authRepository = AuthRepository(authApiService, tokenManager)
     }
 
-    private fun createAuthApiService(context: Context, tokenManager: TokenManager): AuthApiService {
+    private fun createAuthApiService(): AuthApiService {
+        requireInitialized()
+
         val okHttpClient = OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .addInterceptor(AuthInterceptor(tokenManager) { BACKEND_URL })
-            .addInterceptor(NetworkMonitorInterceptor(context))
+            .addInterceptor(NetworkMonitorInterceptor(appContext))
             .build()
 
         return Retrofit.Builder()
@@ -85,4 +126,9 @@ object ServiceLocator {
             .build()
             .create(AuthApiService::class.java)
     }
+
+    private fun requireInitialized(): Unit =
+        if (!this::appContext.isInitialized) {
+            error("ServiceLocator.initContextAwareDependencies(appContext) не вызван")
+        } else Unit
 }

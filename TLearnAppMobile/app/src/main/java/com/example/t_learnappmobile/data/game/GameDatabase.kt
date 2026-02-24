@@ -16,25 +16,3 @@ abstract class GameDatabase : RoomDatabase() {
     abstract fun gameResultDao(): GameResultDao
 }
 
-object GameDatabaseProvider {
-    @Volatile
-    private var INSTANCE: GameDatabase? = null
-
-    fun getDatabase(context: Context): GameDatabase {
-        return INSTANCE ?: synchronized(this) {
-
-            context.deleteDatabase("game_database")
-
-            val instance = Room.databaseBuilder(
-                context.applicationContext,
-                GameDatabase::class.java,
-                "game_database"
-            )
-                .fallbackToDestructiveMigration()
-                .build()
-
-            INSTANCE = instance
-            instance
-        }
-    }
-}

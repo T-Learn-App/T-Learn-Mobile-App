@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.t_learnappmobile.data.game.GameResultEntity
 import com.example.t_learnappmobile.data.repository.ServiceLocator
+import com.example.t_learnappmobile.data.repository.ServiceLocator.tokenManager
 import com.example.t_learnappmobile.domain.model.GameMode
 import com.example.t_learnappmobile.domain.model.GameWord
 import kotlinx.coroutines.Job
@@ -143,7 +144,7 @@ class GameViewModel : ViewModel() {
         timerJob?.cancel()
 
         try {
-            val userId = ServiceLocator.tokenManager.getUserData().firstOrNull()?.id ?: 1
+            val userId = tokenManager.getUserId()?.toInt() ?: 1
             ServiceLocator.gameResultDao.insert(
                 GameResultEntity(
                     userId = userId,

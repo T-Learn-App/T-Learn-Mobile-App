@@ -36,35 +36,22 @@ class LoginActivity : AppCompatActivity() {
         lifecycleScope.launch {
             viewModel.authState.collect { state ->
                 when (state) {
-                    is AuthState.Loading -> {
-                        binding.btnSendCode.isEnabled = false
-                    }
-
+                    AuthState.Loading -> binding.btnSendCode.isEnabled = false
                     is AuthState.Success -> {
                         binding.btnSendCode.isEnabled = true
-                        val intent = Intent(this@LoginActivity, MainActivity::class.java)
-                        intent.putExtra("SKIP_AUTH_CHECK", true)
-                        startActivity(intent)
+                        startActivity(Intent(this@LoginActivity, MainActivity::class.java))
                         finish()
                     }
-
                     is AuthState.Error -> {
                         binding.btnSendCode.isEnabled = true
-                        val errorMessage = if (state.args.isEmpty()) {
-                            getString(state.messageResId)
-                        } else {
-                            getString(state.messageResId, *state.args)
-                        }
-                        showErrorDialog(errorMessage)
+                        Toast.makeText(this@LoginActivity, state.message, Toast.LENGTH_LONG).show()
                     }
-
-                    else -> {
-                        binding.btnSendCode.isEnabled = true
-                    }
+                    else -> binding.btnSendCode.isEnabled = true
                 }
             }
         }
     }
+
 
     private fun setupListeners() {
         binding.btnCreateAccount.setOnClickListener {

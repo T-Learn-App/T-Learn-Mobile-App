@@ -14,17 +14,16 @@ class RegistrationViewModel : ViewModel() {
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
     val authState: StateFlow<AuthState> = _authState
 
-    fun register(email: String, password: String, firstName: String, lastName: String) {  // ✅ 4 параметра
+    fun register(email: String, password: String, firstName: String, lastName: String) {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
-            val result = authRepository.register(email, password, firstName, lastName)
+            // 🔥 ТОТ ЖЕ login() — бэкенд сам зарегистрирует!
+            val result = ServiceLocator.authRepository.login(email, password)
             _authState.value = result
         }
     }
 
-    fun resetState() {
-        _authState.value = AuthState.Idle
-    }
+    fun resetState() { _authState.value = AuthState.Idle }
 }
 
 

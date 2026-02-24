@@ -14,7 +14,7 @@ class LeaderboardManager {
         val playersWithPositions = results.mapIndexed { index, result ->
             LeaderboardPlayer(
                 id = result.userId,
-                name = getUserFullName(result.userId),
+                name = getUserFullName(result.userId),  // ✅ Теперь из JWT!
                 score = result.totalScore,
                 position = index + 1
             )
@@ -24,9 +24,13 @@ class LeaderboardManager {
     }
 
     private suspend fun getUserFullName(userId: Int): String {
-        val userData = ServiceLocator.tokenManager.getUserData().firstOrNull()
-        return if (userData?.id == userId) {
-            "${userData.firstName ?: ""} ${userData.lastName ?: ""}".trim()
+        // 🔥 ИЗ JWT ТОКЕНА!
+        val currentUserId = ServiceLocator.tokenManager.getUserId()?.toInt() ?: 0
+        return if (currentUserId == userId) {
+            val email = ServiceLocator.tokenManager.getUserEmail() ?: "Игрок"
+            email.split("@").first()  // "test" из "test@example.com"
+                .replaceFirstChar { it.uppercase() }
+                .take(10) + if (email.length > 10) "..." else ""
         } else {
             "Игрок $userId"
         }
@@ -35,11 +39,11 @@ class LeaderboardManager {
     suspend fun getYourPosition(userId: Int): LeaderboardPlayer {
         val totalScore = ServiceLocator.gameResultDao.getUserTotalScore(userId)
         val info = ServiceLocator.gameResultDao.getUserLeaderboardInfo(userId)
-        val userData = ServiceLocator.tokenManager.getUserData().firstOrNull()
+        val currentUserId = ServiceLocator.tokenManager.getUserId()?.toInt() ?: userId
 
         return LeaderboardPlayer(
             id = userId,
-            name = "${userData?.firstName ?: ""} ${userData?.lastName ?: ""}".trim().ifEmpty { "Игрок $userId" },
+            name = getUserFullName(currentUserId),  // ✅ JWT!
             score = totalScore,
             position = info?.position ?: 0
         )

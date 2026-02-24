@@ -69,7 +69,7 @@ class CardsFragment : Fragment() {
 
 
                     val currentDictName = runCatching {
-                        val userId = ServiceLocator.tokenManager.getUserData().firstOrNull()?.id
+                        val userId = ServiceLocator.tokenManager.getUserId()?.toInt() ?: 0
                         userId?.let { dictionaryManager.getCurrentDictionary(it).name } ?: "Conversional"
                     }.getOrElse { "Conversional" }
                     binding.categoryText.text = currentDictName

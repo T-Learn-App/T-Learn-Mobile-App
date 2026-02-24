@@ -104,7 +104,7 @@ class WordViewModel : ViewModel() {
     }
 
     private suspend fun getUserId(): Int? {
-        return tokenManager.getUserData().firstOrNull()?.id
+        return ServiceLocator.tokenManager.getUserId()?.toInt() ?: 0
     }
 
     fun toggleTranslation() {

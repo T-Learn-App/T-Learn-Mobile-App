@@ -52,13 +52,9 @@ class RegistrationActivity : AppCompatActivity() {
 
                     is AuthState.Error -> {
                         binding.btnSendCode.isEnabled = true
-                        val errorMessage = if (state.args.isEmpty()) {
-                            getString(state.messageResId)
-                        } else {
-                            getString(state.messageResId, *state.args)
-                        }
-                        showErrorDialog(errorMessage)
+                        Toast.makeText(this@RegistrationActivity, state.message, Toast.LENGTH_LONG).show()
                     }
+
 
                     else -> {
                         binding.btnSendCode.isEnabled = true

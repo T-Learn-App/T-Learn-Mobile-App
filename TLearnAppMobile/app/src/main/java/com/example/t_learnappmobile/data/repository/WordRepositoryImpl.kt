@@ -127,7 +127,7 @@ class WordRepositoryImpl(
         val currentWord = storage.getCurrentWord()
         if (currentWord == null || currentWord.id != wordId) return
 
-        val userId = ServiceLocator.tokenManager.getUserData().firstOrNull()?.id ?: return
+        val userId = ServiceLocator.tokenManager.getUserId()?.toInt() ?: 0
         val dictionaryManager = ServiceLocator.dictionaryManager
         val today = dictionaryManager.formatTodayDate()
 

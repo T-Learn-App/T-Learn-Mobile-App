@@ -49,7 +49,7 @@ class StatisticsViewModel : ViewModel() {
 
     fun loadWeekStats() {
         viewModelScope.launch {
-            val userId = tokenManager.getUserData().firstOrNull()?.id ?: return@launch
+            val userId = tokenManager.getUserId()?.toInt() ?: return@launch
             val currentDict = dictionaryManager.getCurrentDictionary(userId)
 
             _currentDictionaryName.value = currentDict.name
@@ -73,7 +73,7 @@ class StatisticsViewModel : ViewModel() {
 
     private fun loadLeaderboard() {
         viewModelScope.launch {
-            val userId = tokenManager.getUserData().firstOrNull()?.id ?: 1
+            val userId = tokenManager.getUserId()?.toInt() ?: 1
 
             val topPlayers = leaderboardManager.loadLeaderboard()
             _leaderboardPlayers.value = topPlayers

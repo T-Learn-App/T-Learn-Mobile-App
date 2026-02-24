@@ -15,17 +15,15 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
     val authState: StateFlow<AuthState> = _authState
 
-    fun login(login: String, password: String) {
+    fun login(email: String, password: String) {  // ✅ login = email!
         viewModelScope.launch {
             _authState.value = AuthState.Loading
-            val result = repository.login(login, password)
+            val result = repository.login(email, password)
             _authState.value = result
         }
     }
 
-    fun resetState() {
-        _authState.value = AuthState.Idle
-    }
+    fun resetState() { _authState.value = AuthState.Idle }
 }
 
 

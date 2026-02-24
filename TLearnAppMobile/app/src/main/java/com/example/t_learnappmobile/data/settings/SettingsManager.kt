@@ -37,12 +37,7 @@ class SettingsManager(private val context: Context) {
 
     suspend fun updateUserProfile(firstName: String, lastName: String) {
         saveUserProfile(firstName, lastName)
-        val currentUser = ServiceLocator.tokenManager.getUserData().firstOrNull()
-        currentUser?.let {
-            ServiceLocator.tokenManager.saveUserData(
-                it.copy(firstName = firstName, lastName = lastName)
-            )
-        }
+
     }
 
     fun getDictionaryManager(): DictionaryManager = dictionaryManager

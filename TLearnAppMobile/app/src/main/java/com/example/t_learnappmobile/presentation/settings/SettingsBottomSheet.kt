@@ -63,11 +63,19 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
 
     private fun loadProfileData() {
         lifecycleScope.launch {
-            val userData = ServiceLocator.tokenManager.getUserData().firstOrNull()
-            binding.nameEditText.setText(userData?.firstName ?: "")
-            binding.surnameEditText.setText(userData?.lastName ?: "")
+            val userId = ServiceLocator.tokenManager.getUserId()?.toInt() ?: 0
+            val email = ServiceLocator.tokenManager.getUserEmail() ?: "user@example.com"
+
+            // ✅ Используем email как имя (до 12 символов)
+            val displayName = email.split("@").first()
+                .replaceFirstChar { it.uppercase() }
+                .take(12)
+
+            binding.nameEditText.setText(displayName)
+            binding.surnameEditText.setText("Игрок")  // Фиксированное
         }
     }
+
 
     private fun setupDictionarySpinner() {
         val dictionaryNames = dictionaries.map { it.name }
@@ -96,9 +104,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
     }
 
     private fun getUserId(): Int? {
-        return runBlocking {
-            ServiceLocator.tokenManager.getUserData().firstOrNull()?.id
-        }
+        return ServiceLocator.tokenManager.getUserId()?.toInt()  // ✅ JWT!
     }
 
     private fun setupListeners() {

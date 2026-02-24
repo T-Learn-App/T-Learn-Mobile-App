@@ -1,5 +1,6 @@
 package com.example.t_learnappmobile.data.auth
 
+
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
@@ -22,26 +23,25 @@ class AuthInterceptor(
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
 
-        if (originalRequest.url.encodedPath.contains("auth/refresh") ||
-            originalRequest.url.encodedPath.contains("auth/login") ||
-            originalRequest.url.encodedPath.contains("auth/register")
-        ) {
+        // ✅ Пропускаем все auth endpoints
+        if (originalRequest.url.encodedPath.contains("auth")) {
             return chain.proceed(originalRequest)
         }
 
-        val currentToken = getTokenSync()
+        val currentToken = getTokenSync() ?: return chain.proceed(originalRequest)
 
-        val requestWithToken = if (!currentToken.isNullOrEmpty()) {
-            addTokenToRequest(originalRequest, currentToken)
-        } else {
-            originalRequest
+        // ✅ Mock токены НЕ пытаемся обновлять
+        if (currentToken.contains("mock-token")) {
+            val requestWithMockToken = addTokenToRequest(originalRequest, currentToken)
+            return chain.proceed(requestWithMockToken)
         }
 
+        // ✅ Только реальные токены обновляем
+        val requestWithToken = addTokenToRequest(originalRequest, currentToken)
         var response = chain.proceed(requestWithToken)
 
-        if (response.code == 401 && !currentToken.isNullOrEmpty()) {
+        if (response.code == 401) {
             response.close()
-
             val newToken = refreshAccessTokenSync()
             if (!newToken.isNullOrEmpty()) {
                 val newRequest = addTokenToRequest(originalRequest, newToken)
@@ -51,6 +51,7 @@ class AuthInterceptor(
 
         return response
     }
+
 
     private fun getTokenSync(): String? {
         return try {
@@ -102,7 +103,7 @@ class AuthInterceptor(
 
             val body = """{"refreshToken": "$refreshToken"}""".toRequestBody("application/json".toMediaType())
             val request = Request.Builder()
-                .url(getBaseUrl() + "/token/refresh")
+                .url(getBaseUrl() + "auth/token/refresh")
                 .post(body)
                 .build()
 

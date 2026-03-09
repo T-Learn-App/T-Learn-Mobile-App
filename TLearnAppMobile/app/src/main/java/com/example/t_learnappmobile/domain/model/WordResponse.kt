@@ -1,24 +1,21 @@
-package com.example.t_learnappmobile.domain.model
+import com.google.gson.annotations.SerializedName
+
+// package com.example.t_learnappmobile.domain.model
+data class ListWordResponse(
+    val words: List<WordResponse>  // ← УБРАЛ userId!
+)
 
 data class WordResponse(
     val id: Long,
+    @SerializedName("part_of_speech")
+    val partOfSpeech: String,      // ← snake_case → camelCase
+    @SerializedName("category_id")
+    val category: Long,            // ← snake_case → camelCase
     val word: String,
     val transcription: String,
-    val translation: String,
-    val partOfSpeech: String,
-    val category: Long
-)
-
-data class ListWordResponse(
-    val userId: Long,
-    val words: List<WordResponse>
+    val translation: String? = "перевод"  // ← default значение
 )
 
 data class StatQueueDto(
     val wordId: Long
-)
-
-data class AuthResponse(
-    val accessToken: String,
-    val refreshToken: String
 )

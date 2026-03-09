@@ -18,8 +18,12 @@ class LogoutViewModel(application: Application) : AndroidViewModel(application) 
     fun logout() {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
-            val result = repository.logout()
+            val result = repository.logout()  // ✅ Теперь есть!
             _authState.value = result
         }
+    }
+
+    fun resetState() {
+        _authState.value = AuthState.Idle
     }
 }

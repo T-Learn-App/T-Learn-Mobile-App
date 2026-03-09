@@ -40,11 +40,11 @@ object ServiceLocator {
     lateinit var gameResultDao: GameResultDao
     lateinit var leaderboardManager: LeaderboardManager
 
-    private const val BACKEND_URL = "http://10.0.2.2:8080/"
+    private const val BACKEND_URL = "https://856eed6b-a8d1-44b0-8253-ef83deebf67d.mock.pstmn.io/"
     private const val MOCK_SERVER_PORT = 8081
-    private var mockServerUrl: String = "http://localhost:$MOCK_SERVER_PORT/"
-    private var useMockServer = true
-    private var mockWebServer: MockWebServer? = null
+//    private var mockServerUrl: String = "https://856eed6b-a8d1-44b0-8253-ef83deebf67d.mock.pstmn.io/"
+//    private var useMockServer = false
+//    private var mockWebServer: MockWebServer? = null
 
     val api: WordApi by lazy {
         requireInitialized()
@@ -72,12 +72,11 @@ object ServiceLocator {
         dictionaryManager = DictionaryManager(appContext)
         leaderboardManager = LeaderboardManager()
 
-        // ✅ Встроенный Mock Dispatcher (НЕ внешний MockDispatcher класс)
-        startMockWebServer()
+
         authApiService = createAuthApiService()
         authRepository = AuthRepository(authApiService, tokenManager)
 
-        Log.i("ServiceLocator", "✅ Инициализация завершена (Mock=$useMockServer)")
+
     }
 
     private fun initDatabases() {
@@ -92,85 +91,13 @@ object ServiceLocator {
         gameResultDao = gameDatabase.gameResultDao()
     }
 
-    // 🔥 Встроенный MockWebServer Dispatcher
-    private fun startMockWebServer() {
-        try {
-            mockWebServer = MockWebServer()
 
-            // ✅ ПРАВИЛЬНЫЙ синтаксис для Kotlin
-            mockWebServer!!.dispatcher = object : okhttp3.mockwebserver.Dispatcher() {
-                override fun dispatch(request: RecordedRequest): MockResponse {
-                    return when {
-                        request.path?.contains("auth/login") == true -> handleAuthLogin(request)
-                        request.path?.contains("auth/token/refresh") == true -> handleAuthRefresh()
-                        request.path?.contains("auth/check-email") == true -> handleCheckEmail(request)
-                        else -> MockResponse()
-                            .setResponseCode(404)
-                            .setBody("""{"error":"Mock: Not found"}""")
-                    }
-                }
-
-                private fun handleAuthLogin(request: RecordedRequest): MockResponse {
-                    return try {
-                        val body = request.body.readUtf8()
-                        val json = org.json.JSONObject(body)
-                        val email = json.optString("email", "test@test.com")
-
-                        MockResponse()
-                            .setResponseCode(200)
-                            .addHeader("Content-Type", "application/json")
-                            .setBody("""
-                                {
-                                    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxIiwiZW1haWwiOi"${email}","exp":9999999999},"mock-jwt",
-                                    "refreshToken": "mock-refresh-${System.currentTimeMillis()}"
-                                }
-                            """.trimIndent())
-                    } catch (e: Exception) {
-                        MockResponse().setResponseCode(400).setBody("""{"error":"Invalid request"}""")
-                    }
-                }
-
-                private fun handleAuthRefresh(): MockResponse {
-                    return MockResponse()
-                        .setResponseCode(200)
-                        .addHeader("Content-Type", "application/json")
-                        .setBody("""
-                            {
-                                "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxIiwiZXhwIjo5OTk5OTk5OTk5fQ.mock-new",
-                                "refreshToken": "mock-refresh-new-${System.currentTimeMillis()}"
-                            }
-                        """.trimIndent())
-                }
-
-                private fun handleCheckEmail(request: RecordedRequest): MockResponse {
-                    return try {
-                        val body = request.body.readUtf8()
-                        val json = org.json.JSONObject(body)
-                        val email = json.optString("email", "")
-                        val exists = email == "test@test.com" // Mock логика
-
-                        MockResponse()
-                            .setResponseCode(200)
-                            .setBody("""{"exists":$exists}""")
-                    } catch (e: Exception) {
-                        MockResponse().setResponseCode(400).setBody("""{"error":"Invalid request"}""")
-                    }
-                }
-            }
-
-            mockWebServer!!.start(MOCK_SERVER_PORT)
-            useMockServer = true
-            Log.i("ServiceLocator", "✅ MockWebServer запущен на $MOCK_SERVER_PORT")
-        } catch (e: Exception) {
-            Log.e("ServiceLocator", "❌ MockWebServer ошибка: ${e.message}")
-            useMockServer = false
-        }
-    }
 
     private fun createAuthApiService(): AuthApiService {
-        requireInitialized()
-        val client = if (useMockServer) createMockClient() else createRealClient()
-        val baseUrl = if (useMockServer) mockServerUrl else BACKEND_URL
+        Log.d("🔐 ServiceLocator", "🔨 Creating AuthApiService")
+        val client = createRealClient()
+        val baseUrl = BACKEND_URL
+        Log.d("🔐 ServiceLocator", "🌐 Auth baseUrl: $baseUrl")
 
         return Retrofit.Builder()
             .baseUrl(baseUrl)
@@ -180,18 +107,6 @@ object ServiceLocator {
             .create(AuthApiService::class.java)
     }
 
-    private fun createMockClient(): OkHttpClient {
-        return OkHttpClient.Builder()
-            .connectTimeout(3, TimeUnit.SECONDS)
-            .readTimeout(5, TimeUnit.SECONDS)
-            .writeTimeout(5, TimeUnit.SECONDS)
-            .addInterceptor { chain ->
-                Log.d("MockAPI", "📡 ${chain.request().url}")
-                chain.proceed(chain.request())
-            }
-            .addInterceptor(AuthInterceptor(tokenManager) { mockServerUrl })
-            .build()
-    }
 
     private fun createRealClient(): OkHttpClient {
         return OkHttpClient.Builder()
@@ -199,15 +114,24 @@ object ServiceLocator {
             .readTimeout(15, TimeUnit.SECONDS)
             .writeTimeout(15, TimeUnit.SECONDS)
             .addInterceptor { chain ->
-                Log.d("RealAPI", "🌐 ${chain.request().url}")
-                chain.proceed(chain.request())
+                val request = chain.request()
+                Log.d("RealAPI", "➡️ ${request.method} ${request.url}")
+
+                val response = chain.proceed(request)
+
+                // ✅ УДАЛИЛ response.body?.string()!
+                Log.d("RealAPI", "⬅️ ${response.code} | Body: [не читаем body]")
+
+                response  // ← Body теперь доступен для Gson!
             }
             .addInterceptor(AuthInterceptor(tokenManager) { BACKEND_URL })
             .addInterceptor(NetworkMonitorInterceptor(appContext))
             .build()
     }
 
-    private fun createApiClient(): OkHttpClient = if (useMockServer) createMockClient() else createRealClient()
+
+
+    private fun createApiClient(): OkHttpClient = createRealClient()
 
     suspend fun testServerConnectivity(): Boolean {
         return try {
@@ -227,27 +151,8 @@ object ServiceLocator {
         }
     }
 
-    suspend fun switchToRealServer() {
-        if (!useMockServer || mockWebServer == null) return
 
-        if (testServerConnectivity()) {
-            useMockServer = false
-            Log.i("ServiceLocator", "✅ Переключение на реальный сервер")
-            authApiService = createAuthApiService()
-            authRepository = AuthRepository(authApiService, tokenManager)
-        }
-    }
 
-    fun stopMockServer() {
-        try {
-            mockWebServer?.shutdown()
-            mockWebServer = null
-            useMockServer = false
-            Log.i("ServiceLocator", "🛑 MockWebServer остановлен")
-        } catch (e: Exception) {
-            Log.e("ServiceLocator", "Ошибка остановки: ${e.message}")
-        }
-    }
 
     private fun requireInitialized(): Unit =
         if (!this::appContext.isInitialized) {

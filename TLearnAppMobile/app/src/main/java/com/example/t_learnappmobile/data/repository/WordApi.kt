@@ -1,7 +1,9 @@
 package com.example.t_learnappmobile.data.repository
 
-import com.example.t_learnappmobile.domain.model.ListWordResponse
-import com.example.t_learnappmobile.domain.model.StatQueueDto
+import ListWordResponse
+import StatQueueDto
+
+
 import retrofit2.Response
 import retrofit2.http.*
 
@@ -16,7 +18,8 @@ interface WordApi {
     suspend fun getWordsByCategory(
         @Header("Authorization") authorization: String,
         @Path("categoryId") categoryId: Long
-    ): Response<ListWordResponse>
+    ): Response<ListWordResponse>  // ✅ ListWordResponse (с words: List<WordResponse>)
+
 
     @PUT("stats/complete")
     suspend fun completeWord(

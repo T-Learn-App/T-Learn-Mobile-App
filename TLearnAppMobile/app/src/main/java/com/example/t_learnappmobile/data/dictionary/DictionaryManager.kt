@@ -8,7 +8,6 @@ import com.example.t_learnappmobile.data.statistics.DailyStats
 import java.text.SimpleDateFormat
 import java.util.*
 import com.example.t_learnappmobile.data.statistics.DailyStatsDao
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -21,17 +20,20 @@ class DictionaryManager(private val context: Context) {
         context.getSharedPreferences("dictionary_prefs", Context.MODE_PRIVATE)
     private val statsDao: DailyStatsDao by lazy { ServiceLocator.dailyStatsDao }
 
-    companion object {
-        private const val KEY_DICTIONARY_STATS = "dictionary_stats_"
-        private const val KEY_STATS_PREFIX = "stats_"
-    }
 
     private val _currentVocabularyId = MutableStateFlow<Int?>(null)
     val currentVocabularyIdFlow: StateFlow<Int?> = _currentVocabularyId
 
+    fun initVocabulary(userId: Int) {
+        val vocabId = getCurrentVocabularyId(userId)
+        _currentVocabularyId.value = vocabId
+    }
+
     fun setCurrentDictionary(userId: Int, dictionaryId: Int) {
+        val currentId = prefs.getInt(keyCurrentDictionary(userId), -1)
         prefs.edit { putInt(keyCurrentDictionary(userId), dictionaryId) }
-        _currentVocabularyId.value = getCurrentVocabularyId(userId)
+        val vocabId = getCurrentVocabularyId(userId)
+        _currentVocabularyId.value = vocabId
     }
 
     private fun keyCurrentDictionary(userId: Int?) = "current_dictionary_id_user$userId"
@@ -53,48 +55,14 @@ class DictionaryManager(private val context: Context) {
         val currentDict = getCurrentDictionary(userId)
         val entity = statsDao.getByDate(userId, currentDict.id, date)
         return if (entity != null) {
-            DailyStats(
-                date = entity.date,
-                newWords = entity.newWords,
-                inProgressWords = entity.inProgressWords,
-                learnedWords = entity.learnedWords
-            )
+            DailyStats(date = date, newWords = entity.newWords, inProgressWords = entity.inProgressWords, learnedWords = entity.learnedWords)
         } else {
             DailyStats(date = date)
         }
     }
 
-    suspend fun generateMockStats(userId: Int) {
-        val currentDict = getCurrentDictionary(userId)
-        val dates = mutableListOf<String>()
-        val dateCal = Calendar.getInstance()
-        dateCal.add(Calendar.DAY_OF_YEAR, -6)
-        repeat(7) {
-            dates.add(formatDate(dateCal.time))
-            dateCal.add(Calendar.DAY_OF_YEAR, 1)
-        }
 
-        val mockData = listOf(
-            Triple(dates[0], 3, 2),
-            Triple(dates[1], 5, 1),
-            Triple(dates[2], 2, 4),
-            Triple(dates[3], 4, 3),
-            Triple(dates[4], 1, 5),
-            Triple(dates[5], 6, 0),
-            Triple(dates[6], 0, 7)
-        )
 
-        mockData.forEach { (date, newWords, inProgress) ->
-            val stats = DailyStats(
-                date = date,
-                newWords = newWords,
-                inProgressWords = inProgress,
-                learnedWords = (1..newWords).random()
-            )
-            saveDailyStats(userId, stats)
-            delay(50)
-        }
-    }
 
     suspend fun getLastWeekStats(userId: Int): List<DailyStats> {
         val currentDict = getCurrentDictionary(userId)
@@ -104,6 +72,7 @@ class DictionaryManager(private val context: Context) {
         val sixDaysAgo = formatDate(cal.time)
 
         val entities = statsDao.getStatsForPeriod(userId, currentDict.id, sixDaysAgo, today)
+        
         val entityMap = entities.associateBy { it.date }
 
         val dates = mutableListOf<String>()
@@ -125,19 +94,6 @@ class DictionaryManager(private val context: Context) {
         }
     }
 
-    suspend fun getWeekLabel(userId: Int): String {
-        val week = getLastWeekStats(userId)
-        if (week.isEmpty()) return ""
-        val first = week.first().date
-        val last = week.last().date
-        val inFmt = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val outFmt = SimpleDateFormat("dd.MM", Locale.getDefault())
-        return try {
-            "${outFmt.format(inFmt.parse(first)!!)} - ${outFmt.format(inFmt.parse(last)!!)}"
-        } catch (e: Exception) {
-            ""
-        }
-    }
 
     suspend fun clearCurrentDictionaryStats(userId: Int) {
         val currentDict = getCurrentDictionary(userId)
@@ -153,15 +109,6 @@ class DictionaryManager(private val context: Context) {
         return SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(date)
     }
 
-    fun getDictionaryName(dictionaryId: Long): String {
-        return getDictionaries().find { it.id.toLong() == dictionaryId }?.name ?: "Неизвестный словарь"
-    }
-
-
-    suspend fun getTotalLearnedWords(userId: Int): Int {
-        val currentDict = getCurrentDictionary(userId)
-        return (currentDict.wordsCount * 0.2).toInt().coerceAtLeast(2)
-    }
 
     fun getDictionaries(): List<Dictionary> {
         return listOf(
@@ -170,21 +117,21 @@ class DictionaryManager(private val context: Context) {
                 vocabularyId = 1,
                 name = "Conversational",
                 description = "Разговорные слова",
-                wordsCount = 25
+                wordsCount = 22
             ),
             Dictionary(
                 id = 2,
                 vocabularyId = 2,
                 name = "Technologies",
                 description = "Технологии",
-                wordsCount = 35
+                wordsCount = 22
             ),
             Dictionary(
                 id = 3,
                 vocabularyId = 3,
                 name = "Slang",
                 description = "Слэнг",
-                wordsCount = 20
+                wordsCount = 22
             )
         )
     }

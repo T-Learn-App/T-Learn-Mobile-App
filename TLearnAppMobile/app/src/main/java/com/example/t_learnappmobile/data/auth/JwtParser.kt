@@ -1,13 +1,12 @@
-// data/auth/JwtParser.kt
 import android.util.Base64
 import org.json.JSONObject
-import java.lang.IllegalArgumentException
+
 
 object JwtParser {
 
     fun decodePayload(token: String): Map<String, Any?>? {
         return try {
-            val payload = token.split(".")[1]  // Берем вторую часть
+            val payload = token.split(".")[1]
             val decodedPayload = decodeBase64(payload.padEnd(paddingLength(payload), '='))
             JSONObject(decodedPayload).toMap()
         } catch (e: Exception) {

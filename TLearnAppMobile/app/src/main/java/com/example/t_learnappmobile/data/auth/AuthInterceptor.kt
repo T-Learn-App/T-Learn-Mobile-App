@@ -1,6 +1,5 @@
 package com.example.t_learnappmobile.data.auth
 
-
 import android.util.Log
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.runBlocking
@@ -9,6 +8,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
+import org.json.JSONObject
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
@@ -24,42 +24,30 @@ class AuthInterceptor(
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
         val path = originalRequest.url.encodedPath
-        Log.d("🔐 Interceptor", "🌐 ${originalRequest.method} $path")
 
-        // ✅ Пропускаем auth endpoints
         if (path.contains("auth")) {
-            Log.d("🔐 Interceptor", "⏭️ Skip auth")
             return chain.proceed(originalRequest)
         }
 
         val currentToken = getTokenSync()
-        Log.d("🔐 Interceptor", "🔑 Token: ${if (currentToken.isNullOrEmpty()) "EMPTY" else "OK"}")
 
         if (currentToken.isNullOrEmpty()) {
             return chain.proceed(originalRequest)
         }
 
-        if (currentToken.contains("mock-token")) {
-            Log.d("🔐 Interceptor", "🎭 Mock token")
-            val requestWithToken = addTokenToRequest(originalRequest, currentToken)
-            return chain.proceed(requestWithToken)
-        }
-
-        val requestWithToken = addTokenToRequest(originalRequest, currentToken)
+        var requestWithToken = addTokenToRequest(originalRequest, currentToken)
+        Log.e("AuthInterceptor", "!!! Authorization header: '${requestWithToken.header("Authorization")}'")
         var response = chain.proceed(requestWithToken)
 
         if (response.code == 401) {
-            Log.w("🔐 Interceptor", "⚠️ 401 → refresh")
             response.close()
             val newToken = refreshAccessTokenSync()
             if (!newToken.isNullOrEmpty()) {
-                Log.d("🔐 Interceptor", "✅ Refresh OK")
-                val newRequest = addTokenToRequest(originalRequest, newToken)
-                response = chain.proceed(newRequest)
+                requestWithToken = addTokenToRequest(originalRequest, newToken)
+                response = chain.proceed(requestWithToken)
             }
         }
 
-        Log.d("🔐 Interceptor", "⬅️ ${response.code}")
         return response
     }
 
@@ -72,9 +60,7 @@ class AuthInterceptor(
     }
 
     private fun refreshAccessTokenSync(): String? = refreshLock.withLock {
-        Log.d("🔐 Interceptor", "🔄 Refresh sync")
         val refreshToken = getRefreshTokenSync() ?: return null
-
         return performTokenRefresh(refreshToken)
     }
 
@@ -87,16 +73,16 @@ class AuthInterceptor(
             val body = """{"refreshToken": "$refreshToken"}""".toRequestBody(
                 "application/json".toMediaType()
             )
+
             val request = okhttp3.Request.Builder()
                 .url(getBaseUrl() + "auth/token/refresh")
                 .post(body)
                 .build()
 
             val response = client.newCall(request).execute()
-            Log.d("🔐 Interceptor", "📡 Refresh: ${response.code}")
 
             if (response.isSuccessful) {
-                val json = org.json.JSONObject(response.body?.string() ?: "{}")
+                val json = JSONObject(response.body?.string() ?: "{}")
                 val newAccess = json.optString("accessToken")
                 if (newAccess.isNotEmpty()) {
                     runBlocking {
@@ -107,14 +93,15 @@ class AuthInterceptor(
             }
             null
         } catch (e: Exception) {
-            Log.e("🔐 Interceptor", "💥 Refresh failed", e)
+            Log.e("AuthInterceptor", "Refresh failed", e)
             null
         }
     }
 
     private fun addTokenToRequest(request: Request, token: String): Request {
+        val cleanToken = token.trim()
         return request.newBuilder()
-            .header("Authorization", "Bearer $token")
+            .header("Authorization", "Bearer $cleanToken")
             .build()
     }
 }

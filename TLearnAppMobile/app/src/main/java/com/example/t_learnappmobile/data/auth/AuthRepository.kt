@@ -1,22 +1,20 @@
 package com.example.t_learnappmobile.data.auth
 
 
-import android.util.Log
 import com.example.t_learnappmobile.data.auth.models.LoginRequest
 import com.example.t_learnappmobile.presentation.auth.AuthState
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withTimeoutOrNull
-// AuthRepository.kt - НОВАЯ ВЕРСИЯ
+import android.util.Log
+
 class AuthRepository(
     private val apiService: AuthApiService,
     private val tokenManager: TokenManager
 ) {
     companion object {
         private const val SERVER_TIMEOUT_MS = 8000L
-        private const val MOCK_USER_ID = 1L
     }
 
-    // ✅ ВАЛИДАЦИЯ ПЕРЕД запросом
     private fun validateLogin(email: String, password: String): AuthState? {
         if (email.isBlank()) return AuthState.Error("Почта не может быть пустой")
         if (!email.contains("@")) return AuthState.Error("Введите корректную почту")
@@ -25,40 +23,45 @@ class AuthRepository(
         return null
     }
 
-    suspend fun login(email: String, password: String): AuthState {
-        Log.d("🔐 AuthRepo", "🚀 LOGIN START: email=$email")
+    private fun validateRegister(email: String, password: String, firstName: String, lastName: String): AuthState? {
+        val loginValidation = validateLogin(email, password)
+        if (loginValidation != null) return loginValidation
+        if (firstName.isBlank()) return AuthState.Error("Имя не может быть пустым")
+        if (lastName.isBlank()) return AuthState.Error("Фамилия не может быть пустой")
+        return null
+    }
 
-        // ✅ 1. CLIENT VALIDATION
+    suspend fun login(email: String, password: String): AuthState {
+
         val validationError = validateLogin(email, password)
         if (validationError != null) {
-            Log.w("🔐 AuthRepo", "❌ Client validation failed")
             return validationError
         }
 
         return try {
-            // 🔥 2. Пробуем реальный сервер (БЕЗ MOCK!)
             val serverResult = withTimeoutOrNull(SERVER_TIMEOUT_MS) {
-                Log.d("🔐 AuthRepo", "📤 POST /auth/login → $email")
-                val request = LoginRequest(email, password)
+                val request = LoginRequest(email, password, null, null)
                 val response = apiService.login(request)
+                Log.e("AuthRepo", "Response code: ${response.code()}")
+                val body = response.body()
+                val error = response.errorBody()?.string()
+                Log.e("AuthRepo", "Body: $body")
+                Log.e("AuthRepo", "Error: $error")
 
-                Log.d("🔐 AuthRepo", "📡 Response: ${response.code()} | Body: ${response.body()}")
+                val auth = response.body()
+                Log.e("AuthRepo", "!!! RAW TOKEN FROM SERVER: '${auth?.accessToken}'")
 
-                // ✅ СТРОГАЯ ПРОВЕРКА СЕРВЕРА
                 when (response.code()) {
                     200 -> {
                         val auth = response.body()
                         if (auth?.accessToken.isNullOrEmpty()) {
-                            Log.e("🔐 AuthRepo", "❌ 200 но токен пустой!")
                             return@withTimeoutOrNull AuthState.Error("Ошибка сервера: нет токена")
                         }
 
-                        Log.d("🔐 AuthRepo", "✅ TOKENS: access=${auth!!.accessToken.take(20)}...")
-                        tokenManager.saveTokens(auth.accessToken, auth.refreshToken)
+                        tokenManager.saveTokens(auth!!.accessToken, auth.refreshToken)
 
                         val userId = tokenManager.getUserId()
                         val userEmail = tokenManager.getUserEmail()
-                        Log.d("🔐 AuthRepo", "👤 User: id=$userId, email=$userEmail")
 
                         AuthState.Success(userId = userId ?: 1L, email = userEmail ?: email)
                     }
@@ -67,43 +70,89 @@ class AuthRepository(
                     403 -> AuthState.Error("Аккаунт заблокирован")
                     429 -> AuthState.Error("Слишком много попыток. Попробуйте позже")
                     else -> {
-                        Log.w("🔐 AuthRepo", "❌ Server error: ${response.code()}")
-                        null  // Fallback timeout
+                        null
                     }
                 }
             }
 
-            // ✅ 3. Если сервер не ответил → ОШИБКА (БЕЗ MOCK!)
             serverResult ?: AuthState.Error("Сервер недоступен. Проверьте интернет")
 
         } catch (e: Exception) {
-            Log.e("🔐 AuthRepo", "💥 NETWORK ERROR: ${e.message}", e)
             AuthState.Error("Ошибка сети. Проверьте подключение")
         }
     }
-    // В AuthRepository.kt добавь/исправь:
+
+    suspend fun register(email: String, password: String, firstName: String, lastName: String): AuthState {
+
+
+        val validationError = validateRegister(email, password, firstName, lastName)
+        if (validationError != null) {
+            return validationError
+        }
+
+        return try {
+            val serverResult = withTimeoutOrNull(SERVER_TIMEOUT_MS) {
+
+                val request = LoginRequest(email, password, firstName, lastName)
+                val response = apiService.login(request)
+                Log.e("AuthRepo", "Response code: ${response.code()}")
+                val body = response.body()
+                val error = response.errorBody()?.string()
+                Log.e("AuthRepo", "Body: $body")
+                Log.e("AuthRepo", "Error: $error")
+
+
+
+                when (response.code()) {
+                    200, 201 -> {
+                        val auth = response.body()
+                        if (auth?.accessToken.isNullOrEmpty()) {
+
+                            return@withTimeoutOrNull AuthState.Error("Ошибка сервера: нет токена")
+                        }
+
+
+                        tokenManager.saveTokens(auth.accessToken, auth.refreshToken)
+
+                        val userId = tokenManager.getUserId()
+                        val userEmail = tokenManager.getUserEmail()
+
+
+                        AuthState.Success(userId = userId ?: 1L, email = userEmail ?: email)
+                    }
+                    400 -> AuthState.Error("Пользователь с такой почтой уже существует")
+                    409 -> AuthState.Error("Пользователь уже существует")
+                    422 -> AuthState.Error("Неверные данные для регистрации")
+                    429 -> AuthState.Error("Слишком много попыток. Попробуйте позже")
+                    else -> {
+
+                        null
+                    }
+                }
+            }
+
+            serverResult ?: AuthState.Error("Сервер недоступен. Проверьте интернет")
+
+        } catch (e: Exception) {
+            AuthState.Error("Ошибка сети. Проверьте подключение")
+        }
+    }
+
     suspend fun logout(): AuthState {
-        Log.d("🔐 AuthRepo", "🚪 LOGOUT")
         tokenManager.clearTokens()
-        Log.d("🔐 AuthRepo", "✅ Tokens cleared")
         return AuthState.LoggedOut
     }
-    // В AuthRepository.kt добавь/проверь наличие:
+
     suspend fun checkAuthState(): AuthState {
-        Log.d("🔐 AuthRepo", "🔍 checkAuthState()")
         val token = tokenManager.getAccessToken().firstOrNull()
-        Log.d("🔐 AuthRepo", "📱 Token: ${if (token.isNullOrEmpty()) "EMPTY" else "OK"}")
+
 
         return if (token.isNullOrEmpty()) {
-            Log.d("🔐 AuthRepo", "📴 Logged OUT")
             AuthState.LoggedOut
         } else {
             val userId = tokenManager.getUserId()
             val userEmail = tokenManager.getUserEmail()
-            Log.d("🔐 AuthRepo", "✅ Logged IN: id=$userId, email=$userEmail")
             AuthState.Success(userId = userId ?: 1L, email = userEmail ?: "unknown")
         }
     }
-
-
 }

@@ -1,8 +1,12 @@
 package com.example.t_learnappmobile.presentation.auth
 
 import android.app.Application
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.t_learnappmobile.data.repository.ServiceLocator
 import com.example.t_learnappmobile.data.repository.ServiceLocator.authRepository
@@ -10,15 +14,64 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-class RegistrationViewModel : ViewModel() {
+class RegistrationViewModel(application: Application) : AndroidViewModel(application) {
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
     val authState: StateFlow<AuthState> = _authState
 
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading
+
+    private val _isNetworkAvailable = MutableStateFlow(true)
+    val isNetworkAvailable: StateFlow<Boolean> = _isNetworkAvailable
+
+    private val connectivityManager = application.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            _isNetworkAvailable.value = true
+        }
+
+        override fun onLost(network: Network) {
+            _isNetworkAvailable.value = false
+        }
+
+        override fun onCapabilitiesChanged(
+            network: Network,
+            networkCapabilities: NetworkCapabilities
+        ) {
+            val hasInternet = networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                    networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            _isNetworkAvailable.value = hasInternet
+        }
+    }
+
+    init {
+        registerNetworkCallback()
+    }
+
+    private fun registerNetworkCallback() {
+        val networkRequest = NetworkRequest.Builder()
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .build()
+        connectivityManager.registerNetworkCallback(networkRequest, networkCallback)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        connectivityManager.unregisterNetworkCallback(networkCallback)
+    }
+
     fun register(email: String, password: String, firstName: String, lastName: String) {
         viewModelScope.launch {
+            if (!_isNetworkAvailable.value) {
+                _authState.value = AuthState.Error("Нет соединения с интернетом")
+                return@launch
+            }
+
             _authState.value = AuthState.Loading
-            // 🔥 ТОТ ЖЕ login() — бэкенд сам зарегистрирует!
-            val result = ServiceLocator.authRepository.login(email, password)
+            _isLoading.value = true
+            val result = ServiceLocator.authRepository.register(email, password, firstName, lastName)
+            _isLoading.value = false
             _authState.value = result
         }
     }

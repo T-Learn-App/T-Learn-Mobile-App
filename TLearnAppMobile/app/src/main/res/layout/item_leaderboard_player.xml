@@ -17,14 +17,7 @@
         android:textSize="18sp"
         android:textStyle="bold" />
 
-    <!-- Аватар -->
-    <ImageView
-        android:id="@+id/avatarImage"
-        android:layout_width="32dp"
-        android:layout_height="32dp"
-        android:layout_marginStart="12dp"
-        android:background="@drawable/gray_button_rounded"
-        android:scaleType="centerCrop" />
+
 
     <!-- Имя -->
     <TextView

@@ -7,6 +7,7 @@ import androidx.core.content.edit
 import com.example.t_learnappmobile.data.dictionary.DictionaryManager
 import com.example.t_learnappmobile.data.repository.ServiceLocator
 import kotlinx.coroutines.flow.firstOrNull
+
 class SettingsManager(private val context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("app_settings", Context.MODE_PRIVATE)
     private val dictionaryManager = DictionaryManager(context)
@@ -35,9 +36,25 @@ class SettingsManager(private val context: Context) {
     fun getFirstName(): String = prefs.getString("user_first_name", "") ?: ""
     fun getLastName(): String = prefs.getString("user_last_name", "") ?: ""
 
-    suspend fun updateUserProfile(firstName: String, lastName: String) {
+    suspend fun updateUserProfile(firstName: String, lastName: String): Boolean {
+
         saveUserProfile(firstName, lastName)
 
+
+        return try {
+            val accessToken = ServiceLocator.tokenManager.getAccessToken().firstOrNull()
+            if (accessToken != null) {
+                val response = ServiceLocator.userApiService.updateProfile(
+                    "Bearer $accessToken",
+                    com.example.t_learnappmobile.data.user.UserProfileUpdateRequest(firstName, lastName)
+                )
+                response.isSuccessful
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            false
+        }
     }
 
     fun getDictionaryManager(): DictionaryManager = dictionaryManager

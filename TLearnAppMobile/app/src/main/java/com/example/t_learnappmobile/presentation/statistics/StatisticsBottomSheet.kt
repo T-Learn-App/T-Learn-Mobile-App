@@ -1,6 +1,7 @@
 package com.example.t_learnappmobile.presentation.statistics
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -8,17 +9,16 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import com.example.t_learnappmobile.databinding.FragmentStatisctisBinding
+import com.example.t_learnappmobile.databinding.FragmentStatisticsBinding
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import kotlinx.coroutines.launch
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.example.t_learnappmobile.R
 import com.example.t_learnappmobile.data.leaderboard.LeaderboardPlayer
 import com.example.t_learnappmobile.presentation.statistics.LeaderboardAdapter
 class StatisticsBottomSheet : BottomSheetDialogFragment() {
     private lateinit var leaderboardAdapter: LeaderboardAdapter
 
-    private var _binding: FragmentStatisctisBinding? = null
+    private var _binding: FragmentStatisticsBinding? = null
     private val binding get() = _binding!!
 
     private val viewModel: StatisticsViewModel by viewModels()
@@ -28,7 +28,7 @@ class StatisticsBottomSheet : BottomSheetDialogFragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = FragmentStatisctisBinding.inflate(inflater, container, false)
+        _binding = FragmentStatisticsBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -71,23 +71,39 @@ class StatisticsBottomSheet : BottomSheetDialogFragment() {
                 launch {
                     viewModel.weekStats.collect { stats ->
                         binding.statsChart.setStats(stats)
+                        binding.statsChart.post {
+                            binding.statsChart.invalidate()
+                        }
                     }
                 }
                 launch {
                     viewModel.leaderboardPlayers.collect { players ->
-                        leaderboardAdapter = LeaderboardAdapter(players)
-                        binding.leaderboardRecyclerView.adapter = leaderboardAdapter
+                        leaderboardAdapter.updatePlayers(players)
                     }
                 }
 
                 launch {
                     viewModel.yourPosition.collect { yourPos ->
-                        yourPos?.let {
-                            binding.yourPositionText.text = "#${it.position}"
-                            binding.yourNameText.text = it.name
-                            binding.yourScoreText.text = it.score.toString()
-                            binding.yourAvatarImage.setImageResource(R.drawable.gray_button_rounded)
+                        if (yourPos != null && yourPos.position > 0) {
+                            binding.yourPositionText.text = "#${yourPos.position}"
+                            binding.yourNameText.text = yourPos.name
+                            binding.yourScoreText.text = yourPos.score.toString()
+                        } else {
+                            binding.yourPositionText.text = "#-"
+                            val email = com.example.t_learnappmobile.data.repository.ServiceLocator.tokenManager.getUserEmail() ?: "user@email.com"
+                            val displayName = email.split("@").first().replaceFirstChar { it.uppercase() }
+                            binding.yourNameText.text = displayName
+                            val score = viewModel.yourGameScore.value
+                            binding.yourScoreText.text = score.toString()
+
                         }
+                    }
+                }
+
+                launch {
+                    viewModel.yourGameScore.collect { score ->
+                        binding.yourGameScoreText.text = score.toString()
+
                     }
                 }
 

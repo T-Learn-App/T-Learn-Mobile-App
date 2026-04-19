@@ -27,21 +27,14 @@ interface GameResultDao {
     @SuppressWarnings(CURSOR_MISMATCH)
     @RewriteQueriesToDropUnusedColumns
     @Query("""
-        SELECT userId, COALESCE(SUM(sessionScore), 0) as totalScore 
-        FROM game_results 
-        GROUP BY userId 
-        ORDER BY totalScore DESC 
+        SELECT userId, COALESCE(SUM(sessionScore), 0) as totalScore
+        FROM game_results
+        GROUP BY userId
+        ORDER BY totalScore DESC
         LIMIT 10
     """)
     suspend fun getLeaderboardWithUserIds(): List<SimpleLeaderboardEntry>
 }
-
-
-data class UserLeaderboardInfo(
-    val userId: Int,
-    val totalScore: Int,
-    val position: Int
-)
 
 data class SimpleLeaderboardEntry(
     val userId: Int,

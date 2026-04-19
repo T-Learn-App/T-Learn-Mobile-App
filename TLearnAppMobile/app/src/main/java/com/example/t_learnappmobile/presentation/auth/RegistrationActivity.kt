@@ -40,10 +40,13 @@ class RegistrationActivity : AppCompatActivity() {
                 when (state) {
                     is AuthState.Loading -> {
                         binding.btnSendCode.isEnabled = false
+                        binding.loadingOverlay.visibility = android.view.View.VISIBLE
+                        binding.noNetworkOverlay.visibility = android.view.View.GONE
                     }
 
                     is AuthState.Success -> {
                         binding.btnSendCode.isEnabled = true
+                        binding.loadingOverlay.visibility = android.view.View.GONE
                         val intent = Intent(this@RegistrationActivity, MainActivity::class.java)
                         intent.putExtra("SKIP_AUTH_CHECK", true)
                         startActivity(intent)
@@ -52,13 +55,30 @@ class RegistrationActivity : AppCompatActivity() {
 
                     is AuthState.Error -> {
                         binding.btnSendCode.isEnabled = true
-                        Toast.makeText(this@RegistrationActivity, state.message, Toast.LENGTH_LONG).show()
+                        binding.loadingOverlay.visibility = android.view.View.GONE
+                        if (state.message.contains("Нет соединения")) {
+                            binding.noNetworkOverlay.visibility = android.view.View.VISIBLE
+                        } else {
+                            Toast.makeText(this@RegistrationActivity, state.message, Toast.LENGTH_LONG).show()
+                        }
                     }
 
 
                     else -> {
                         binding.btnSendCode.isEnabled = true
+                        binding.loadingOverlay.visibility = android.view.View.GONE
                     }
+                }
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.isNetworkAvailable.collect { isAvailable ->
+                if (!isAvailable) {
+                    binding.noNetworkOverlay.visibility = android.view.View.VISIBLE
+                    binding.loadingOverlay.visibility = android.view.View.GONE
+                } else {
+                    binding.noNetworkOverlay.visibility = android.view.View.GONE
                 }
             }
         }
@@ -67,17 +87,17 @@ class RegistrationActivity : AppCompatActivity() {
     private fun setupListeners() {
         binding.passwordEditTextRegistration.addTextChangedListener(PasswordValidationWatcher())
         binding.emailEditTextRegistration.addTextChangedListener(InputValidationWatcher())
-        binding.firstNameEditText.addTextChangedListener(InputValidationWatcher())      // ✅ Новое
-        binding.lastNameEditText.addTextChangedListener(InputValidationWatcher())       // ✅ Новое
+        binding.firstNameEditText.addTextChangedListener(InputValidationWatcher())
+        binding.lastNameEditText.addTextChangedListener(InputValidationWatcher())
 
         binding.btnSendCode.setOnClickListener {
             val email = binding.emailEditTextRegistration.text.toString().trim()
             val password = binding.passwordEditTextRegistration.text.toString()
-            val firstName = binding.firstNameEditText.text.toString().trim()           // ✅ Новое
-            val lastName = binding.lastNameEditText.text.toString().trim()             // ✅ Новое
+            val firstName = binding.firstNameEditText.text.toString().trim()
+            val lastName = binding.lastNameEditText.text.toString().trim()
 
             if (isFormValid(email, password, firstName, lastName)) {
-                viewModel.register(email, password, firstName, lastName)              // ✅ 4 параметра
+                viewModel.register(email, password, firstName, lastName)
             } else {
                 Toast.makeText(this, getString(R.string.error_fill_all_fields_correct), Toast.LENGTH_SHORT).show()
             }
@@ -92,8 +112,8 @@ class RegistrationActivity : AppCompatActivity() {
     private fun isFormValid(email: String, password: String, firstName: String, lastName: String): Boolean {
         return email.isNotEmpty() &&
                 password.length >= 8 &&
-                firstName.isNotEmpty() &&                                                 // ✅ Новое
-                lastName.isNotEmpty() &&                                                  // ✅ Новое
+                firstName.isNotEmpty() &&
+                lastName.isNotEmpty() &&
                 binding.passwordInputLayoutRegistration.error == null
     }
 
@@ -112,13 +132,7 @@ class RegistrationActivity : AppCompatActivity() {
 
 
 
-    private fun showErrorDialog(message: String) {
-        android.app.AlertDialog.Builder(this)
-            .setTitle(getString(R.string.error_title))
-            .setMessage(message)
-            .setPositiveButton(getString(R.string.dialog_ok)) { _, _ -> }
-            .show()
-    }
+
 
     private inner class PasswordValidationWatcher : TextWatcher {
         override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}

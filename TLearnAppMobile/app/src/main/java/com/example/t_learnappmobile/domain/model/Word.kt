@@ -37,12 +37,3 @@ data class Word (
     val isLearned: Boolean = false,
     val translationDirection: TranslationDirection = TranslationDirection.ENGLISH_TO_RUSSIAN,
 )
-
-data class VocabularyStats(
-    val vocabularyId: Int,
-
-    val alreadyKnown: Int,
-    val memorized: Int,
-
-    val inProgress: Int
-)

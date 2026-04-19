@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.*
 import android.util.AttributeSet
+import android.util.Log
 import android.view.View
 import com.example.t_learnappmobile.data.statistics.DailyStats
 import androidx.core.graphics.toColorInt
@@ -33,34 +34,67 @@ class StatsChartView @JvmOverloads constructor(
 
     fun setStats(stats: List<DailyStats>) {
         statsList = stats
+
         invalidate()
+    }
+
+    @SuppressLint("DrawAllocation")
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+
+        val width = MeasureSpec.getSize(widthMeasureSpec)
+        val heightMode = MeasureSpec.getMode(heightMeasureSpec)
+        val height = if (heightMode == MeasureSpec.UNSPECIFIED) {
+            200
+        } else {
+            MeasureSpec.getSize(heightMeasureSpec)
+        }
+        setMeasuredDimension(width, height)
     }
 
     @SuppressLint("DrawAllocation")
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        if (statsList.isEmpty()) return
+        if (statsList.isEmpty()) {
+            Log.d("StatsChartView", "No stats to draw")
+            return
+        }
 
-        val contentWidth = width - paddingLeft - paddingRight
-        val contentHeight = height - paddingTop - paddingBottom - 40f
+        val w = width.toFloat()
+        val h = height.toFloat()
+        val paddingTop = paddingTop.toFloat()
+        val paddingBottom = paddingBottom.toFloat()
+        val contentWidth = w - paddingLeft - paddingRight
+        val contentHeight = h - paddingTop - paddingBottom - 70f
 
-        val maxValue = statsList.maxOf {
+        val maxValue = statsList.maxOfOrNull {
             maxOf(it.newWords, it.inProgressWords, it.learnedWords)
-        }.toFloat()
-        if (maxValue <= 0f) return
+        }?.toFloat() ?: 0f
 
-        val groupWidth = contentWidth.toFloat() / statsList.size
-        val barWidth = groupWidth * 0.2f
-        val centerYOffset = height - paddingBottom - 40f
 
+
+        if (maxValue <= 0f) {
+
+            textPaint.color = Color.LTGRAY
+            textPaint.textSize = 28f
+            canvas.drawText("Нет данных за неделю", w / 2f, h / 2f, textPaint)
+            return
+        }
+
+        val groupWidth = contentWidth / statsList.size
+        val barWidth = (groupWidth * 0.25f).coerceAtLeast(8f)
+        val centerYOffset = h - paddingBottom - 40f
+
+        textPaint.textAlign = Paint.Align.CENTER
+        textPaint.textSize = 22f
+        textPaint.color = Color.GRAY
 
         statsList.forEachIndexed { index, s ->
-            val centerX = paddingLeft + groupWidth * index + groupWidth / 2
+            val centerX = paddingLeft + groupWidth * index + groupWidth / 2f
 
             fun drawBar(value: Int, offsetMultiplier: Float, color: Int) {
-                if (value <= 0) return
+                if (value <= 0 || maxValue <= 0f) return
                 val barHeight = (value / maxValue) * contentHeight
-                val left = centerX + offsetMultiplier * barWidth - barWidth / 2
+                val left = centerX + offsetMultiplier * barWidth - barWidth / 2f
                 val right = left + barWidth
                 val top = centerYOffset - barHeight
                 rect.set(left, top, right, centerYOffset)
@@ -76,7 +110,7 @@ class StatsChartView @JvmOverloads constructor(
             } catch (_: Exception) {
                 s.date.takeLast(5)
             }
-            canvas.drawText(label, centerX, height - paddingBottom.toFloat(), textPaint)
+            canvas.drawText(label, centerX, centerYOffset + 25f, textPaint)
         }
     }
 }

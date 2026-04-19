@@ -1,4 +1,3 @@
-// data/auth/TokenManager.kt
 package com.example.t_learnappmobile.data.auth
 
 import android.content.Context
@@ -9,45 +8,46 @@ import kotlinx.coroutines.flow.flow
 import org.json.JSONObject
 
 class TokenManager(private val context: Context) {
-    private val prefs: SharedPreferences = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+    private val prefs: SharedPreferences =
+        context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
 
     suspend fun saveTokens(accessToken: String, refreshToken: String?) {
-        Log.d("🔐 TokenManager", "💾 saveTokens")
+        // Удаляем все пробельные символы (включая \n, \r, \t)
+        val cleanAccess = accessToken.replace(Regex("\\s"), "")
+        val cleanRefresh = refreshToken?.replace(Regex("\\s"), "")
         prefs.edit().apply {
-            putString("access_token", accessToken)
-            refreshToken?.let { putString("refresh_token", it) }
+            putString("access_token", cleanAccess)
+            cleanRefresh?.let { putString("refresh_token", it) }
         }.apply()
+        Log.d("TokenManager", "Saved clean token: ${cleanAccess.take(15)}...")
     }
 
     fun getAccessToken(): Flow<String?> = flow {
         val token = prefs.getString("access_token", null)
-        Log.d("🔐 TokenManager", "📱 getAccessToken: ${if (token.isNullOrEmpty()) "EMPTY" else "OK"}")
+            ?.replace(Regex("\\s"), "") // повторная очистка при чтении
         emit(token)
     }
 
     fun getRefreshToken(): Flow<String?> = flow {
         val token = prefs.getString("refresh_token", null)
-        Log.d("🔐 TokenManager", "🔄 getRefreshToken: ${if (token.isNullOrEmpty()) "EMPTY" else "OK"}")
+            ?.replace(Regex("\\s"), "")
         emit(token)
     }
 
     fun clearTokens() {
-        Log.d("🔐 TokenManager", "🗑️ clearTokens")
         prefs.edit().clear().apply()
     }
 
     fun getUserId(): Long? {
-        val token = prefs.getString("access_token", null) ?: return 1L
+        val token = prefs.getString("access_token", null) ?: return null
         if (token.contains("mock")) {
-            Log.d("🔐 TokenManager", "🎭 Mock → userId=1")
             return 1L
         }
         return try {
-            val payload = JwtParser.decodePayload(token) ?: return 1L
-            (payload["userId"] as? String)?.toLong() ?: 1L
+            val payload = JwtParser.decodePayload(token) ?: return null
+            (payload["userId"] as? String)?.toLong()
         } catch (e: Exception) {
-            Log.w("🔐 TokenManager", "JWT parse failed", e)
-            1L
+            null
         }
     }
 
@@ -57,9 +57,4 @@ class TokenManager(private val context: Context) {
         return payload?.get("email") as? String ?: payload?.get("sub") as? String
     }
 
-    fun isTokenExpired(token: String): Boolean {
-        val payload = JwtParser.decodePayload(token) ?: return true
-        val exp = payload["exp"] as? Long ?: return true
-        return System.currentTimeMillis() / 1000 > exp
-    }
 }

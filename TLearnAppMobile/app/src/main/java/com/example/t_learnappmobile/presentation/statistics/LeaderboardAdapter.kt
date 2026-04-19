@@ -10,8 +10,13 @@ import com.example.t_learnappmobile.R
 import com.example.t_learnappmobile.data.leaderboard.LeaderboardPlayer
 
 class LeaderboardAdapter(
-    private val players: List<LeaderboardPlayer>
+    private var players: List<LeaderboardPlayer>
 ) : RecyclerView.Adapter<LeaderboardAdapter.PlayerViewHolder>() {
+
+    fun updatePlayers(newPlayers: List<LeaderboardPlayer>) {
+        players = newPlayers
+        notifyDataSetChanged()
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PlayerViewHolder {
         val view = LayoutInflater.from(parent.context)
@@ -20,22 +25,21 @@ class LeaderboardAdapter(
     }
 
     override fun onBindViewHolder(holder: PlayerViewHolder, position: Int) {
-        holder.bind(players[position])
+        holder.bind(players[position], position + 1)
     }
 
     override fun getItemCount(): Int = players.size
 
     class PlayerViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val positionText: TextView = itemView.findViewById(R.id.positionText)
-        private val avatarImage: ImageView = itemView.findViewById(R.id.avatarImage)
+
         private val playerNameText: TextView = itemView.findViewById(R.id.playerNameText)
         private val playerScoreText: TextView = itemView.findViewById(R.id.playerScoreText)
 
-        fun bind(player: LeaderboardPlayer) {
-            positionText.text = "#${player.position}"
+        fun bind(player: LeaderboardPlayer, displayPosition: Int) {
+            positionText.text = "#$displayPosition"
             playerNameText.text = player.name
             playerScoreText.text = player.score.toString()
-            avatarImage.setImageResource(android.R.drawable.ic_menu_gallery) // заглушка
         }
     }
 }

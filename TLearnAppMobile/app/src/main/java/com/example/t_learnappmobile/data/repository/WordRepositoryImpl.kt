@@ -3,8 +3,7 @@ package com.example.t_learnappmobile.data.repository
 import StatQueueDto
 import WordResponse
 import android.util.Log
-import com.example.t_learnappmobile.data.repository.ServiceLocator
-
+import com.example.t_learnappmobile.domain.model.CardAction
 import com.example.t_learnappmobile.domain.repository.WordRepository
 import com.example.t_learnappmobile.model.CardType
 import com.example.t_learnappmobile.model.PartOfSpeech
@@ -13,12 +12,13 @@ import com.example.t_learnappmobile.model.Word
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.runBlocking
-import retrofit2.HttpException
 
 class WordRepositoryImpl(
     private val api: WordApi,
     private val storage: WordsStorage
 ) : WordRepository {
+
+    val apiService: WordApi get() = api
 
     override fun nextWord() {
         storage.nextWord()
@@ -48,39 +48,40 @@ class WordRepositoryImpl(
         storage.addWord(word)
     }
     override suspend fun fetchWords(categoryId: Long): List<Word> {
-        Log.d("WordRepository", "🔄 Загрузка слов для categoryId=$categoryId")
 
         val token = getAccessTokenSync()
-        Log.d("WordRepository", "🔑 Токен: ${if (token != null) "есть" else "нет"}")
 
         if (token == null) {
             throw Exception("Необходима авторизация")
         }
 
         try {
+
             val response = api.getWordsByCategory("Bearer $token", categoryId)
-            Log.d("WordRepository", "📡 Response: ${response.code()} ${response.body()}")
+
 
             if (!response.isSuccessful) {
-                throw Exception("HTTP ${response.code()}")
+                val errorBody = response.errorBody()?.string()
+
+                throw Exception("HTTP ${response.code()}: $errorBody")
             }
 
             val body = response.body()
-            val words = if (body != null) {
-                body.words.map { mapBackendWord(it) }
-            } else {
-                listOf(createTestWord()) // временный фоллбэк
-            }
 
-            Log.d("WordRepository", "✅ Загружено ${words.size} слов")
+            
+            val words = body?.words?.map { 
+                val mapped = mapBackendWord(it)
+                mapped
+            } ?: emptyList()
+
+
+
+            
             storage.updateWords(words)
             return words
 
         } catch (e: Exception) {
-            Log.e("WordRepository", "❌ Ошибка", e)
-            val testWords = listOf(createTestWord())
-            storage.updateWords(testWords)
-            return testWords
+            throw e
         }
     }
 
@@ -91,7 +92,7 @@ class WordRepositoryImpl(
             vocabularyId = w.category.toInt(),
             englishWord = w.word,
             transcription = w.transcription,
-            partOfSpeech = mapPartOfSpeech(w.partOfSpeech),  // ✅ Теперь НЕ null!
+            partOfSpeech = mapPartOfSpeech(w.partOfSpeech),
             russianTranslation = w.translation ?: "перевод",
             category = "Category ${w.category}",
             cardType = CardType.NEW,
@@ -110,64 +111,57 @@ class WordRepositoryImpl(
         else -> PartOfSpeech.INTERJECTION
     }
 
-    private fun createTestWord(): Word = Word(
-        id = 1,
-        vocabularyId = 1,
-        englishWord = "hello",
-        transcription = "/hɛˈloʊ/",
-        partOfSpeech = PartOfSpeech.NOUN,
-        russianTranslation = "привет",
-        category = "Category 1",
-        cardType = CardType.NEW,
-        repetitionStage = 0,
-        isLearned = false,
-        translationDirection = TranslationDirection.ENGLISH_TO_RUSSIAN
-    )
 
 
 
-    override suspend fun completeWord(wordId: Long): Boolean {
+    override suspend fun completeWord(wordId: Long, action: CardAction): Boolean {
         val success = try {
             val token = getAccessTokenSync() ?: return false
-            val response = api.completeWord("Bearer $token", StatQueueDto(wordId))
+            val request: CompleteStatsRequest = CompleteStatsRequest(
+                wordId = wordId,
+                isCorrect = action == CardAction.KNOW
+            )
+            val response = api.completeWord("Bearer $token", request)
             response.isSuccessful
         } catch (e: Exception) {
-            Log.e("WordRepository", "completeWord error", e)
+
             false
         }
-        if (success) {
-            updateStatsAfterWordCompletion(wordId)
-        }
+
+        updateStatsAfterWordCompletion(wordId, action)
         return success
     }
 
-    private suspend fun updateStatsAfterWordCompletion(wordId: Long) {
+    private suspend fun updateStatsAfterWordCompletion(wordId: Long, action: CardAction) {
         val currentWord = storage.getCurrentWord()
-        if (currentWord == null || currentWord.id != wordId) return
+        if (currentWord == null) {
+            return
+        }
 
         val userId = ServiceLocator.tokenManager.getUserId()?.toInt() ?: 0
         val dictionaryManager = ServiceLocator.dictionaryManager
         val today = dictionaryManager.formatTodayDate()
 
         val currentStats = dictionaryManager.getDailyStats(userId, today)
+        
+        val isKnow = action == CardAction.KNOW
+        val isNewWord = currentWord.cardType == CardType.NEW
+        
+        val updatedStats = if (isKnow) {
 
-        val updatedStats = when {
-            currentWord.cardType == CardType.NEW -> currentStats.copy(
-                learnedWords = currentStats.learnedWords + if (isKnowAction(wordId)) 1 else 0,
-                newWords = currentStats.newWords + if (!isKnowAction(wordId)) 1 else 0
+            currentStats.copy(
+                learnedWords = currentStats.learnedWords + 1,
+                newWords = if (isNewWord) currentStats.newWords + 1 else currentStats.newWords
             )
-            currentWord.cardType == CardType.ROTATION -> currentStats.copy(
-                learnedWords = currentStats.learnedWords + if (isKnowAction(wordId)) 1 else 0,
-                inProgressWords = currentStats.inProgressWords + if (!isKnowAction(wordId)) 1 else 0
+        } else {
+            currentStats.copy(
+                inProgressWords = currentStats.inProgressWords + 1,
+                newWords = if (isNewWord) currentStats.newWords + 1 else currentStats.newWords
             )
-            else -> currentStats
         }
 
         dictionaryManager.saveDailyStats(userId, updatedStats)
-    }
 
-    private fun isKnowAction(wordId: Long): Boolean {
-        return wordId % 2 == 0L
     }
 
     private suspend fun getAccessTokenSync(): String? =

@@ -49,7 +49,7 @@ class CardsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        wordViewModel = ViewModelProvider(this).get(WordViewModel::class.java)
+        wordViewModel = ViewModelProvider(this, WordViewModelFactory(requireActivity().application)).get(WordViewModel::class.java)
         logoutViewModel = ViewModelProvider(requireActivity()).get(LogoutViewModel::class.java)
         dictionaryManager = ServiceLocator.dictionaryManager
         observeViewModel()
@@ -61,9 +61,34 @@ class CardsFragment : Fragment() {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 wordViewModel.currentWord.collect { word ->
                     if (word == null) {
-                        binding.categoryText.setText(R.string.no_cards)
                         binding.knownButton.isEnabled = false
                         binding.unknownButton.isEnabled = false
+                        binding.wordText.text = ""
+                        binding.transcriptionText.text = ""
+                        binding.partOfSpeechText.text = ""
+                        binding.translationText.text = ""
+                        binding.wordLabel.visibility = View.GONE
+
+
+                        if (wordViewModel.isWordsEmpty.value) {
+
+                            binding.errorOverlay.visibility = View.VISIBLE
+                            binding.errorOverlayText.text = "Нет слов"
+                            binding.errorOverlayDetails.text = "Все слова изучены или сервер не вернул слова. Попробуйте выбрать другой словарь."
+                            binding.retryButton.text = "Выбрать словарь"
+                            binding.categoryText.text = ""
+                        } else if (wordViewModel.error.value?.isNotEmpty() == true) {
+
+                            binding.errorOverlay.visibility = View.VISIBLE
+                            binding.errorOverlayText.text = "Ошибка загрузки"
+                            binding.errorOverlayDetails.text = wordViewModel.error.value
+                            binding.retryButton.text = "Повторить"
+                            binding.categoryText.text = ""
+                        } else {
+
+                            binding.errorOverlay.visibility = View.GONE
+                            binding.categoryText.setText(R.string.no_cards)
+                        }
                         return@collect
                     }
 
@@ -135,7 +160,29 @@ class CardsFragment : Fragment() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 wordViewModel.isLoading.collect { isLoading ->
+                    if (isLoading) {
+                        binding.loadingOverlay.visibility = View.VISIBLE
+                        binding.errorOverlay.visibility = View.GONE
+                        binding.noNetworkOverlay.visibility = View.GONE
+                    } else {
+                        binding.loadingOverlay.visibility = View.GONE
+                    }
+                }
+            }
+        }
 
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                wordViewModel.isNetworkAvailable.collect { isAvailable ->
+                    if (!isAvailable) {
+                        binding.noNetworkOverlay.visibility = View.VISIBLE
+                        binding.errorOverlay.visibility = View.GONE
+                        binding.loadingOverlay.visibility = View.GONE
+                        binding.knownButton.isEnabled = false
+                        binding.unknownButton.isEnabled = false
+                    } else {
+                        binding.noNetworkOverlay.visibility = View.GONE
+                    }
                 }
             }
         }
@@ -143,12 +190,11 @@ class CardsFragment : Fragment() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 wordViewModel.error.collect { errorMessage ->
-                    errorMessage?.let {
-                        Toast.makeText(
-                            requireContext(),
-                            it,
-                            Toast.LENGTH_SHORT
-                        ).show()
+                    if (errorMessage != null && errorMessage.isNotEmpty()) {
+                        binding.errorOverlay.visibility = View.VISIBLE
+                        binding.errorOverlayDetails.text = errorMessage
+                    } else {
+                        binding.errorOverlay.visibility = View.GONE
                     }
                 }
             }
@@ -218,6 +264,23 @@ class CardsFragment : Fragment() {
         binding.gameButton.setOnClickListener {
             val gameFragment = GameFragment()
             gameFragment.show(parentFragmentManager, "GameFragment")
+        }
+        binding.retryButton.setOnClickListener {
+            if (wordViewModel.isWordsEmpty.value) {
+
+                binding.errorOverlay.visibility = View.GONE
+                val settingsSheet = SettingsBottomSheet()
+                settingsSheet.onDictionaryChanged = {
+                    wordViewModel.fetchWords()
+                }
+                settingsSheet.show(parentFragmentManager, SettingsBottomSheet.TAG)
+            } else {
+                binding.errorOverlay.visibility = View.GONE
+                lifecycleScope.launch {
+                    kotlinx.coroutines.delay(500)
+                    wordViewModel.fetchWords()
+                }
+            }
         }
     }
 

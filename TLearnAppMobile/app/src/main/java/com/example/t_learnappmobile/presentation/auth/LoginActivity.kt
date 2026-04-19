@@ -36,17 +36,41 @@ class LoginActivity : AppCompatActivity() {
         lifecycleScope.launch {
             viewModel.authState.collect { state ->
                 when (state) {
-                    AuthState.Loading -> binding.btnSendCode.isEnabled = false
+                    AuthState.Loading -> {
+                        binding.btnSendCode.isEnabled = false
+                        binding.loadingOverlay.visibility = android.view.View.VISIBLE
+                        binding.noNetworkOverlay.visibility = android.view.View.GONE
+                    }
                     is AuthState.Success -> {
                         binding.btnSendCode.isEnabled = true
+                        binding.loadingOverlay.visibility = android.view.View.GONE
                         startActivity(Intent(this@LoginActivity, MainActivity::class.java))
                         finish()
                     }
                     is AuthState.Error -> {
                         binding.btnSendCode.isEnabled = true
-                        Toast.makeText(this@LoginActivity, state.message, Toast.LENGTH_LONG).show()
+                        binding.loadingOverlay.visibility = android.view.View.GONE
+                        if (state.message.contains("Нет соединения")) {
+                            binding.noNetworkOverlay.visibility = android.view.View.VISIBLE
+                        } else {
+                            Toast.makeText(this@LoginActivity, state.message, Toast.LENGTH_LONG).show()
+                        }
                     }
-                    else -> binding.btnSendCode.isEnabled = true
+                    else -> {
+                        binding.btnSendCode.isEnabled = true
+                        binding.loadingOverlay.visibility = android.view.View.GONE
+                    }
+                }
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.isNetworkAvailable.collect { isAvailable ->
+                if (!isAvailable) {
+                    binding.noNetworkOverlay.visibility = android.view.View.VISIBLE
+                    binding.loadingOverlay.visibility = android.view.View.GONE
+                } else {
+                    binding.noNetworkOverlay.visibility = android.view.View.GONE
                 }
             }
         }
@@ -95,11 +119,5 @@ class LoginActivity : AppCompatActivity() {
         binding.btnSendCode.isEnabled = login.isNotEmpty() && password.isNotEmpty()
     }
 
-    private fun showErrorDialog(message: String) {
-        android.app.AlertDialog.Builder(this)
-            .setTitle(getString(R.string.error_title))
-            .setMessage(message)
-            .setPositiveButton(getString(R.string.dialog_ok)) { _, _ -> }
-            .show()
-    }
+
 }

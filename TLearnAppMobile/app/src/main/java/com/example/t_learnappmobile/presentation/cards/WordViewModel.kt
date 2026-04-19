@@ -1,6 +1,12 @@
 package com.example.t_learnappmobile.presentation.cards
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.t_learnappmobile.data.repository.ServiceLocator
 import com.example.t_learnappmobile.data.repository.ServiceLocator.storage
@@ -15,11 +21,12 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
-class WordViewModel : ViewModel() {
+class WordViewModel(application: Application) : AndroidViewModel(application) {
 
     private val dictionaryManager = ServiceLocator.dictionaryManager
-    private val tokenManager = ServiceLocator.tokenManager
+
     private val repository: WordRepository = ServiceLocator.wordRepository
+    private val connectivityManager = application.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
     private val _currentWord = MutableStateFlow<Word?>(null)
     val currentWord: StateFlow<Word?> = _currentWord
@@ -33,12 +40,49 @@ class WordViewModel : ViewModel() {
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
+    private val _isNetworkAvailable = MutableStateFlow(true)
+    val isNetworkAvailable: StateFlow<Boolean> = _isNetworkAvailable
+
+    private val _isWordsEmpty = MutableStateFlow(false)
+    val isWordsEmpty: StateFlow<Boolean> = _isWordsEmpty
+
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            _isNetworkAvailable.value = true
+        }
+
+        override fun onLost(network: Network) {
+            _isNetworkAvailable.value = false
+        }
+
+        override fun onCapabilitiesChanged(
+            network: Network,
+            networkCapabilities: NetworkCapabilities
+        ) {
+            val hasInternet = networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                    networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            _isNetworkAvailable.value = hasInternet
+        }
+    }
+
     init {
+        registerNetworkCallback()
         observeCurrentCard()
         observeDictionaryChanges()
         loadInitialWords()
     }
 
+    private fun registerNetworkCallback() {
+        val networkRequest = NetworkRequest.Builder()
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .build()
+        connectivityManager.registerNetworkCallback(networkRequest, networkCallback)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        connectivityManager.unregisterNetworkCallback(networkCallback)
+    }
 
     private fun observeCurrentCard() {
         viewModelScope.launch {
@@ -52,10 +96,11 @@ class WordViewModel : ViewModel() {
 
     private fun observeDictionaryChanges() {
         viewModelScope.launch {
+
             dictionaryManager.currentVocabularyIdFlow
                 .filterNotNull()
-                .distinctUntilChanged()
                 .collect { catId ->
+
                     loadWordsForCategory(catId.toLong())
                 }
         }
@@ -65,8 +110,13 @@ class WordViewModel : ViewModel() {
     private fun loadInitialWords() {
         viewModelScope.launch {
             val userId = getUserId()
+
             if (userId != null) {
+
+                dictionaryManager.initVocabulary(userId)
+
                 val initialCategory = dictionaryManager.getCurrentVocabularyId(userId).toLong()
+
                 loadWordsForCategory(initialCategory)
             }
         }
@@ -75,6 +125,7 @@ class WordViewModel : ViewModel() {
 
     fun fetchWords() {
         viewModelScope.launch {
+            _error.value = null
             val userId = getUserId() ?: return@launch
             val categoryId = dictionaryManager.getCurrentVocabularyId(userId).toLong()
             loadWordsForCategory(categoryId)
@@ -82,19 +133,39 @@ class WordViewModel : ViewModel() {
     }
 
     private suspend fun loadWordsForCategory(categoryId: Long) {
+
+
+        if (!_isNetworkAvailable.value) {
+
+            _error.value = "Нет соединения с интернетом"
+            _isLoading.value = false
+            return
+        }
+
         _isLoading.value = true
         _currentWord.value = null
         _error.value = null
 
         try {
-            val words = repository.fetchWords(categoryId)
-            storage.updateWords(words)
 
-            repository.nextWord()
+            val words = repository.fetchWords(categoryId)
+
+
+            _isWordsEmpty.value = words.isEmpty()
+
+            if (words.isNotEmpty()) {
+                storage.updateWords(words)
+
+
+                repository.nextWord()
+
+            }
         } catch (e: Exception) {
+
             _error.value = e.message ?: "Не удалось загрузить слова"
         } finally {
             _isLoading.value = false
+
         }
     }
 
@@ -113,7 +184,7 @@ class WordViewModel : ViewModel() {
 
     suspend fun onKnowCard() {
         val word = _currentWord.value ?: return
-        repository.completeWord(word.id)
+        repository.completeWord(word.id, CardAction.KNOW)
 
         val userId = getUserId() ?: return
         val today = formatTodayDate()
@@ -126,7 +197,7 @@ class WordViewModel : ViewModel() {
 
     suspend fun onDontKnowCard() {
         val word = _currentWord.value ?: return
-        repository.completeWord(word.id)
+        repository.completeWord(word.id, CardAction.DONT_KNOW)
 
         val userId = getUserId() ?: return
         val today = formatTodayDate()

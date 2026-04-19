@@ -214,20 +214,7 @@
                     android:orientation="vertical"
                     android:padding="20dp">
 
-                    <androidx.cardview.widget.CardView
-                        android:layout_width="80dp"
-                        android:layout_height="80dp"
-                        android:layout_gravity="center_horizontal"
-                        android:layout_marginBottom="16dp"
-                        app:cardCornerRadius="40dp"
-                        app:cardElevation="4dp">
-                        <ImageView
-                            android:id="@+id/avatarImage"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:scaleType="centerCrop"
-                            android:src="@drawable/gray_button_rounded" />
-                    </androidx.cardview.widget.CardView>
+
 
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/nameInputLayout"

@@ -9,12 +9,13 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.example.t_learnappmobile.R
 import com.example.t_learnappmobile.databinding.FragmentStatisticsBinding
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import kotlinx.coroutines.launch
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.example.t_learnappmobile.data.leaderboard.LeaderboardPlayer
-import com.example.t_learnappmobile.presentation.statistics.LeaderboardAdapter
+import com.example.t_learnappmobile.data.repository.ServiceLocator
+
 class StatisticsBottomSheet : BottomSheetDialogFragment() {
     private lateinit var leaderboardAdapter: LeaderboardAdapter
 
@@ -37,8 +38,13 @@ class StatisticsBottomSheet : BottomSheetDialogFragment() {
         setupUI()
         setupLeaderboard()
         observeViewModel()
+        viewModel.refreshStats()
     }
 
+    override fun onResume() {
+        super.onResume()
+        viewModel.refreshStats()
+    }
 
     private fun setupLeaderboard() {
         binding.leaderboardRecyclerView.layoutManager = LinearLayoutManager(requireContext())
@@ -46,11 +52,8 @@ class StatisticsBottomSheet : BottomSheetDialogFragment() {
         binding.leaderboardRecyclerView.adapter = leaderboardAdapter
     }
 
-
     private fun setupUI() {
         binding.btnClose.setOnClickListener { dismiss() }
-
-
     }
 
     private fun observeViewModel() {
@@ -81,6 +84,41 @@ class StatisticsBottomSheet : BottomSheetDialogFragment() {
                         leaderboardAdapter.updatePlayers(players)
                     }
                 }
+                launch {
+                    viewModel.yourPosition.collect { yourPos ->
+                        if (yourPos != null && yourPos.position > 0) {
+                            binding.yourPositionText.text = "#${yourPos.position}"
+                            binding.yourNameText.text = yourPos.name
+                            binding.yourScoreText.text = yourPos.score.toString()
+                        } else {
+                            binding.yourPositionText.text = "#-"
+                            val email =
+                                com.example.t_learnappmobile.data.repository.ServiceLocator.tokenManager.getUserEmail()
+                                    ?: "user@email.com"
+                            val displayName =
+                                email.split("@").first().replaceFirstChar { it.uppercase() }
+                            binding.yourNameText.text = displayName
+                            val score = viewModel.yourGameScore.value
+                            binding.yourScoreText.text = score.toString()
+                        }
+                    }
+                }
+                launch {
+                    viewModel.yourGameScore.collect { score ->
+                        binding.yourGameScoreText.text = score.toString()
+                    }
+                }
+                launch {
+                    viewModel.isLeaderboardLoading.collect { isLoading ->
+                        if (isLoading) {
+
+                            binding.leaderboardRecyclerView.visibility = View.GONE
+                        } else {
+
+                            binding.leaderboardRecyclerView.visibility = View.VISIBLE
+                        }
+                    }
+                }
 
                 launch {
                     viewModel.yourPosition.collect { yourPos ->
@@ -90,27 +128,20 @@ class StatisticsBottomSheet : BottomSheetDialogFragment() {
                             binding.yourScoreText.text = yourPos.score.toString()
                         } else {
                             binding.yourPositionText.text = "#-"
-                            val email = com.example.t_learnappmobile.data.repository.ServiceLocator.tokenManager.getUserEmail() ?: "user@email.com"
-                            val displayName = email.split("@").first().replaceFirstChar { it.uppercase() }
+                            val email =
+                                ServiceLocator.tokenManager.getUserEmail() ?: "user@email.com"
+                            val displayName =
+                                email.split("@").first().replaceFirstChar { it.uppercase() }
                             binding.yourNameText.text = displayName
                             val score = viewModel.yourGameScore.value
                             binding.yourScoreText.text = score.toString()
-
                         }
                     }
+
                 }
-
-                launch {
-                    viewModel.yourGameScore.collect { score ->
-                        binding.yourGameScoreText.text = score.toString()
-
-                    }
-                }
-
             }
         }
     }
-
 
     override fun onDestroyView() {
         super.onDestroyView()

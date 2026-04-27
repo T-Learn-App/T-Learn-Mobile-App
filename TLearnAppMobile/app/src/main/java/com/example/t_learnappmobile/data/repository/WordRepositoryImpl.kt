@@ -1,15 +1,12 @@
 package com.example.t_learnappmobile.data.repository
 
-import StatQueueDto
-import WordResponse
 import android.util.Log
-import com.example.t_learnappmobile.domain.model.CardAction
+import com.example.t_learnappmobile.domain.model.WordResponse
 import com.example.t_learnappmobile.domain.repository.WordRepository
 import com.example.t_learnappmobile.model.CardType
 import com.example.t_learnappmobile.model.PartOfSpeech
 import com.example.t_learnappmobile.model.TranslationDirection
 import com.example.t_learnappmobile.model.Word
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.runBlocking
 
@@ -18,73 +15,78 @@ class WordRepositoryImpl(
     private val storage: WordsStorage
 ) : WordRepository {
 
-    val apiService: WordApi get() = api
-
     override fun nextWord() {
         storage.nextWord()
     }
 
-    override fun getCurrentCardFlow(): Flow<Word?> {
-        return storage.currentCardFlow
-    }
+    override fun getCurrentCardFlow() = storage.currentCardFlow
 
-    override fun getCurrentCard(): Word? {
-        return storage.getCurrentWord()
-    }
+    override fun getCurrentCard() = storage.getCurrentWord()
 
-    override fun getNewWords(): List<Word> {
-        return storage.getNewWords()
-    }
+    override fun getNewWords() = storage.getNewWords()
 
-    override fun getLearnedWords(): List<Word> {
-        return storage.getLearnedWords()
-    }
+    override fun getLearnedWords() = storage.getLearnedWords()
 
-    override fun getRotationWords(): List<Word> {
-        return storage.getRotationWords()
-    }
+    override fun getRotationWords() = storage.getRotationWords()
 
-    override fun addWord(word: Word) {
-        storage.addWord(word)
-    }
+    override fun addWord(word: Word) = storage.addWord(word)
+
     override suspend fun fetchWords(categoryId: Long): List<Word> {
-
         val token = getAccessTokenSync()
+            ?: throw Exception("Необходима авторизация")
 
-        if (token == null) {
-            throw Exception("Необходима авторизация")
+        val response = api.getWordsByCategory("Bearer $token", categoryId)
+        if (!response.isSuccessful) {
+            throw Exception("HTTP ${response.code()}: ${response.errorBody()?.string()}")
         }
 
-        try {
+        val body = response.body()
+        val words = body?.words?.map { mapBackendWord(it) } ?: emptyList()
 
-            val response = api.getWordsByCategory("Bearer $token", categoryId)
+        storage.updateWords(words)
+        return words
+    }
 
+    override suspend fun fetchAllWords(): List<Word> {
+        val token = getAccessTokenSync()
+            ?: throw Exception("Необходима авторизация")
 
-            if (!response.isSuccessful) {
-                val errorBody = response.errorBody()?.string()
+        val response = api.getAllWords("Bearer $token")
+        if (!response.isSuccessful) {
+            throw Exception("HTTP ${response.code()}: ${response.errorBody()?.string()}")
+        }
 
-                throw Exception("HTTP ${response.code()}: $errorBody")
+        return response.body()?.words?.map { mapBackendWord(it) } ?: emptyList()
+    }
+
+    override suspend fun completeWord(wordId: Long): Boolean {
+        return try {
+            val token = getAccessTokenSync()
+            if (token == null) {
+                Log.e("WordRepository", "❌ Token is null")
+                return false
             }
 
-            val body = response.body()
+            Log.d("WordRepository", "📡 Calling completeWord API for wordId: $wordId")
 
-            
-            val words = body?.words?.map { 
-                val mapped = mapBackendWord(it)
-                mapped
-            } ?: emptyList()
+            val request = CompleteWordRequest(wordId = wordId)
+            val response = api.completeWord("Bearer $token", request)
 
+            Log.d("WordRepository", "Response code: ${response.code()}")
 
+            if (response.isSuccessful) {
+                Log.d("WordRepository", "✅ Word completed successfully: $wordId")
+            } else {
+                val errorBody = response.errorBody()?.string()
+                Log.e("WordRepository", "❌ Failed to complete word: ${response.code()} - $errorBody")
+            }
 
-            
-            storage.updateWords(words)
-            return words
-
+            response.isSuccessful
         } catch (e: Exception) {
-            throw e
+            Log.e("WordRepository", "❌ Exception in completeWord", e)
+            false
         }
     }
-
 
     private fun mapBackendWord(w: WordResponse): Word {
         return Word(
@@ -93,7 +95,7 @@ class WordRepositoryImpl(
             englishWord = w.word,
             transcription = w.transcription,
             partOfSpeech = mapPartOfSpeech(w.partOfSpeech),
-            russianTranslation = w.translation ?: "перевод",
+            russianTranslation = w.translation,
             category = "Category ${w.category}",
             cardType = CardType.NEW,
             repetitionStage = 0,
@@ -101,67 +103,14 @@ class WordRepositoryImpl(
             translationDirection = TranslationDirection.ENGLISH_TO_RUSSIAN
         )
     }
-
-    private fun mapPartOfSpeech(s: String): PartOfSpeech = when (s.lowercase()) {
+    private fun mapPartOfSpeech(s: String?): PartOfSpeech = when (s?.lowercase()) {
         "noun" -> PartOfSpeech.NOUN
         "adjective" -> PartOfSpeech.ADJECTIVE
         "verb" -> PartOfSpeech.VERB
         "pronoun" -> PartOfSpeech.PRONOUN
         "adverb" -> PartOfSpeech.ADVERB
+        null, "" -> PartOfSpeech.INTERJECTION
         else -> PartOfSpeech.INTERJECTION
-    }
-
-
-
-
-    override suspend fun completeWord(wordId: Long, action: CardAction): Boolean {
-        val success = try {
-            val token = getAccessTokenSync() ?: return false
-            val request: CompleteStatsRequest = CompleteStatsRequest(
-                wordId = wordId,
-                isCorrect = action == CardAction.KNOW
-            )
-            val response = api.completeWord("Bearer $token", request)
-            response.isSuccessful
-        } catch (e: Exception) {
-
-            false
-        }
-
-        updateStatsAfterWordCompletion(wordId, action)
-        return success
-    }
-
-    private suspend fun updateStatsAfterWordCompletion(wordId: Long, action: CardAction) {
-        val currentWord = storage.getCurrentWord()
-        if (currentWord == null) {
-            return
-        }
-
-        val userId = ServiceLocator.tokenManager.getUserId()?.toInt() ?: 0
-        val dictionaryManager = ServiceLocator.dictionaryManager
-        val today = dictionaryManager.formatTodayDate()
-
-        val currentStats = dictionaryManager.getDailyStats(userId, today)
-        
-        val isKnow = action == CardAction.KNOW
-        val isNewWord = currentWord.cardType == CardType.NEW
-        
-        val updatedStats = if (isKnow) {
-
-            currentStats.copy(
-                learnedWords = currentStats.learnedWords + 1,
-                newWords = if (isNewWord) currentStats.newWords + 1 else currentStats.newWords
-            )
-        } else {
-            currentStats.copy(
-                inProgressWords = currentStats.inProgressWords + 1,
-                newWords = if (isNewWord) currentStats.newWords + 1 else currentStats.newWords
-            )
-        }
-
-        dictionaryManager.saveDailyStats(userId, updatedStats)
-
     }
 
     private suspend fun getAccessTokenSync(): String? =

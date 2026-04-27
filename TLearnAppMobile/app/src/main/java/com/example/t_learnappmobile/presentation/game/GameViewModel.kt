@@ -9,25 +9,20 @@ import android.net.NetworkRequest
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.t_learnappmobile.data.game.GameResultEntity
+import com.example.t_learnappmobile.data.game.GameResultRequest
 import com.example.t_learnappmobile.data.repository.ServiceLocator
-import com.example.t_learnappmobile.data.repository.ServiceLocator.tokenManager
 import com.example.t_learnappmobile.domain.model.GameMode
 import com.example.t_learnappmobile.domain.model.GameWord
-import com.example.t_learnappmobile.domain.repository.WordRepository
-import com.example.t_learnappmobile.model.Word
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val MAX_WORDS = 10
-    private val _uiState = MutableStateFlow(GameState())
-    val uiState: StateFlow<GameState> = _uiState.asStateFlow()
 
-    private val connectivityManager = application.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    private val _uiState = MutableStateFlow(GameState())
+    val uiState: StateFlow<GameState> = _uiState
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
@@ -35,7 +30,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val _isNetworkAvailable = MutableStateFlow(true)
     val isNetworkAvailable: StateFlow<Boolean> = _isNetworkAvailable
 
-
+    private val connectivityManager = application.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
@@ -46,10 +41,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             _isNetworkAvailable.value = false
         }
 
-        override fun onCapabilitiesChanged(
-            network: Network,
-            networkCapabilities: NetworkCapabilities
-        ) {
+        override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
             val hasInternet = networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
                     networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
             _isNetworkAvailable.value = hasInternet
@@ -69,7 +61,6 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     private var gameWords: List<GameWord> = emptyList()
     private var currentWordIndex = 0
-    private var allWordsForWrongAnswers: List<String> = emptyList()
 
     fun startGame(mode: GameMode) {
         viewModelScope.launch {
@@ -82,7 +73,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun loadWordsForGame() {
         try {
             _isLoading.value = true
-            val accessToken = tokenManager.getAccessToken().firstOrNull()
+            val accessToken = ServiceLocator.tokenManager.getAccessToken().firstOrNull()
             if (accessToken == null) {
                 Log.e("GameVM", "No access token")
                 _uiState.value = GameState(isGameActive = false)
@@ -103,18 +94,13 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 return
             }
 
-
             val allGameWords = wordResponses.map { w ->
                 GameWord(
-                    id = w.id,
+                    id = w.word.hashCode().toLong(),
                     english = w.word,
-                    russian = w.translation ?: "перевод"
+                    russian = w.translation
                 )
             }
-
-
-            allWordsForWrongAnswers = allGameWords.map { it.russian }
-
 
             gameWords = allGameWords.shuffled().take(MAX_WORDS)
             currentWordIndex = 0
@@ -123,7 +109,6 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 _uiState.value = GameState(isGameActive = false, totalWords = 0)
                 return
             }
-
 
             loadNextWord()
             _uiState.value = _uiState.value.copy(
@@ -146,8 +131,13 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         val word = gameWords[currentWordIndex]
-        val wrongAnswer = getRandomWrongAnswer(word.russian)
-        val options = listOf(word.russian, wrongAnswer).shuffled()
+        val otherAnswers = gameWords
+            .filter { it.id != word.id }
+            .shuffled()
+            .take(1)
+            .map { it.russian }
+
+        val options = (listOf(word.russian) + otherAnswers).shuffled()
         val correctIndex = options.indexOf(word.russian)
 
         _uiState.value = _uiState.value.copy(
@@ -157,15 +147,6 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             wordsLeft = gameWords.size - currentWordIndex,
             currentWordIndex = currentWordIndex
         )
-    }
-
-    private fun getRandomWrongAnswer(correct: String): String {
-        val wrongAnswers = allWordsForWrongAnswers.filter { it != correct }
-        return if (wrongAnswers.isNotEmpty()) {
-            wrongAnswers.shuffled().first()
-        } else {
-            "Неизвестно"
-        }
     }
 
     fun selectAnswer(selectedIndex: Int) {
@@ -178,8 +159,6 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch {
             currentWordIndex++
-
-            Log.d("GameVM", "🎮 selectAnswer: correct=$isCorrect, score=$newScore, index=$currentWordIndex")
 
             if (currentWordIndex >= gameWords.size) {
                 endGame(newScore)
@@ -195,28 +174,20 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun endGame(finalScore: Int = _uiState.value.score) {
-        val userId = tokenManager.getUserId()?.toInt()
-        val timestamp = System.currentTimeMillis()
-
-
-
-
-
-
-
-        if (userId != null) {
-            try {
-                ServiceLocator.gameResultDao.insert(
-                    GameResultEntity(
-                        userId = userId,
+        try {
+            val accessToken = ServiceLocator.tokenManager.getAccessToken().firstOrNull()
+            if (accessToken != null) {
+                ServiceLocator.gameApiService.saveGameResult(
+                    "Bearer $accessToken",
+                    GameResultRequest(
                         sessionScore = finalScore,
                         wordsCount = gameWords.size,
-                        timestamp = timestamp
+                        timestamp = System.currentTimeMillis()
                     )
                 )
-            } catch (e: Exception) {
-
             }
+        } catch (e: Exception) {
+            Log.e("GameVM", "Failed to save game result", e)
         }
 
         _uiState.value = _uiState.value.copy(

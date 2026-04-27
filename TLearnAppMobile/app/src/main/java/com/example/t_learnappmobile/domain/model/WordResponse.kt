@@ -1,25 +1,29 @@
-import com.google.gson.annotations.SerializedName
-import com.example.t_learnappmobile.domain.model.CardAction
+// domain/model/WordResponse.kt
+package com.example.t_learnappmobile.domain.model
 
+import com.google.gson.annotations.SerializedName
 
 data class ListWordResponse(
+    val userId: Long,
     val words: List<WordResponse>
 )
 
 data class WordResponse(
+    @SerializedName("id")
     val id: Long,
-    @SerializedName("part_of_speech")
-    val partOfSpeech: String,
-    @SerializedName("category_id")
-    val category: Long,
-    val word: String,
-    val transcription: String,
-    val translation: String? = "перевод"
-)
 
-data class StatQueueDto(
-    val wordId: Long,
-    val action: String
-) {
-    constructor(wordId: Long, action: CardAction) : this(wordId, action.apiKey)
-}
+    @SerializedName("word")
+    val word: String,
+
+    @SerializedName("transcription")
+    val transcription: String,
+
+    @SerializedName("translation")
+    val translation: String,
+
+    @SerializedName("partOfSpeech")
+    val partOfSpeech: String,
+
+    @SerializedName("category")
+    val category: Long
+)

@@ -7,15 +7,13 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.example.t_learnappmobile.R
-import com.example.t_learnappmobile.data.dictionary.DictionaryManager
 import com.example.t_learnappmobile.data.repository.ServiceLocator
-
+import com.example.t_learnappmobile.data.settings.SettingsManager
 import com.example.t_learnappmobile.databinding.FragmentCardBinding
 import com.example.t_learnappmobile.model.CardType
 import com.example.t_learnappmobile.model.TranslationDirection
@@ -23,11 +21,8 @@ import com.example.t_learnappmobile.presentation.auth.AuthState
 import com.example.t_learnappmobile.presentation.auth.LoginActivity
 import com.example.t_learnappmobile.presentation.auth.LogoutViewModel
 import com.example.t_learnappmobile.presentation.game.GameFragment
-
-
 import com.example.t_learnappmobile.presentation.settings.SettingsBottomSheet
 import com.example.t_learnappmobile.presentation.statistics.StatisticsBottomSheet
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
 class CardsFragment : Fragment() {
@@ -37,7 +32,8 @@ class CardsFragment : Fragment() {
 
     private lateinit var wordViewModel: WordViewModel
     private lateinit var logoutViewModel: LogoutViewModel
-    private lateinit var dictionaryManager: DictionaryManager
+    private lateinit var settingsManager: SettingsManager
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -49,9 +45,10 @@ class CardsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        wordViewModel = ViewModelProvider(this, WordViewModelFactory(requireActivity().application)).get(WordViewModel::class.java)
+        wordViewModel = ViewModelProvider(this, WordViewModelFactory(requireActivity().application))
+            .get(WordViewModel::class.java)
         logoutViewModel = ViewModelProvider(requireActivity()).get(LogoutViewModel::class.java)
-        dictionaryManager = ServiceLocator.dictionaryManager
+        settingsManager = SettingsManager(requireContext())
         observeViewModel()
         setUpClickListener()
     }
@@ -69,39 +66,30 @@ class CardsFragment : Fragment() {
                         binding.translationText.text = ""
                         binding.wordLabel.visibility = View.GONE
 
-
                         if (wordViewModel.isWordsEmpty.value) {
-
                             binding.errorOverlay.visibility = View.VISIBLE
                             binding.errorOverlayText.text = "Нет слов"
-                            binding.errorOverlayDetails.text = "Все слова изучены или сервер не вернул слова. Попробуйте выбрать другой словарь."
-                            binding.retryButton.text = "Выбрать словарь"
+                            binding.errorOverlayDetails.text = "Все слова изучены или сервер не вернул слова. Попробуйте выбрать другую категорию."
+                            binding.retryButton.text = "Выбрать категорию"
                             binding.categoryText.text = ""
                         } else if (wordViewModel.error.value?.isNotEmpty() == true) {
-
                             binding.errorOverlay.visibility = View.VISIBLE
                             binding.errorOverlayText.text = "Ошибка загрузки"
                             binding.errorOverlayDetails.text = wordViewModel.error.value
                             binding.retryButton.text = "Повторить"
                             binding.categoryText.text = ""
                         } else {
-
                             binding.errorOverlay.visibility = View.GONE
                             binding.categoryText.setText(R.string.no_cards)
                         }
                         return@collect
                     }
 
-
-                    val currentDictName = runCatching {
-                        val userId = ServiceLocator.tokenManager.getUserId()?.toInt() ?: 0
-                        userId?.let { dictionaryManager.getCurrentDictionary(it).name } ?: "Conversional"
-                    }.getOrElse { "Conversional" }
-                    binding.categoryText.text = currentDictName
+                    // Показываем ID категории вместо имени словаря
+                    binding.categoryText.text = "Категория ${word.vocabularyId}"
 
                     binding.knownButton.isEnabled = true
                     binding.unknownButton.isEnabled = true
-
 
                     when (word.cardType) {
                         CardType.NEW -> {
@@ -118,14 +106,12 @@ class CardsFragment : Fragment() {
                         }
                     }
 
-
                     when (word.translationDirection) {
                         TranslationDirection.ENGLISH_TO_RUSSIAN -> {
                             binding.wordText.text = word.englishWord
                             binding.transcriptionText.text = word.transcription
                             binding.translationText.text = word.russianTranslation
                         }
-
                         TranslationDirection.RUSSIAN_TO_ENGLISH -> {
                             binding.wordText.text = word.russianTranslation
                             binding.transcriptionText.text = word.transcription
@@ -134,7 +120,6 @@ class CardsFragment : Fragment() {
                     }
 
                     binding.partOfSpeechText.text = word.partOfSpeech.name
-
                     binding.translationText.visibility = View.GONE
                     binding.showTranslationButtonText.setText(R.string.show_translation)
                 }
@@ -201,7 +186,7 @@ class CardsFragment : Fragment() {
         }
 
         lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED){
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
                 logoutViewModel.authState.collect { state ->
                     when (state) {
                         is AuthState.LoggedOut -> {
@@ -211,11 +196,7 @@ class CardsFragment : Fragment() {
                             requireActivity().finish()
                         }
                         is AuthState.Error -> {
-                            Toast.makeText(
-                                requireContext(),
-                                state.toString(),
-                                Toast.LENGTH_SHORT
-                            ).show()
+                            Toast.makeText(requireContext(), state.toString(), Toast.LENGTH_SHORT).show()
                         }
                         else -> {}
                     }
@@ -247,17 +228,15 @@ class CardsFragment : Fragment() {
         }
         binding.statsButton.setOnClickListener {
             val bottomSheet = StatisticsBottomSheet()
-            bottomSheet.show(parentFragmentManager, StatisticsBottomSheet.Companion.TAG)
+            bottomSheet.show(parentFragmentManager, StatisticsBottomSheet.TAG)
         }
         binding.settingsButton.setOnClickListener {
             val settingsSheet = SettingsBottomSheet()
-
-            settingsSheet.onDictionaryChanged = {
+            settingsSheet.onCategoryChanged = {
                 wordViewModel.fetchWords()
             }
             settingsSheet.show(parentFragmentManager, SettingsBottomSheet.TAG)
         }
-
         binding.exitButton.setOnClickListener {
             logoutViewModel.logout()
         }
@@ -267,10 +246,9 @@ class CardsFragment : Fragment() {
         }
         binding.retryButton.setOnClickListener {
             if (wordViewModel.isWordsEmpty.value) {
-
                 binding.errorOverlay.visibility = View.GONE
                 val settingsSheet = SettingsBottomSheet()
-                settingsSheet.onDictionaryChanged = {
+                settingsSheet.onCategoryChanged = {
                     wordViewModel.fetchWords()
                 }
                 settingsSheet.show(parentFragmentManager, SettingsBottomSheet.TAG)
@@ -289,5 +267,3 @@ class CardsFragment : Fragment() {
         _binding = null
     }
 }
-
-

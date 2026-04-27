@@ -3,7 +3,6 @@ package com.example.t_learnappmobile.presentation.statistics
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.example.t_learnappmobile.R
@@ -32,7 +31,6 @@ class LeaderboardAdapter(
 
     class PlayerViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val positionText: TextView = itemView.findViewById(R.id.positionText)
-
         private val playerNameText: TextView = itemView.findViewById(R.id.playerNameText)
         private val playerScoreText: TextView = itemView.findViewById(R.id.playerScoreText)
 

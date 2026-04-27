@@ -18,13 +18,11 @@ class RegistrationActivity : AppCompatActivity() {
     private lateinit var viewModel: RegistrationViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
-
         super.onCreate(savedInstanceState)
         binding = ActivityRegistrationBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         viewModel = ViewModelProvider(this).get(RegistrationViewModel::class.java)
-
         setupListeners()
         observeViewModel()
     }
@@ -63,7 +61,6 @@ class RegistrationActivity : AppCompatActivity() {
                         }
                     }
 
-
                     else -> {
                         binding.btnSendCode.isEnabled = true
                         binding.loadingOverlay.visibility = android.view.View.GONE
@@ -87,17 +84,13 @@ class RegistrationActivity : AppCompatActivity() {
     private fun setupListeners() {
         binding.passwordEditTextRegistration.addTextChangedListener(PasswordValidationWatcher())
         binding.emailEditTextRegistration.addTextChangedListener(InputValidationWatcher())
-        binding.firstNameEditText.addTextChangedListener(InputValidationWatcher())
-        binding.lastNameEditText.addTextChangedListener(InputValidationWatcher())
 
         binding.btnSendCode.setOnClickListener {
             val email = binding.emailEditTextRegistration.text.toString().trim()
             val password = binding.passwordEditTextRegistration.text.toString()
-            val firstName = binding.firstNameEditText.text.toString().trim()
-            val lastName = binding.lastNameEditText.text.toString().trim()
 
-            if (isFormValid(email, password, firstName, lastName)) {
-                viewModel.register(email, password, firstName, lastName)
+            if (isFormValid(email, password)) {
+                viewModel.register(email, password)
             } else {
                 Toast.makeText(this, getString(R.string.error_fill_all_fields_correct), Toast.LENGTH_SHORT).show()
             }
@@ -109,30 +102,11 @@ class RegistrationActivity : AppCompatActivity() {
         }
     }
 
-    private fun isFormValid(email: String, password: String, firstName: String, lastName: String): Boolean {
+    private fun isFormValid(email: String, password: String): Boolean {
         return email.isNotEmpty() &&
                 password.length >= 8 &&
-                firstName.isNotEmpty() &&
-                lastName.isNotEmpty() &&
                 binding.passwordInputLayoutRegistration.error == null
     }
-
-    private fun updateButtonState() {
-        val email = binding.emailEditTextRegistration.text.toString().trim()
-        val password = binding.passwordEditTextRegistration.text.toString()
-        val firstName = binding.firstNameEditText.text.toString().trim()
-        val lastName = binding.lastNameEditText.text.toString().trim()
-
-        binding.btnSendCode.isEnabled = email.isNotEmpty() &&
-                password.length >= 8 &&
-                firstName.isNotEmpty() &&
-                lastName.isNotEmpty() &&
-                binding.passwordInputLayoutRegistration.error == null
-    }
-
-
-
-
 
     private inner class PasswordValidationWatcher : TextWatcher {
         override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -150,7 +124,8 @@ class RegistrationActivity : AppCompatActivity() {
             if (!password.any { it.isLowerCase() }) errors.add(getString(R.string.password_error_lowercase))
             if (!password.any { it.isUpperCase() }) errors.add(getString(R.string.password_error_uppercase))
             if (!password.any { it.isDigit() }) errors.add(getString(R.string.password_error_digits))
-            if (!password.any { "!@#\$%^&*()_+=-[]{}|;:,.<>?".contains(it) }) errors.add(getString(R.string.password_error_special))
+            if (!password.any { "!@#\$%^&*()_+=-[]{}|;:,.<>?".contains(it) })
+                errors.add(getString(R.string.password_error_special))
 
             binding.passwordInputLayoutRegistration.error =
                 if (errors.isNotEmpty()) errors.joinToString("\n") else null
@@ -165,5 +140,14 @@ class RegistrationActivity : AppCompatActivity() {
         override fun afterTextChanged(s: Editable?) {
             updateButtonState()
         }
+    }
+
+    private fun updateButtonState() {
+        val email = binding.emailEditTextRegistration.text.toString().trim()
+        val password = binding.passwordEditTextRegistration.text.toString()
+
+        binding.btnSendCode.isEnabled = email.isNotEmpty() &&
+                password.length >= 8 &&
+                binding.passwordInputLayoutRegistration.error == null
     }
 }

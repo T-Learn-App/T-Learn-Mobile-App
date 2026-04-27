@@ -4,16 +4,15 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.edit
-import com.example.t_learnappmobile.data.dictionary.DictionaryManager
 import com.example.t_learnappmobile.data.repository.ServiceLocator
 import kotlinx.coroutines.flow.firstOrNull
 
 class SettingsManager(private val context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("app_settings", Context.MODE_PRIVATE)
-    private val dictionaryManager = DictionaryManager(context)
 
     companion object {
         private const val KEY_THEME = "theme_mode"
+        private const val KEY_CATEGORY_ID = "current_category_id"
         const val THEME_LIGHT = AppCompatDelegate.MODE_NIGHT_NO
         const val THEME_DARK = AppCompatDelegate.MODE_NIGHT_YES
         const val THEME_SYSTEM = AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
@@ -36,10 +35,16 @@ class SettingsManager(private val context: Context) {
     fun getFirstName(): String = prefs.getString("user_first_name", "") ?: ""
     fun getLastName(): String = prefs.getString("user_last_name", "") ?: ""
 
+    fun getCurrentCategoryId(): Long {
+        return prefs.getLong(KEY_CATEGORY_ID, 1L)
+    }
+
+    fun setCurrentCategoryId(categoryId: Long) {
+        prefs.edit { putLong(KEY_CATEGORY_ID, categoryId) }
+    }
+
     suspend fun updateUserProfile(firstName: String, lastName: String): Boolean {
-
         saveUserProfile(firstName, lastName)
-
 
         return try {
             val accessToken = ServiceLocator.tokenManager.getAccessToken().firstOrNull()
@@ -57,15 +62,8 @@ class SettingsManager(private val context: Context) {
         }
     }
 
-    fun getDictionaryManager(): DictionaryManager = dictionaryManager
-
-    suspend fun clearDictionaryData(userId: Int) {
-        dictionaryManager.clearCurrentDictionaryStats(userId)
-    }
-
     suspend fun clearAllData() {
         prefs.edit { clear() }
-        dictionaryManager.clearAllDictionaries()
         AppCompatDelegate.setDefaultNightMode(THEME_SYSTEM)
     }
 }

@@ -2,12 +2,10 @@ package com.example.t_learnappmobile.data.repository
 
 import com.example.t_learnappmobile.model.CardType
 import com.example.t_learnappmobile.model.Word
-
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-
 
 class WordsStorage {
     private val _wordsFlow = MutableStateFlow<List<Word>>(emptyList())
@@ -17,10 +15,8 @@ class WordsStorage {
     val currentWordIndex: StateFlow<Int> = _currentWordIndex
 
     val currentCardFlow: Flow<Word?> = combine(_wordsFlow, _currentWordIndex) { words, index ->
-        val word = if (index in words.indices) words[index] else null
-        word
+        if (index in words.indices) words[index] else null
     }
-
 
     fun updateWords(words: List<Word>) {
         _wordsFlow.value = words
@@ -56,6 +52,4 @@ class WordsStorage {
             _currentWordIndex.value++
         }
     }
-
-
 }

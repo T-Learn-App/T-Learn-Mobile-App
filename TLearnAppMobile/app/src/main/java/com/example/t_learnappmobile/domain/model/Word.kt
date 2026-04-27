@@ -10,30 +10,30 @@ enum class TranslationDirection {
     RUSSIAN_TO_ENGLISH
 }
 
-enum class PartOfSpeech() {
-    NOUN("Существительное"),
-    ADJECTIVE("Прилагательное"),
-    VERB("Глагол"),
-    PRONOUN("Местоимение"),
-    INTERJECTION("Междометие"),
-    ADVERB("Наречие");
+enum class PartOfSpeech {
+    NOUN, ADJECTIVE, VERB, PRONOUN, INTERJECTION, ADVERB;
 
-    lateinit var russianName: String
-    constructor(russian: String) : this() { this.russianName = russian}
+    val russianName: String
+        get() = when (this) {
+            NOUN -> "Существительное"
+            ADJECTIVE -> "Прилагательное"
+            VERB -> "Глагол"
+            PRONOUN -> "Местоимение"
+            INTERJECTION -> "Междометие"
+            ADVERB -> "Наречие"
+        }
 }
-data class Word (
+
+data class Word(
     val id: Long,
     val vocabularyId: Int,
     val englishWord: String,
     val transcription: String,
     val partOfSpeech: PartOfSpeech,
     val russianTranslation: String,
-
-
     val category: String,
-
     val cardType: CardType = CardType.NEW,
     val repetitionStage: Int = 0,
     val isLearned: Boolean = false,
-    val translationDirection: TranslationDirection = TranslationDirection.ENGLISH_TO_RUSSIAN,
+    val translationDirection: TranslationDirection = TranslationDirection.ENGLISH_TO_RUSSIAN
 )

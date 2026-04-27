@@ -3,11 +3,22 @@ package com.example.t_learnappmobile.data.user
 import retrofit2.Response
 import retrofit2.http.*
 
+data class UserResponse(
+    val id: Long,
+    val email: String,
+    val firstName: String? = null,
+    val lastName: String? = null
+)
+
+data class UserProfileUpdateRequest(
+    val firstName: String,
+    val lastName: String
+)
+
 interface UserApiService {
-    @GET("users/{id}")
-    suspend fun getUserById(
-        @Header("Authorization") authorization: String,
-        @Path("id") userId: Long
+    @GET("users")
+    suspend fun getCurrentUser(
+        @Header("Authorization") authorization: String
     ): Response<UserResponse>
 
     @PUT("users/profile")
@@ -16,15 +27,3 @@ interface UserApiService {
         @Body request: UserProfileUpdateRequest
     ): Response<UserResponse>
 }
-
-data class UserProfileUpdateRequest(
-    val firstName: String,
-    val lastName: String
-)
-
-data class UserResponse(
-    val id: Long,
-    val firstName: String,
-    val lastName: String,
-    val email: String
-)

@@ -17,26 +17,6 @@ data class GameResultResponse(
     val timestamp: Long
 )
 
-interface GameApiService {
-    @POST("games/result")
-    suspend fun saveGameResult(
-        @Header("Authorization") token: String,
-        @Body request: GameResultRequest
-    ): Response<GameResultResponse>
-
-    @GET("leaderboard/{seasonId}")
-    suspend fun getLeaderboard(
-        @Header("Authorization") token: String,
-        @Path("seasonId") seasonId: String
-    ): Response<LeaderboardResponse>
-
-    @GET("leaderboard/{seasonId}/me")
-    suspend fun getMyLeaderboardPosition(
-        @Header("Authorization") token: String,
-        @Path("seasonId") seasonId: String
-    ): Response<UserLeaderboardInfo>
-}
-
 data class LeaderboardResponse(
     val players: List<LeaderboardPlayerResponse>
 )
@@ -53,3 +33,18 @@ data class UserLeaderboardInfo(
     val totalScore: Int,
     val position: Int
 )
+
+interface GameApiService {
+    @POST("games/result")
+    suspend fun saveGameResult(
+        @Header("Authorization") token: String,
+        @Body request: GameResultRequest
+    ): Response<GameResultResponse>
+
+    @GET("leaderboard/{seasonId}")
+    suspend fun getLeaderboard(
+        @Header("Authorization") token: String,
+        @Path("seasonId") seasonId: String
+    ): Response<LeaderboardResponse>
+
+}

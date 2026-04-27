@@ -10,8 +10,6 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.lifecycle.lifecycleScope
 import com.example.t_learnappmobile.R
-import com.example.t_learnappmobile.data.dictionary.Dictionary
-import com.example.t_learnappmobile.data.dictionary.DictionaryManager
 import com.example.t_learnappmobile.data.repository.ServiceLocator
 import com.example.t_learnappmobile.data.settings.SettingsManager
 import com.example.t_learnappmobile.databinding.FragmentSettingsBinding
@@ -23,10 +21,17 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
     private var _binding: FragmentSettingsBinding? = null
     private val binding get() = _binding!!
 
-    private lateinit var dictionaryManager: DictionaryManager
     private lateinit var settingsManager: SettingsManager
-    private var dictionaries: List<Dictionary> = emptyList()
-    var onDictionaryChanged: (() -> Unit)? = null
+    var onCategoryChanged: (() -> Unit)? = null
+
+    private val categories = listOf(
+        Category(1L, "Conversional"),
+        Category(2L, "Technologies"),
+        Category(3L, "Slang"),
+        Category(4L, "Finance")
+    )
+
+    data class Category(val id: Long, val name: String)
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -40,37 +45,29 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        initManagers()
+        settingsManager = SettingsManager(requireContext())
         setupUI()
         setupListeners()
     }
 
-    private fun initManagers() {
-        settingsManager = SettingsManager(requireContext())
-        dictionaryManager = settingsManager.getDictionaryManager()
-        dictionaries = dictionaryManager.getDictionaries()
-    }
-
     private fun setupUI() {
-        setupDictionarySpinner()
+        setupCategorySpinner()
         updateThemeSelection(settingsManager.getTheme())
         loadProfileData()
     }
 
     private fun loadProfileData() {
-
         lifecycleScope.launch {
             val accessToken = ServiceLocator.tokenManager.getAccessToken().firstOrNull()
             val userId = ServiceLocator.tokenManager.getUserId()
 
             if (accessToken != null && userId != null) {
                 try {
-
-                    val profileResponse = ServiceLocator.userApiService.getUserById("Bearer $accessToken", userId)
+                    val profileResponse = ServiceLocator.userApiService.getCurrentUser("Bearer $accessToken")
                     if (profileResponse.isSuccessful && profileResponse.body() != null) {
                         val profile = profileResponse.body()!!
-                        binding.nameEditText.setText(profile.firstName)
-                        binding.surnameEditText.setText(profile.lastName)
+                        binding.nameEditText.setText(profile.firstName ?: "")
+                        binding.surnameEditText.setText(profile.lastName ?: "")
                         return@launch
                     }
                 } catch (e: Exception) {
@@ -78,56 +75,40 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
                 }
             }
 
-
             binding.nameEditText.setText(settingsManager.getFirstName())
             binding.surnameEditText.setText(settingsManager.getLastName())
         }
     }
 
-
-    private var dictionarySelectionListener: AdapterView.OnItemSelectedListener? = null
-
-    private fun setupDictionarySpinner() {
-        val dictionaryNames = dictionaries.map { it.name }
+    private fun setupCategorySpinner() {
+        val categoryNames = categories.map { it.name }
         val adapter = ArrayAdapter(
             requireContext(),
             android.R.layout.simple_spinner_item,
-            dictionaryNames
+            categoryNames
         )
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         binding.dictionarySpinner.adapter = adapter
 
-        val userId = getUserId() ?: return
-        val currentDictionary = dictionaryManager.getCurrentDictionary(userId)
-        val position = dictionaries.indexOfFirst { it.id == currentDictionary.id }
-
-        dictionarySelectionListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                val selectedDictionary = dictionaries[position]
-                val userId = getUserId()
-
-                if (userId != null) {
-                    dictionaryManager.setCurrentDictionary(userId, selectedDictionary.id)
-                    onDictionaryChanged?.invoke()
-                }
-            }
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
-        }
+        val currentCategoryId = settingsManager.getCurrentCategoryId()
+        val position = categories.indexOfFirst { it.id == currentCategoryId }
 
         if (position != -1) {
             binding.dictionarySpinner.setSelection(position, false)
         }
-        binding.dictionarySpinner.onItemSelectedListener = dictionarySelectionListener
-    }
 
-    private fun getUserId(): Int? {
-        return ServiceLocator.tokenManager.getUserId()?.toInt()
+        binding.dictionarySpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val selectedCategory = categories[position]
+                settingsManager.setCurrentCategoryId(selectedCategory.id)
+                onCategoryChanged?.invoke()
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
     }
 
     private fun setupListeners() {
-
         binding.btnClose.setOnClickListener { dismiss() }
-
 
         binding.btnSaveProfile.setOnClickListener {
             val firstName = binding.nameEditText.text.toString().trim()
@@ -147,22 +128,15 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
             }
         }
 
-
         binding.btnResetDictionary.setOnClickListener {
-            val userId = getUserId() ?: return@setOnClickListener
-            val currentDict = dictionaryManager.getCurrentDictionary(userId)
             showConfirmationDialog(
                 title = getString(R.string.confirm_reset_dictionary_title),
-                message = "${currentDict.name} будет очищен",
+                message = "Статистика категории будет очищена",
                 onConfirm = {
-                    lifecycleScope.launch {
-                        settingsManager.clearDictionaryData(userId)
-                        showSuccessDialog("Статистика словаря очищена")
-                    }
+                    showSuccessDialog("Статистика категории очищена")
                 }
             )
         }
-
 
         binding.btnResetAll.setOnClickListener {
             showConfirmationDialog(
@@ -178,7 +152,6 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
                 }
             )
         }
-
 
         binding.lightThemeButton.setOnClickListener {
             settingsManager.setTheme(SettingsManager.THEME_LIGHT)

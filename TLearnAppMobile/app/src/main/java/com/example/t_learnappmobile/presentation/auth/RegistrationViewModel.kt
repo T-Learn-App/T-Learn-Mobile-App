@@ -9,7 +9,6 @@ import android.net.NetworkRequest
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.t_learnappmobile.data.repository.ServiceLocator
-import com.example.t_learnappmobile.data.repository.ServiceLocator.authRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -35,10 +34,7 @@ class RegistrationViewModel(application: Application) : AndroidViewModel(applica
             _isNetworkAvailable.value = false
         }
 
-        override fun onCapabilitiesChanged(
-            network: Network,
-            networkCapabilities: NetworkCapabilities
-        ) {
+        override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
             val hasInternet = networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
                     networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
             _isNetworkAvailable.value = hasInternet
@@ -61,7 +57,7 @@ class RegistrationViewModel(application: Application) : AndroidViewModel(applica
         connectivityManager.unregisterNetworkCallback(networkCallback)
     }
 
-    fun register(email: String, password: String, firstName: String, lastName: String) {
+    fun register(email: String, password: String) {
         viewModelScope.launch {
             if (!_isNetworkAvailable.value) {
                 _authState.value = AuthState.Error("Нет соединения с интернетом")
@@ -70,13 +66,13 @@ class RegistrationViewModel(application: Application) : AndroidViewModel(applica
 
             _authState.value = AuthState.Loading
             _isLoading.value = true
-            val result = ServiceLocator.authRepository.register(email, password, firstName, lastName)
+            val result = ServiceLocator.authRepository.register(email, password)
             _isLoading.value = false
             _authState.value = result
         }
     }
 
-    fun resetState() { _authState.value = AuthState.Idle }
+    fun resetState() {
+        _authState.value = AuthState.Idle
+    }
 }
-
-

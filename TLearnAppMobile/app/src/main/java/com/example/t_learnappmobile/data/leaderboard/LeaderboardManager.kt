@@ -4,76 +4,77 @@ import android.util.Log
 import com.example.t_learnappmobile.data.repository.ServiceLocator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
-class LeaderboardManager {
+class LeaderboardManager(
+    private val api: LeaderboardApi = ServiceLocator.leaderboardApi
+) {
     private val _players = MutableStateFlow<List<LeaderboardPlayer>>(emptyList())
-    val players: StateFlow<List<LeaderboardPlayer>> = _players
+    val players: StateFlow<List<LeaderboardPlayer>> = _players.asStateFlow()
 
     private val _yourPosition = MutableStateFlow<LeaderboardPlayer?>(null)
-    val yourPosition: StateFlow<LeaderboardPlayer?> = _yourPosition
+    val yourPosition: StateFlow<LeaderboardPlayer?> = _yourPosition.asStateFlow()
 
-    private val _seasonText = MutableStateFlow("Сезон 1")
-    val seasonText: StateFlow<String> = _seasonText
+    private val _seasonText = MutableStateFlow("Сезон 1 (22.02-22.03)")
+    val seasonText: StateFlow<String> = _seasonText.asStateFlow()
 
-    suspend fun loadLeaderboard(seasonId: String = "2026-spring") {
-        _seasonText.value = "Сезон 1"
+    private val _currentSeasonId = MutableStateFlow("2026-spring")
+    val currentSeasonId: StateFlow<String> = _currentSeasonId.asStateFlow()
+
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    suspend fun loadLeaderboard(seasonId: String, userId: Long? = null) {
         try {
-            val accessToken = ServiceLocator.tokenManager.getAccessToken().firstOrNull()
-            if (accessToken == null) {
-                return
-            }
-            val authHeader = "Bearer $accessToken"
+            _isLoading.update { true }
 
+            _currentSeasonId.update { seasonId }
 
-            val response = ServiceLocator.gameApiService.getLeaderboard(authHeader, seasonId)
-            if (response.isSuccessful && response.body() != null) {
-                val serverPlayers = response.body()!!.players.mapIndexed { index, playerResp ->
-                    LeaderboardPlayer(
-                        id = playerResp.id.toInt(),
-                        name = playerResp.name,
-                        score = playerResp.score,
-                        position = index + 1
-                    )
+            val response = api.getLeaderboard(seasonId, userId)
+
+            if (response.isSuccessful) {
+                val data = response.body()
+                if (data != null) {
+                    _players.update { data.leaderboard }
+                    _yourPosition.update { data.currentUser }
+
+                    Log.d("LeaderboardManager", "Loaded ${data.leaderboard.size} players")
+                    if (data.currentUser != null) {
+                        Log.d("LeaderboardManager", "Current user position: ${data.currentUser.position}, score: ${data.currentUser.score}")
+                    }
                 }
-                _players.value = serverPlayers
+            } else {
+                Log.e("LeaderboardManager", "Error: ${response.code()} - ${response.errorBody()?.string()}")
             }
-
-
-            loadYourPosition(seasonId)
         } catch (e: Exception) {
-
+            Log.e("LeaderboardManager", "Exception loading leaderboard", e)
+        } finally {
+            _isLoading.update { false }
         }
     }
 
-    private suspend fun loadYourPosition(seasonId: String) {
-        try {
-            val accessToken = ServiceLocator.tokenManager.getAccessToken().firstOrNull()
-            if (accessToken == null) {
-                return
-            }
-            val authHeader = "Bearer $accessToken"
+    suspend fun loadLeaderboardOnly(seasonId: String) {
+        loadLeaderboard(seasonId, userId = null)
+    }
 
+    suspend fun loadLeaderboardWithMyPosition(seasonId: String, userId: Long) {
+        loadLeaderboard(seasonId, userId = userId)
+    }
 
+    fun getMyPosition(): LeaderboardPlayer? = _yourPosition.value
 
-            val response = ServiceLocator.gameApiService.getMyLeaderboardPosition(authHeader, seasonId)
+    fun getUserPosition(userId: Long): LeaderboardPlayer? {
+        return _players.value.find { it.id.toLong() == userId }
+    }
 
-            if (response.isSuccessful && response.body() != null) {
-                val info = response.body()!!
-                val email = ServiceLocator.tokenManager.getUserEmail() ?: "user@email.com"
-                val displayName = email.split("@").first()
-                    .replaceFirstChar { it.uppercase() }
+    fun updateSeasonText(startDate: String, endDate: String) {
+        _seasonText.update { "Сезон 1 ($startDate-$endDate)" }
+    }
 
-                _yourPosition.value = LeaderboardPlayer(
-                    id = info.userId,
-                    name = displayName,
-                    score = info.totalScore,
-                    position = if (info.position > 0) info.position else (_players.value.size + 1)
-                )
-
-            }
-        } catch (e: Exception) {
-
-        }
+    fun clear() {
+        _players.update { emptyList() }
+        _yourPosition.update { null }
+        _isLoading.update { false }
     }
 }

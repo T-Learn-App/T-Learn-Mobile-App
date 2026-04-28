@@ -105,7 +105,6 @@ class StatisticsViewModel : ViewModel() {
     }
 
 
-
     private fun loadStatisticsFromBackend() {
         viewModelScope.launch {
             try {

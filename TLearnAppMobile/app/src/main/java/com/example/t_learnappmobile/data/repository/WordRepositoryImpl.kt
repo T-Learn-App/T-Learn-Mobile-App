@@ -1,89 +1,86 @@
+// data/repository/WordRepositoryImpl.kt (НОВАЯ ВЕРСИЯ)
 package com.example.t_learnappmobile.data.repository
 
 import android.util.Log
+import com.example.t_learnappmobile.data.database.TLearnDatabase
+import com.example.t_learnappmobile.data.database.WordEntity
 import com.example.t_learnappmobile.domain.model.WordResponse
 import com.example.t_learnappmobile.domain.repository.WordRepository
-import com.example.t_learnappmobile.model.CardType
-import com.example.t_learnappmobile.model.PartOfSpeech
-import com.example.t_learnappmobile.model.TranslationDirection
-import com.example.t_learnappmobile.model.Word
-import kotlinx.coroutines.flow.firstOrNull
+import com.example.t_learnappmobile.model.*
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.runBlocking
 
 class WordRepositoryImpl(
     private val api: WordApi,
-    private val storage: WordsStorage
+    private val storage: WordsStorage,
+    private val database: TLearnDatabase
 ) : WordRepository {
 
-    override fun nextWord() {
-        storage.nextWord()
-    }
+    private val wordDao = database.wordDao()
 
+    override fun nextWord() = storage.nextWord()
     override fun getCurrentCardFlow() = storage.currentCardFlow
-
     override fun getCurrentCard() = storage.getCurrentWord()
-
     override fun getNewWords() = storage.getNewWords()
-
     override fun getLearnedWords() = storage.getLearnedWords()
-
     override fun getRotationWords() = storage.getRotationWords()
-
     override fun addWord(word: Word) = storage.addWord(word)
 
     override suspend fun fetchWords(categoryId: Long): List<Word> {
-        val token = getAccessTokenSync()
-            ?: throw Exception("Необходима авторизация")
-
-        val response = api.getWordsByCategory("Bearer $token", categoryId)
-        if (!response.isSuccessful) {
-            throw Exception("HTTP ${response.code()}: ${response.errorBody()?.string()}")
+        val cachedWords = wordDao.getWordsByCategory(categoryId.toString())
+        if (cachedWords.isNotEmpty()) {
+            Log.d("WordRepo", "✅ Загружено ${cachedWords.size} слов из Room (кэш)")
+            val domainWords = cachedWords.map { it.toWord() }
+            storage.updateWords(domainWords)
+            return domainWords
         }
 
-        val body = response.body()
-        val words = body?.words?.map { mapBackendWord(it) } ?: emptyList()
+
+        Log.d("WordRepo", "⚠️ Кэш пуст, запрашиваю слова с сервера...")
+        return fetchWordsFromNetworkAndCache(categoryId)
+    }
+
+    override suspend fun fetchAllWords(): List<Word> {
+        val cachedWords = wordDao.getAllWords()
+        if (cachedWords.isNotEmpty()) {
+            return cachedWords.map { it.toWord() }
+        }
+        return fetchAllWordsFromNetworkAndCache()
+    }
+
+    private suspend fun fetchWordsFromNetworkAndCache(categoryId: Long): List<Word> {
+        val token = getAccessTokenSync() ?: throw Exception("Необходима авторизация")
+        val response = api.getWordsByCategory("Bearer $token", categoryId)
+        if (!response.isSuccessful) throw Exception("HTTP ${response.code()}")
+
+        val words = response.body()?.words?.map { mapBackendWord(it) } ?: emptyList()
+        val entities = words.map { WordEntity.fromWord(it) }
+        wordDao.insertAll(entities)
+        Log.d("WordRepo", "💾 ${entities.size} слов сохранено в Room")
 
         storage.updateWords(words)
         return words
     }
 
-    override suspend fun fetchAllWords(): List<Word> {
-        val token = getAccessTokenSync()
-            ?: throw Exception("Необходима авторизация")
-
+    private suspend fun fetchAllWordsFromNetworkAndCache(): List<Word> {
+        val token = getAccessTokenSync() ?: throw Exception("Необходима авторизация")
         val response = api.getAllWords("Bearer $token")
-        if (!response.isSuccessful) {
-            throw Exception("HTTP ${response.code()}: ${response.errorBody()?.string()}")
-        }
+        if (!response.isSuccessful) throw Exception("HTTP ${response.code()}")
 
-        return response.body()?.words?.map { mapBackendWord(it) } ?: emptyList()
+        val words = response.body()?.words?.map { mapBackendWord(it) } ?: emptyList()
+        val entities = words.map { WordEntity.fromWord(it) }
+        wordDao.insertAll(entities)
+        return words
     }
 
     override suspend fun completeWord(wordId: Long): Boolean {
         return try {
             val token = getAccessTokenSync()
-            if (token == null) {
-                Log.e("WordRepository", "❌ Token is null")
-                return false
-            }
-
-            Log.d("WordRepository", "📡 Calling completeWord API for wordId: $wordId")
-
-            val request = CompleteWordRequest(wordId = wordId)
-            val response = api.completeWord("Bearer $token", request)
-
-            Log.d("WordRepository", "Response code: ${response.code()}")
-
-            if (response.isSuccessful) {
-                Log.d("WordRepository", "✅ Word completed successfully: $wordId")
-            } else {
-                val errorBody = response.errorBody()?.string()
-                Log.e("WordRepository", "❌ Failed to complete word: ${response.code()} - $errorBody")
-            }
-
+            if (token == null) return false
+            val response = api.completeWord("Bearer $token", CompleteWordRequest(wordId))
             response.isSuccessful
         } catch (e: Exception) {
-            Log.e("WordRepository", "❌ Exception in completeWord", e)
+            Log.e("WordRepo", "Ошибка сервера, но слово помечено в кэше?")
             false
         }
     }
@@ -103,13 +100,11 @@ class WordRepositoryImpl(
             translationDirection = TranslationDirection.ENGLISH_TO_RUSSIAN
         )
     }
-    private fun mapPartOfSpeech(s: String?): PartOfSpeech = when (s?.lowercase()) {
+
+    private fun mapPartOfSpeech(s: String?) = when (s?.lowercase()) {
         "noun" -> PartOfSpeech.NOUN
         "adjective" -> PartOfSpeech.ADJECTIVE
         "verb" -> PartOfSpeech.VERB
-        "pronoun" -> PartOfSpeech.PRONOUN
-        "adverb" -> PartOfSpeech.ADVERB
-        null, "" -> PartOfSpeech.INTERJECTION
         else -> PartOfSpeech.INTERJECTION
     }
 

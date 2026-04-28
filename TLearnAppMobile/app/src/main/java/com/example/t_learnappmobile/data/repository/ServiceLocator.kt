@@ -2,7 +2,9 @@ package com.example.t_learnappmobile.data.repository
 
 import android.annotation.SuppressLint
 import android.content.Context
+import com.example.t_learnappmobile.BuildConfig
 import com.example.t_learnappmobile.data.auth.*
+import com.example.t_learnappmobile.data.database.TLearnDatabase
 import com.example.t_learnappmobile.data.game.GameApiService
 import com.example.t_learnappmobile.data.leaderboard.LeaderboardApi
 import com.example.t_learnappmobile.data.leaderboard.LeaderboardManager
@@ -22,13 +24,14 @@ object ServiceLocator {
     lateinit var gameApiService: GameApiService
     lateinit var leaderboardManager: LeaderboardManager
     lateinit var leaderboardApi: LeaderboardApi
+    lateinit var database: TLearnDatabase
 
     val wordRepository: WordRepository by lazy {
         requireInitialized()
-        WordRepositoryImpl(api, storage)
+        WordRepositoryImpl(api, storage, database)
     }
 
-    private val BACKEND_URL = com.example.t_learnappmobile.BuildConfig.BASE_URL
+    private val BACKEND_URL = BuildConfig.BASE_URL
 
     val api: WordApi by lazy {
         requireInitialized()
@@ -48,6 +51,10 @@ object ServiceLocator {
             "ServiceLocator уже инициализирован"
         }
         this.appContext = appContext.applicationContext
+
+
+        database = TLearnDatabase.getDatabase(appContext)
+
 
         tokenManager = TokenManager(appContext)
 

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "537513441179",
+    "project_id": "t-learn-app",
+    "storage_bucket": "t-learn-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:537513441179:android:77aae4f6bbe7a6d2a7533e",
+        "android_client_info": {
+          "package_name": "com.example.t_learnappmobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBFAALJVP4k7k1TPTZRbIyKqkBwXpKioqk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

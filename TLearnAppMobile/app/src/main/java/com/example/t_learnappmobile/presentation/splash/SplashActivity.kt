@@ -11,43 +11,32 @@ import com.example.t_learnappmobile.presentation.auth.LoginActivity
 import com.example.t_learnappmobile.presentation.main.MainActivity
 import kotlinx.coroutines.launch
 
-
 @SuppressLint("CustomSplashScreen")
 class SplashActivity : AppCompatActivity() {
     private lateinit var viewModel: SplashViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-
-
         viewModel = ViewModelProvider(this).get(SplashViewModel::class.java)
         observeAuthState()
         viewModel.checkAuthState()
     }
 
     private fun observeAuthState() {
-
-      lifecycleScope.launch {
+        lifecycleScope.launch {
             viewModel.authState.collect { state ->
                 when (state) {
                     is AuthState.Success -> {
-                        val intent = Intent(this@SplashActivity, MainActivity::class.java)
-                        intent.putExtra("SKIP_AUTH_CHECK", true)
-                        startActivity(intent)
+                        startActivity(Intent(this@SplashActivity, MainActivity::class.java))
                         finish()
                     }
-
                     is AuthState.LoggedOut, is AuthState.Error -> {
                         startActivity(Intent(this@SplashActivity, LoginActivity::class.java))
                         finish()
                     }
-
                     else -> {}
                 }
             }
         }
     }
-
-
 }

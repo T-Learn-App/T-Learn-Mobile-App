@@ -16,14 +16,9 @@ import kotlinx.coroutines.launch
 class GameFragment : BottomSheetDialogFragment() {
     private var _binding: FragmentGameBinding? = null
     private val binding get() = _binding!!
-
     private val viewModel: GameViewModel by viewModels()
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentGameBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -36,53 +31,16 @@ class GameFragment : BottomSheetDialogFragment() {
     }
 
     private fun setupUI() {
-        binding.option1Card.setOnClickListener {
-            viewModel.selectAnswer(0)
-        }
-        binding.option2Card.setOnClickListener {
-            viewModel.selectAnswer(1)
-        }
-
-        binding.closeGameButton.setOnClickListener {
-            viewModel.closeResults()
-            dismiss()
-        }
-
-        binding.gameWordText.visibility = View.VISIBLE
-        binding.wordCounterText.visibility = View.VISIBLE
-        binding.scoreText.visibility = View.VISIBLE
-        binding.noWordsMessage.visibility = View.GONE
+        binding.option1Card.setOnClickListener { viewModel.selectAnswer(0) }
+        binding.option2Card.setOnClickListener { viewModel.selectAnswer(1) }
+        binding.closeGameButton.setOnClickListener { viewModel.closeResults(); dismiss() }
     }
 
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch {
-                    viewModel.uiState.collect { state ->
-                        updateUI(state)
-                    }
-                }
-                launch {
-                    viewModel.isLoading.collect { isLoading ->
-                        binding.loadingOverlay.visibility = if (isLoading) {
-                            View.VISIBLE
-                        } else {
-                            View.GONE
-                        }
-                    }
-                }
-                launch {
-                    viewModel.isNetworkAvailable.collect { isAvailable ->
-                        if (!isAvailable) {
-                            binding.noNetworkOverlay.visibility = View.VISIBLE
-                            binding.loadingOverlay.visibility = View.GONE
-                            binding.option1Card.isEnabled = false
-                            binding.option2Card.isEnabled = false
-                        } else {
-                            binding.noNetworkOverlay.visibility = View.GONE
-                        }
-                    }
-                }
+                launch { viewModel.uiState.collect { updateUI(it) } }
+                launch { viewModel.isLoading.collect { binding.loadingOverlay.visibility = if (it) View.VISIBLE else View.GONE } }
             }
         }
     }
@@ -92,51 +50,29 @@ class GameFragment : BottomSheetDialogFragment() {
         binding.option2Card.isEnabled = state.isGameActive
 
         if (state.isGameActive && state.currentWord != null) {
-
             binding.closeGameButton.visibility = View.GONE
             binding.option1Card.visibility = View.VISIBLE
             binding.option2Card.visibility = View.VISIBLE
-            binding.noWordsMessage.visibility = View.GONE
-
             binding.gameWordText.text = state.currentWord.english
-            binding.wordCounterText.text = "${state.currentWordIndex + 1}/10"
+            binding.wordCounterText.text = "${state.currentWordIndex + 1}/${state.totalWords}"
             binding.scoreText.text = state.score.toString()
-
             if (state.options.isNotEmpty()) {
                 binding.option1Text.text = state.options[0]
                 binding.option2Text.text = state.options[1]
             }
-
         } else if (state.showResults) {
-
             binding.gameWordText.text = "🎉 ${state.score} очков!"
-            binding.wordCounterText.text = "10 слов завершено"
-            binding.scoreText.text = ""
-
+            binding.wordCounterText.text = "${state.totalWords} слов завершено"
             binding.option1Card.visibility = View.GONE
             binding.option2Card.visibility = View.GONE
-            binding.noWordsMessage.visibility = View.GONE
             binding.closeGameButton.visibility = View.VISIBLE
-
-        } else if (state.totalWords == 0 && !state.isGameActive && !state.showResults) {
+        } else if (state.totalWords == 0 && !state.isGameActive) {
             binding.noWordsMessage.visibility = View.VISIBLE
             binding.option1Card.visibility = View.GONE
             binding.option2Card.visibility = View.GONE
             binding.closeGameButton.visibility = View.VISIBLE
-            binding.gameWordText.visibility = View.GONE
-            binding.wordCounterText.visibility = View.GONE
-            binding.scoreText.visibility = View.GONE
-        } else {
-
-            binding.noWordsMessage.visibility = View.GONE
-            binding.gameWordText.visibility = View.VISIBLE
-            binding.wordCounterText.visibility = View.VISIBLE
-            binding.scoreText.visibility = View.VISIBLE
         }
     }
 
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
-    }
+    override fun onDestroyView() { super.onDestroyView(); _binding = null }
 }

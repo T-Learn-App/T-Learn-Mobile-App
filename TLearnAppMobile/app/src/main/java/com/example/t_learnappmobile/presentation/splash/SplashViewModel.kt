@@ -17,8 +17,7 @@ class SplashViewModel(application: Application) : AndroidViewModel(application) 
     fun checkAuthState() {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
-            val result = repository.checkAuthState()
-            _authState.value = result
+            _authState.value = repository.checkAuthState()
         }
     }
 }

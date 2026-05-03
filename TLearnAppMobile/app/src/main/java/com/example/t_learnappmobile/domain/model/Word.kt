@@ -1,39 +1,35 @@
 package com.example.t_learnappmobile.model
 
 enum class CardType {
-    NEW,
-    ROTATION
+    NEW,        // Новое слово (еще не в ротации)
+    ROTATION    // Слово в ротации
 }
 
 enum class TranslationDirection {
-    ENGLISH_TO_RUSSIAN,
-    RUSSIAN_TO_ENGLISH
+    EN_TO_RU,   // Английский -> Русский
+    RU_TO_EN    // Русский -> Английский
 }
 
-enum class PartOfSpeech {
-    NOUN, ADJECTIVE, VERB, PRONOUN, INTERJECTION, ADVERB;
-
-    val russianName: String
-        get() = when (this) {
-            NOUN -> "Существительное"
-            ADJECTIVE -> "Прилагательное"
-            VERB -> "Глагол"
-            PRONOUN -> "Местоимение"
-            INTERJECTION -> "Междометие"
-            ADVERB -> "Наречие"
-        }
+enum class PartOfSpeech(val russian: String) {
+    NOUN("существительное"),
+    VERB("глагол"),
+    ADJECTIVE("прилагательное"),
+    ADVERB("наречие"),
+    PRONOUN("местоимение"),
+    PREPOSITION("предлог"),
+    CONJUNCTION("союз"),
+    INTERJECTION("междометие")
 }
 
 data class Word(
-    val id: Long,
-    val vocabularyId: Int,
+    val id: String,
+    val dictionaryId: String,
     val englishWord: String,
+    val translation: String,
     val transcription: String,
     val partOfSpeech: PartOfSpeech,
-    val russianTranslation: String,
-    val category: String,
-    val cardType: CardType = CardType.NEW,
-    val repetitionStage: Int = 0,
-    val isLearned: Boolean = false,
-    val translationDirection: TranslationDirection = TranslationDirection.ENGLISH_TO_RUSSIAN
+    val stage: Int = 0,              // 0-8, 8 = выучено
+    val nextReviewDate: Long = 0,    // когда показывать
+    val isNew: Boolean = true,       // новое слово
+    val translationDirection: TranslationDirection = TranslationDirection.EN_TO_RU
 )

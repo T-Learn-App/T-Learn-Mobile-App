@@ -2,14 +2,13 @@ package com.example.t_learnappmobile.data.repository
 
 import android.annotation.SuppressLint
 import android.content.Context
-import com.example.t_learnappmobile.BuildConfig
+import android.util.Log
 import com.example.t_learnappmobile.data.auth.*
-import com.example.t_learnappmobile.data.database.TLearnDatabase
-import com.example.t_learnappmobile.data.game.GameApiService
-import com.example.t_learnappmobile.data.leaderboard.LeaderboardApi
-import com.example.t_learnappmobile.data.leaderboard.LeaderboardManager
-import com.example.t_learnappmobile.data.user.UserApiService
+import com.example.t_learnappmobile.data.firebase.FirebaseWordRepository
+import com.example.t_learnappmobile.data.user.UserRepository
 import com.example.t_learnappmobile.domain.repository.WordRepository
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -18,111 +17,35 @@ import java.util.concurrent.TimeUnit
 @SuppressLint("StaticFieldLeak")
 object ServiceLocator {
     lateinit var appContext: Context
-    lateinit var tokenManager: TokenManager
+    lateinit var wordRepository: WordRepository
+    lateinit var userRepository: UserRepository
+
+    // Firebase
+    lateinit var firebaseAuth: FirebaseAuth
+    lateinit var firestore: FirebaseFirestore
+    lateinit var firebaseAuthManager: FirebaseAuthManager
     lateinit var authRepository: AuthRepository
-    lateinit var userApiService: UserApiService
-    lateinit var gameApiService: GameApiService
-    lateinit var leaderboardManager: LeaderboardManager
-    lateinit var leaderboardApi: LeaderboardApi
-    lateinit var database: TLearnDatabase
 
-    val wordRepository: WordRepository by lazy {
-        requireInitialized()
-        WordRepositoryImpl(api, storage, database)
-    }
+    // API для карточек (бэкенд) - больше не используется, но оставим
+    lateinit var wordApi: WordApi
 
-    private val BACKEND_URL = BuildConfig.BASE_URL
-
-    val api: WordApi by lazy {
-        requireInitialized()
-        Retrofit.Builder()
-            .baseUrl(BACKEND_URL)
-            .client(createApiClient())
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-            .create(WordApi::class.java)
-    }
-
-    val storage: WordsStorage by lazy { WordsStorage() }
-    private lateinit var authApiService: AuthApiService
+    private val BACKEND_URL = "http://10.0.2.2:8080/"
 
     fun initContextAwareDependencies(appContext: Context) {
-        require(!this::appContext.isInitialized) {
-            "ServiceLocator уже инициализирован"
-        }
         this.appContext = appContext.applicationContext
 
+        Log.d("ServiceLocator", "Initializing...")
 
-        database = TLearnDatabase.getDatabase(appContext)
+        firebaseAuth = FirebaseAuth.getInstance()
+        firestore = FirebaseFirestore.getInstance()
+        firebaseAuthManager = FirebaseAuthManager()
+        authRepository = AuthRepository(firebaseAuthManager)
+        userRepository = UserRepository()
 
+        // ВАЖНО: Создаем репозиторий слов на Firebase
+        wordRepository = FirebaseWordRepository()
 
-        tokenManager = TokenManager(appContext)
-
-        leaderboardApi = createLeaderboardApiService()
-        leaderboardManager = LeaderboardManager(leaderboardApi)
-
-        authApiService = createAuthApiService()
-        authRepository = AuthRepository(authApiService, tokenManager)
-        gameApiService = createGameApiService()
-        userApiService = createUserApiService()
+        Log.d("ServiceLocator", "Initialized successfully")
+        Log.d("ServiceLocator", "WordRepository type: ${wordRepository::class.java.simpleName}")
     }
-
-    private fun createLeaderboardApiService(): LeaderboardApi {
-        val client = createRealClient()
-        return Retrofit.Builder()
-            .baseUrl(BACKEND_URL)
-            .client(client)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-            .create(LeaderboardApi::class.java)
-    }
-
-    private fun createAuthApiService(): AuthApiService {
-        val client = OkHttpClient.Builder()
-            .addInterceptor(NetworkMonitorInterceptor(appContext))
-            .build()
-        return Retrofit.Builder()
-            .baseUrl(BACKEND_URL)
-            .client(client)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-            .create(AuthApiService::class.java)
-    }
-
-    private fun createGameApiService(): GameApiService {
-        val client = createRealClient()
-        return Retrofit.Builder()
-            .baseUrl(BACKEND_URL)
-            .client(client)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-            .create(GameApiService::class.java)
-    }
-
-    private fun createUserApiService(): UserApiService {
-        val client = createRealClient()
-        return Retrofit.Builder()
-            .baseUrl(BACKEND_URL)
-            .client(client)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-            .create(UserApiService::class.java)
-    }
-
-    private fun createRealClient(): OkHttpClient {
-        return OkHttpClient.Builder()
-            .connectTimeout(10, TimeUnit.SECONDS)
-            .readTimeout(15, TimeUnit.SECONDS)
-            .writeTimeout(15, TimeUnit.SECONDS)
-            .addInterceptor(AuthInterceptor(tokenManager) { BACKEND_URL })
-            .addInterceptor(NetworkMonitorInterceptor(appContext))
-            .build()
-    }
-
-    private fun createApiClient(): OkHttpClient = createRealClient()
-
-    private fun requireInitialized(): Unit =
-        if (!this::appContext.isInitialized) {
-            error("ServiceLocator.initContextAwareDependencies не вызван")
-        } else Unit
 }

@@ -2,6 +2,7 @@ package com.example.t_learnappmobile.data.user
 
 import android.util.Log
 import com.example.t_learnappmobile.data.repository.ServiceLocator
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
 
@@ -11,7 +12,6 @@ data class UserProfile(
     val firstName: String = "",
     val lastName: String = "",
     val totalScore: Int = 0,
-    val gamesPlayed: Int = 0,
     val createdAt: Long = System.currentTimeMillis()
 )
 
@@ -36,7 +36,6 @@ class UserRepository {
                     firstName = document.getString("firstName") ?: "",
                     lastName = document.getString("lastName") ?: "",
                     totalScore = document.getLong("totalScore")?.toInt() ?: 0,
-                    gamesPlayed = document.getLong("gamesPlayed")?.toInt() ?: 0,
                     createdAt = document.getLong("createdAt") ?: System.currentTimeMillis()
                 )
             } else {
@@ -77,22 +76,10 @@ class UserRepository {
             firestore.collection("users")
                 .document(uid)
                 .update(
-                    mapOf(
-                        "totalScore" to com.google.firebase.firestore.FieldValue.increment(score.toLong()),
-                        "gamesPlayed" to com.google.firebase.firestore.FieldValue.increment(1)
-                    )
+                    "totalScore", FieldValue.increment(score.toLong())
                 )
                 .await()
 
-            // Обновляем лидерборд
-            updateLeaderboard(uid, score)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error updating score", e)
-        }
-    }
-
-    private suspend fun updateLeaderboard(uid: String, score: Int) {
-        try {
             val userProfile = getCurrentUserProfile()
             val userName = "${userProfile?.firstName ?: ""} ${userProfile?.lastName ?: ""}".trim()
             val displayName = if (userName.isNotEmpty()) userName else authManager.getUserEmail()?.split("@")?.first() ?: "User"
@@ -103,14 +90,14 @@ class UserRepository {
                     mapOf(
                         "userId" to uid,
                         "username" to displayName,
-                        "totalScore" to com.google.firebase.firestore.FieldValue.increment(score.toLong()),
+                        "totalScore" to FieldValue.increment(score.toLong()),
                         "updatedAt" to System.currentTimeMillis()
                     ),
                     SetOptions.merge()
                 )
                 .await()
         } catch (e: Exception) {
-            Log.e(TAG, "Error updating leaderboard", e)
+            Log.e(TAG, "Error updating score", e)
         }
     }
 }

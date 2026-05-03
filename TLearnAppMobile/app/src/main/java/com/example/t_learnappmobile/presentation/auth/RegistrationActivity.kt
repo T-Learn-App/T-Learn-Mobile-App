@@ -69,16 +69,7 @@ class RegistrationActivity : AppCompatActivity() {
             }
         }
 
-        lifecycleScope.launch {
-            viewModel.isNetworkAvailable.collect { isAvailable ->
-                if (!isAvailable) {
-                    binding.noNetworkOverlay.visibility = android.view.View.VISIBLE
-                    binding.loadingOverlay.visibility = android.view.View.GONE
-                } else {
-                    binding.noNetworkOverlay.visibility = android.view.View.GONE
-                }
-            }
-        }
+
     }
 
     private fun setupListeners() {

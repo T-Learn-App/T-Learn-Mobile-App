@@ -3,7 +3,6 @@ package com.example.t_learnappmobile.presentation.auth
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.t_learnappmobile.data.auth.AuthRepository
 import com.example.t_learnappmobile.data.repository.ServiceLocator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

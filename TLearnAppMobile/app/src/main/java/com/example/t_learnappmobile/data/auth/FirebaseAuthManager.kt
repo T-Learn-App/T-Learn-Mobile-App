@@ -1,10 +1,11 @@
 package com.example.t_learnappmobile.data.auth
 
 import android.util.Log
-import com.example.t_learnappmobile.presentation.auth.AuthState
 import com.example.t_learnappmobile.data.repository.ServiceLocator
+import com.example.t_learnappmobile.presentation.auth.AuthState
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.tasks.await
 
@@ -19,9 +20,6 @@ class FirebaseAuthManager {
             val user = result.user
             Log.d(TAG, "Login success: ${user?.uid}")
 
-            // Загружаем профиль из Firestore
-            loadUserProfile(user?.uid)
-
             AuthState.Success(
                 userId = user?.uid?.toLongOrNull(),
                 email = user?.email
@@ -34,26 +32,24 @@ class FirebaseAuthManager {
 
     suspend fun register(email: String, password: String, firstName: String = "", lastName: String = ""): AuthState {
         return try {
-            Log.d(TAG, "Register: $email")
+            Log.d(TAG, "Register: $email, firstName: $firstName, lastName: $lastName")
             val result = auth.createUserWithEmailAndPassword(email, password).await()
             val user = result.user
             Log.d(TAG, "Register success: ${user?.uid}")
 
-            // Создаем профиль в Firestore
             user?.uid?.let { uid ->
                 val userProfile = hashMapOf(
                     "email" to email,
                     "firstName" to firstName,
                     "lastName" to lastName,
                     "createdAt" to System.currentTimeMillis(),
-                    "totalScore" to 0,
-                    "gamesPlayed" to 0
+                    "totalScore" to 0
                 )
                 ServiceLocator.firestore.collection("users")
                     .document(uid)
                     .set(userProfile)
                     .await()
-                Log.d(TAG, "User profile created in Firestore")
+                Log.d(TAG, "User profile created in Firestore: $userProfile")
             }
 
             AuthState.Success(
@@ -63,22 +59,6 @@ class FirebaseAuthManager {
         } catch (e: Exception) {
             Log.e(TAG, "Register error", e)
             AuthState.Error(mapFirebaseAuthError(e))
-        }
-    }
-
-    private suspend fun loadUserProfile(uid: String?) {
-        if (uid == null) return
-        try {
-            val document = ServiceLocator.firestore.collection("users")
-                .document(uid)
-                .get()
-                .await()
-
-            if (document.exists()) {
-                Log.d(TAG, "User profile loaded: ${document.data}")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to load user profile", e)
         }
     }
 

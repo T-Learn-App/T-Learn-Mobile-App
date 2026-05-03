@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.*
 import android.util.AttributeSet
-import android.util.Log
 import android.view.View
 import androidx.core.graphics.toColorInt
 
@@ -16,8 +15,7 @@ class StatsChartView @JvmOverloads constructor(
 
     data class ChartDayStats(
         val date: String,
-        val inProgress: Int = 0,
-        val learned: Int = 0
+        val learnedWords: Int = 0
     )
 
     private var statsList: List<ChartDayStats> = emptyList()
@@ -36,12 +34,11 @@ class StatsChartView @JvmOverloads constructor(
     @SuppressLint("SimpleDateFormat")
     private val outFmt = java.text.SimpleDateFormat("dd.MM", java.util.Locale.getDefault())
 
-    fun setStats(stats: List<StatisticsViewModel.DailyStats>) {
+    fun setStats(stats: List<com.example.t_learnappmobile.data.firebase.DailyStats>) {
         statsList = stats.map { day ->
             ChartDayStats(
                 date = day.date,
-                inProgress = day.inProgressWords,
-                learned = day.learnedWords
+                learnedWords = day.learnedWords
             )
         }
         invalidate()
@@ -74,9 +71,7 @@ class StatsChartView @JvmOverloads constructor(
         val contentWidth = w - paddingLeft - paddingRight
         val contentHeight = h - paddingTop - paddingBottom - 100f
 
-        val maxValue = statsList.maxOfOrNull { day ->
-            maxOf(day.inProgress, day.learned)
-        }?.toFloat() ?: 0f
+        val maxValue = statsList.maxOfOrNull { it.learnedWords }?.toFloat() ?: 0f
 
         if (maxValue <= 0f) {
             textPaint.color = Color.LTGRAY
@@ -86,8 +81,7 @@ class StatsChartView @JvmOverloads constructor(
         }
 
         val groupWidth = contentWidth / statsList.size
-        val barWidth = (groupWidth * 0.2f).coerceAtLeast(8f)
-        val spacing = barWidth * 0.3f
+        val barWidth = (groupWidth * 0.4f).coerceAtLeast(8f)
         val centerYOffset = h - paddingBottom - 70f
 
         textPaint.textAlign = Paint.Align.CENTER
@@ -97,9 +91,7 @@ class StatsChartView @JvmOverloads constructor(
         statsList.forEachIndexed { index, s ->
             val centerX = paddingLeft + groupWidth * index + groupWidth / 2f
 
-            drawBar(canvas, s.inProgress, -barWidth - spacing, "#FF9800".toColorInt(),
-                centerX, barWidth, centerYOffset, maxValue, contentHeight)
-            drawBar(canvas, s.learned, barWidth + spacing, "#4CAF50".toColorInt(),
+            drawBar(canvas, s.learnedWords, color = "#4CAF50".toColorInt(),
                 centerX, barWidth, centerYOffset, maxValue, contentHeight)
 
             val label = try {
@@ -116,7 +108,6 @@ class StatsChartView @JvmOverloads constructor(
     private fun drawBar(
         canvas: Canvas,
         value: Int,
-        offset: Float,
         color: Int,
         centerX: Float,
         barWidth: Float,
@@ -127,19 +118,25 @@ class StatsChartView @JvmOverloads constructor(
         if (value <= 0 || maxValue <= 0f) return
 
         val barHeight = (value / maxValue) * contentHeight
-        val left = centerX + offset - barWidth / 2f
+        val left = centerX - barWidth / 2f
         val right = left + barWidth
         val top = centerYOffset - barHeight
 
         rect.set(left, top, right, centerYOffset)
         barPaint.color = color
         canvas.drawRoundRect(rect, 6f, 6f, barPaint)
+
+        // Рисуем значение над столбцом
+        textPaint.color = Color.DKGRAY
+        textPaint.textSize = 14f
+        canvas.drawText(value.toString(), centerX, top - 5f, textPaint)
+        textPaint.color = Color.GRAY
     }
 
     private fun drawLegend(canvas: Canvas, w: Float, h: Float) {
         val legendY = h - 10f
         val rectSize = 12f
-        val totalWidth = 180f
+        val totalWidth = 120f
         val startX = (w - totalWidth) / 2f
 
         val oldTextSize = textPaint.textSize
@@ -149,13 +146,9 @@ class StatsChartView @JvmOverloads constructor(
         textPaint.color = Color.DKGRAY
         textPaint.textAlign = Paint.Align.LEFT
 
-        barPaint.color = "#FF9800".toColorInt()
-        canvas.drawRect(startX, legendY - rectSize, startX + rectSize, legendY, barPaint)
-        canvas.drawText("В процессе", startX + rectSize + 4f, legendY, textPaint)
-
         barPaint.color = "#4CAF50".toColorInt()
-        canvas.drawRect(startX + 100f, legendY - rectSize, startX + 100f + rectSize, legendY, barPaint)
-        canvas.drawText("Выученные", startX + 100f + rectSize + 4f, legendY, textPaint)
+        canvas.drawRect(startX, legendY - rectSize, startX + rectSize, legendY, barPaint)
+        canvas.drawText("Выученные слова", startX + rectSize + 4f, legendY, textPaint)
 
         textPaint.textSize = oldTextSize
         textPaint.color = oldTextColor

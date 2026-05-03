@@ -10,6 +10,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.example.t_learnappmobile.databinding.FragmentGameBinding
 import com.example.t_learnappmobile.domain.model.GameMode
+import com.example.t_learnappmobile.data.settings.SettingsManager
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import kotlinx.coroutines.launch
 
@@ -18,13 +19,23 @@ class GameFragment : BottomSheetDialogFragment() {
     private val binding get() = _binding!!
     private val viewModel: GameViewModel by viewModels()
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
         _binding = FragmentGameBinding.inflate(inflater, container, false)
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        // Получаем текущий словарь и запускаем игру
+        val settingsManager = SettingsManager(requireContext())
+        val currentDictId = settingsManager.getCurrentCategoryId()
+        viewModel.setDictionary(currentDictId)
+
         setupUI()
         observeViewModel()
         viewModel.startGame(GameMode.WORDS)
@@ -33,14 +44,22 @@ class GameFragment : BottomSheetDialogFragment() {
     private fun setupUI() {
         binding.option1Card.setOnClickListener { viewModel.selectAnswer(0) }
         binding.option2Card.setOnClickListener { viewModel.selectAnswer(1) }
-        binding.closeGameButton.setOnClickListener { viewModel.closeResults(); dismiss() }
+        binding.closeGameButton.setOnClickListener {
+            viewModel.closeResults()
+            dismiss()
+        }
     }
 
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch { viewModel.uiState.collect { updateUI(it) } }
-                launch { viewModel.isLoading.collect { binding.loadingOverlay.visibility = if (it) View.VISIBLE else View.GONE } }
+                launch {
+                    viewModel.isLoading.collect {
+                        binding.loadingOverlay.visibility =
+                            if (it) View.VISIBLE else View.GONE
+                    }
+                }
             }
         }
     }
@@ -56,16 +75,21 @@ class GameFragment : BottomSheetDialogFragment() {
             binding.gameWordText.text = state.currentWord.english
             binding.wordCounterText.text = "${state.currentWordIndex + 1}/${state.totalWords}"
             binding.scoreText.text = state.score.toString()
-            if (state.options.isNotEmpty()) {
+
+            if (state.options.size >= 2) {
                 binding.option1Text.text = state.options[0]
                 binding.option2Text.text = state.options[1]
             }
+
+            binding.noWordsMessage.visibility = View.GONE
         } else if (state.showResults) {
-            binding.gameWordText.text = "🎉 ${state.score} очков!"
+            binding.gameWordText.text = "\uD83C\uDF89 ${state.score} очков!"
             binding.wordCounterText.text = "${state.totalWords} слов завершено"
             binding.option1Card.visibility = View.GONE
             binding.option2Card.visibility = View.GONE
             binding.closeGameButton.visibility = View.VISIBLE
+            binding.scoreText.text = state.score.toString()
+            binding.noWordsMessage.visibility = View.GONE
         } else if (state.totalWords == 0 && !state.isGameActive) {
             binding.noWordsMessage.visibility = View.VISIBLE
             binding.option1Card.visibility = View.GONE
@@ -74,5 +98,8 @@ class GameFragment : BottomSheetDialogFragment() {
         }
     }
 
-    override fun onDestroyView() { super.onDestroyView(); _binding = null }
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+    }
 }

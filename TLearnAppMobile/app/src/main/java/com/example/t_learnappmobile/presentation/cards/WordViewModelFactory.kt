@@ -10,7 +10,8 @@ class WordViewModelFactory(private val context: Context) : ViewModelProvider.Fac
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(WordViewModel::class.java)) {
             val repository = FirebaseWordRepository()
-            return WordViewModel(repository) as T
+            val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+            return WordViewModel(repository, prefs) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:background="@color/background_primary">
 
-    <!-- Loading Overlay - должен быть ПЕРВЫМ, чтобы быть поверх всех элементов -->
+    <!-- Loading Overlay -->
     <FrameLayout
         android:id="@+id/loadingOverlay"
         android:layout_width="match_parent"
@@ -43,7 +43,7 @@
         </LinearLayout>
     </FrameLayout>
 
-    <!-- No Network Overlay - должен быть ВТОРЫМ, чтобы быть поверх всех элементов -->
+    <!-- No Network Overlay -->
     <FrameLayout
         android:id="@+id/noNetworkOverlay"
         android:layout_width="match_parent"
@@ -66,7 +66,7 @@
                 android:layout_width="80dp"
                 android:layout_height="80dp"
                 android:src="@drawable/wifi_off_24px"
-                android:contentDescription="@string/no_network"
+                android:contentDescription="Нет сети"
                 app:tint="@color/white" />
 
             <TextView
@@ -91,7 +91,7 @@
         </LinearLayout>
     </FrameLayout>
 
-    <!-- Error Overlay - должен быть ТРЕТЬИМ, чтобы быть поверх всех элементов -->
+    <!-- Error Overlay -->
     <FrameLayout
         android:id="@+id/errorOverlay"
         android:layout_width="match_parent"
@@ -141,8 +141,7 @@
         </LinearLayout>
     </FrameLayout>
 
-    <!-- Основной контент - должен быть ПОСЛЕДНИМ, чтобы быть под оверлеями -->
-
+    <!-- Основной контент -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -154,6 +153,7 @@
         android:paddingEnd="16dp"
         android:paddingBottom="80dp">
 
+        <!-- Верхняя панель -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -189,7 +189,7 @@
                     android:layout_width="40dp"
                     android:layout_height="40dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/stats"
+                    android:contentDescription="Статистика"
                     android:src="@drawable/show_chart_24px"
                     app:tint="?attr/colorOnSurface" />
 
@@ -198,17 +198,16 @@
                     android:layout_width="40dp"
                     android:layout_height="40dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
-
+                    android:contentDescription="Игра"
                     android:src="@drawable/swords_24px"
                     app:tint="?attr/colorOnSurface" />
-
 
                 <ImageButton
                     android:id="@+id/settingsButton"
                     android:layout_width="40dp"
                     android:layout_height="40dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/settings"
+                    android:contentDescription="Настройки"
                     android:src="@drawable/settings_24px"
                     app:tint="?attr/colorOnSurface" />
 
@@ -217,13 +216,97 @@
                     android:layout_width="40dp"
                     android:layout_height="40dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/stats"
+                    android:contentDescription="Выход"
                     android:src="@drawable/exit_to_app_24px"
                     app:tint="?attr/colorOnSurface" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
+        <!-- Сообщение "Слова закончились" -->
+        <LinearLayout
+            android:id="@+id/emptyStateContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="32dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/emptyStateIcon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🎯"
+                android:textSize="64sp"
+                android:gravity="center" />
+
+            <TextView
+                android:id="@+id/emptyStateTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Слова закончились!"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:textColor="?attr/colorOnSurface"
+                android:gravity="center"
+                android:layout_marginTop="20dp" />
+
+            <TextView
+                android:id="@+id/emptyStateSubtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Следующие слова будут доступны\nпо расписанию повторений"
+                android:textSize="15sp"
+                android:textColor="?android:textColorSecondary"
+                android:gravity="center"
+                android:layout_marginTop="12dp"
+                android:lineSpacingExtra="4dp" />
+
+            <TextView
+                android:id="@+id/emptyStateHint"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Вы можете поиграть в игру\nили проверить статистику"
+                android:textSize="13sp"
+                android:textColor="?android:textColorTertiary"
+                android:gravity="center"
+                android:layout_marginTop="20dp"
+                android:lineSpacingExtra="4dp" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:layout_marginTop="24dp">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/emptyStateGameButton"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:text="Играть"
+                    android:textSize="14sp"
+                    android:layout_marginEnd="12dp"
+                    app:icon="@drawable/swords_24px"
+                    app:iconSize="20dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/emptyStateStatsButton"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:text="Статистика"
+                    android:textSize="14sp"
+                    app:icon="@drawable/show_chart_24px"
+                    app:iconSize="20dp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Карточка слова -->
         <androidx.cardview.widget.CardView
+            android:id="@+id/wordCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
@@ -298,7 +381,7 @@
                             android:layout_width="20dp"
                             android:layout_height="20dp"
                             android:layout_marginEnd="8dp"
-                            android:contentDescription="@string/show"
+                            android:contentDescription="Показать перевод"
                             android:src="@drawable/visibility_24px"
                             app:tint="?android:textColorSecondary" />
 
@@ -323,7 +406,9 @@
         </androidx.cardview.widget.CardView>
     </LinearLayout>
 
+    <!-- Нижние кнопки -->
     <androidx.cardview.widget.CardView
+        android:id="@+id/bottomButtons"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"

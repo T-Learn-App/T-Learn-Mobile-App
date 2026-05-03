@@ -10,6 +10,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.t_learnappmobile.databinding.FragmentStatisticsBinding
+import com.example.t_learnappmobile.data.leaderboard.LeaderboardPlayer
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import kotlinx.coroutines.launch
 
@@ -19,7 +20,11 @@ class StatisticsBottomSheet : BottomSheetDialogFragment() {
     private val binding get() = _binding!!
     private val viewModel: StatisticsViewModel by viewModels()
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
         _binding = FragmentStatisticsBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -45,16 +50,51 @@ class StatisticsBottomSheet : BottomSheetDialogFragment() {
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch { viewModel.leaderboardPlayers.collect { players -> leaderboardAdapter.updatePlayers(players) } }
-                launch { viewModel.yourPosition.collect { yourPos -> updateYourPosition(yourPos) } }
-                launch { viewModel.yourGameScore.collect { score -> binding.yourGameScoreText.text = score.toString() } }
-                launch { viewModel.totalStats.collect { totals -> updateTotalStats(totals) } }
-                launch { viewModel.currentDictionaryName.collect { name -> binding.dictionaryNameText.text = name } }
+                launch {
+                    viewModel.leaderboardPlayers.collect { players ->
+                        leaderboardAdapter.updatePlayers(players)
+                    }
+                }
+                launch {
+                    viewModel.yourPosition.collect { yourPos ->
+                        updateYourPosition(yourPos)
+                    }
+                }
+                launch {
+                    viewModel.yourGameScore.collect { score ->
+                        binding.yourGameScoreText.text = score.toString()
+                    }
+                }
+                launch {
+                    viewModel.learnedWordsCount.collect { count ->
+                        binding.learnedWordsCount.text = count.toString()
+                    }
+                }
+                launch {
+                    viewModel.inProgressWordsCount.collect { count ->
+                        binding.inProgressCount.text = count.toString()
+                    }
+                }
+                launch {
+                    viewModel.newWordsCount.collect { count ->
+                        binding.newWordsCount.text = count.toString()
+                    }
+                }
+                launch {
+                    viewModel.currentDictionaryName.collect { name ->
+                        binding.dictionaryNameText.text = name
+                    }
+                }
+                launch {
+                    viewModel.weekStats.collect { stats ->
+                        binding.statsChart.setStats(stats)
+                    }
+                }
             }
         }
     }
 
-    private fun updateYourPosition(yourPos: com.example.t_learnappmobile.data.leaderboard.LeaderboardPlayer?) {
+    private fun updateYourPosition(yourPos: LeaderboardPlayer?) {
         if (yourPos != null && yourPos.position > 0) {
             binding.yourPositionText.text = "#${yourPos.position}"
             binding.yourNameText.text = yourPos.name
@@ -66,16 +106,12 @@ class StatisticsBottomSheet : BottomSheetDialogFragment() {
         }
     }
 
-    private fun updateTotalStats(totals: StatisticsViewModel.TotalStats) {
-        binding.newWordsCount.text = totals.new.toString()
-        binding.inProgressCount.text = totals.inProgress.toString()
-        binding.learnedWordsCount.text = totals.learned.toString()
-    }
-
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
     }
 
-    companion object { const val TAG = "StatisticsBottomSheet" }
+    companion object {
+        const val TAG = "StatisticsBottomSheet"
+    }
 }

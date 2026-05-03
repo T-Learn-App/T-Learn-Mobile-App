@@ -28,8 +28,15 @@ data class Word(
     val translation: String,
     val transcription: String,
     val partOfSpeech: PartOfSpeech,
-    val stage: Int = 0,              // 0-8, 8 = выучено
-    val nextReviewDate: Long = 0,    // когда показывать
-    val isNew: Boolean = true,       // новое слово
-    val translationDirection: TranslationDirection = TranslationDirection.EN_TO_RU
+    val stage: Int = 0,
+    val nextReviewDate: Long = 0,
+    val isNew: Boolean = true,
+    val translationDirection: TranslationDirection = TranslationDirection.EN_TO_RU,
+    val userWordDocId: String = ""  // ID документа в user_words: "{userId}_{wordId}"
+)
+
+data class Dictionary(
+    val id: String,
+    val name: String,
+    val order: Int
 )

@@ -5,7 +5,6 @@ import com.example.t_learnappmobile.data.repository.ServiceLocator
 import com.example.t_learnappmobile.presentation.auth.AuthState
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
-import com.google.firebase.firestore.FieldValue
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.tasks.await
 
@@ -21,7 +20,7 @@ class FirebaseAuthManager {
             Log.d(TAG, "Login success: ${user?.uid}")
 
             AuthState.Success(
-                userId = user?.uid?.toLongOrNull(),
+                userId = user?.uid?.hashCode()?.toLong(),
                 email = user?.email
             )
         } catch (e: Exception) {
@@ -30,30 +29,30 @@ class FirebaseAuthManager {
         }
     }
 
-    suspend fun register(email: String, password: String, firstName: String = "", lastName: String = ""): AuthState {
+    suspend fun register(
+        email: String,
+        password: String,
+        firstName: String = "",
+        lastName: String = ""
+    ): AuthState {
         return try {
             Log.d(TAG, "Register: $email, firstName: $firstName, lastName: $lastName")
             val result = auth.createUserWithEmailAndPassword(email, password).await()
             val user = result.user
             Log.d(TAG, "Register success: ${user?.uid}")
 
+            // Создаем профиль пользователя через UserRepository
             user?.uid?.let { uid ->
-                val userProfile = hashMapOf(
-                    "email" to email,
-                    "firstName" to firstName,
-                    "lastName" to lastName,
-                    "createdAt" to System.currentTimeMillis(),
-                    "totalScore" to 0
+                ServiceLocator.userRepository.createUserProfile(
+                    uid = uid,
+                    email = email,
+                    firstName = firstName,
+                    lastName = lastName
                 )
-                ServiceLocator.firestore.collection("users")
-                    .document(uid)
-                    .set(userProfile)
-                    .await()
-                Log.d(TAG, "User profile created in Firestore: $userProfile")
             }
 
             AuthState.Success(
-                userId = user?.uid?.toLongOrNull(),
+                userId = user?.uid?.hashCode()?.toLong(),
                 email = user?.email
             )
         } catch (e: Exception) {
@@ -92,6 +91,8 @@ class FirebaseAuthManager {
                 "Пользователь уже существует"
             e.message?.contains("Password should be at least 6 characters") == true ->
                 "Пароль должен быть минимум 6 символов"
+            e.message?.contains("A network error") == true ->
+                "Нет соединения с интернетом"
             else -> e.message ?: "Ошибка аутентификации"
         }
     }

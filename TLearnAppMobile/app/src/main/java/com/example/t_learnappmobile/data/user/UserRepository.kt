@@ -20,6 +20,34 @@ class UserRepository {
     private val firestore = ServiceLocator.firestore
     private val authManager = ServiceLocator.firebaseAuthManager
 
+    suspend fun createUserProfile(
+        uid: String,
+        email: String?,
+        firstName: String = "",
+        lastName: String = ""
+    ): Boolean {
+        return try {
+            val userProfile = mapOf(
+                "email" to (email ?: ""),
+                "firstName" to firstName,
+                "lastName" to lastName,
+                "totalScore" to 0,
+                "createdAt" to System.currentTimeMillis()
+            )
+
+            firestore.collection("users")
+                .document(uid)
+                .set(userProfile)
+                .await()
+
+            Log.d(TAG, "User profile created: $userProfile")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Error creating user profile", e)
+            false
+        }
+    }
+
     suspend fun getCurrentUserProfile(): UserProfile? {
         val uid = authManager.getUserId() ?: return null
 
@@ -73,17 +101,23 @@ class UserRepository {
         val uid = authManager.getUserId() ?: return
 
         try {
+            // Обновляем счет пользователя
             firestore.collection("users")
                 .document(uid)
-                .update(
-                    "totalScore", FieldValue.increment(score.toLong())
-                )
+                .update("totalScore", FieldValue.increment(score.toLong()))
                 .await()
 
+            // Получаем профиль для имени
             val userProfile = getCurrentUserProfile()
-            val userName = "${userProfile?.firstName ?: ""} ${userProfile?.lastName ?: ""}".trim()
-            val displayName = if (userName.isNotEmpty()) userName else authManager.getUserEmail()?.split("@")?.first() ?: "User"
+            val firstName = userProfile?.firstName ?: ""
+            val lastName = userProfile?.lastName ?: ""
+            val displayName = if (firstName.isNotEmpty()) {
+                "${firstName} ${lastName.firstOrNull() ?: ""}."
+            } else {
+                authManager.getUserEmail()?.split("@")?.firstOrNull() ?: "User"
+            }
 
+            // Обновляем таблицу лидеров
             firestore.collection("leaderboard")
                 .document(uid)
                 .set(
@@ -96,6 +130,8 @@ class UserRepository {
                     SetOptions.merge()
                 )
                 .await()
+
+            Log.d(TAG, "Game score updated: +$score for user $displayName")
         } catch (e: Exception) {
             Log.e(TAG, "Error updating score", e)
         }

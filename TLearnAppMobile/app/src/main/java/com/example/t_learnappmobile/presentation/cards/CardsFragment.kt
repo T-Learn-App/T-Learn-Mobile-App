@@ -10,10 +10,8 @@ import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
-import com.example.t_learnappmobile.R
 import com.example.t_learnappmobile.databinding.FragmentCardBinding
 import com.example.t_learnappmobile.model.CardType
-import com.example.t_learnappmobile.model.Dictionary
 import com.example.t_learnappmobile.model.TranslationDirection
 import com.example.t_learnappmobile.presentation.auth.AuthState
 import com.example.t_learnappmobile.presentation.auth.LoginActivity
@@ -32,7 +30,11 @@ class CardsFragment : Fragment() {
     }
     private val logoutViewModel: LogoutViewModel by viewModels()
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
         _binding = FragmentCardBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -66,7 +68,14 @@ class CardsFragment : Fragment() {
         }
 
         binding.settingsButton.setOnClickListener {
-            showDictionarySelector()
+            val settingsSheet = SettingsBottomSheet()
+            settingsSheet.onDictionaryChanged = { dictionaryId ->
+                viewModel.selectDictionary(dictionaryId)
+            }
+            settingsSheet.onStatisticsReset = {
+                viewModel.retryLoad()
+            }
+            settingsSheet.show(parentFragmentManager, SettingsBottomSheet.TAG)
         }
 
         binding.gameButton.setOnClickListener {
@@ -81,17 +90,32 @@ class CardsFragment : Fragment() {
         binding.retryButton.setOnClickListener {
             viewModel.retryLoad()
         }
+
+        binding.categoryText.setOnLongClickListener {
+            showDictionarySelector()
+            true
+        }
+
+        // Кнопки в пустом состоянии
+        binding.emptyStateGameButton.setOnClickListener {
+            val gameFragment = GameFragment()
+            gameFragment.show(parentFragmentManager, "GameFragment")
+        }
+
+        binding.emptyStateStatsButton.setOnClickListener {
+            val bottomSheet = StatisticsBottomSheet()
+            bottomSheet.show(parentFragmentManager, StatisticsBottomSheet.TAG)
+        }
     }
 
     private fun showDictionarySelector() {
         val dicts = viewModel.dictionaries.value
         if (dicts.isEmpty()) {
-            Toast.makeText(requireContext(), "Загрузка словарей...", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), "Словари загружаются...", Toast.LENGTH_SHORT).show()
             return
         }
 
-        val items = dicts.map { "${it.name}" }.toTypedArray()
-        val currentId = viewModel.currentDictionary.value?.id
+        val items = dicts.map { it.name }.toTypedArray()
 
         AlertDialog.Builder(requireContext())
             .setTitle("Выберите словарь")
@@ -107,11 +131,10 @@ class CardsFragment : Fragment() {
         lifecycleScope.launch {
             viewModel.currentWord.collect { word ->
                 if (word == null) {
-                    showEmptyState(true)
-                    return@collect
+                    showEmptyState()
+                } else {
+                    updateCardContent(word)
                 }
-                showEmptyState(false)
-                updateCardContent(word)
             }
         }
 
@@ -131,6 +154,9 @@ class CardsFragment : Fragment() {
                 if (error != null) {
                     binding.errorOverlay.visibility = View.VISIBLE
                     binding.errorOverlayDetails.text = error
+                    binding.wordCard.visibility = View.GONE
+                    binding.bottomButtons.visibility = View.GONE
+                    binding.emptyStateContainer.visibility = View.GONE
                 } else {
                     binding.errorOverlay.visibility = View.GONE
                 }
@@ -141,7 +167,8 @@ class CardsFragment : Fragment() {
         lifecycleScope.launch {
             viewModel.isTranslationHidden.collect { isHidden ->
                 binding.translationText.visibility = if (isHidden) View.GONE else View.VISIBLE
-                binding.showTranslationButtonText.text = if (isHidden) "Показать перевод" else "Скрыть перевод"
+                binding.showTranslationButtonText.text =
+                    if (isHidden) "Показать перевод" else "Скрыть перевод"
             }
         }
 
@@ -149,7 +176,7 @@ class CardsFragment : Fragment() {
         lifecycleScope.launch {
             viewModel.currentDictionary.collect { dict ->
                 dict?.let {
-                    binding.categoryText.text = "${it.name}"
+                    binding.categoryText.text = it.name
                 }
             }
         }
@@ -173,27 +200,29 @@ class CardsFragment : Fragment() {
         }
     }
 
-    private fun showEmptyState(show: Boolean) {
-        if (show) {
-            binding.loadingOverlay.visibility = View.VISIBLE
-            binding.loadingText.text = "Все слова выучены!\nОтличная работа! 🎉"
-        }
+    private fun showEmptyState() {
+        binding.wordCard.visibility = View.GONE
+        binding.bottomButtons.visibility = View.GONE
+        binding.emptyStateContainer.visibility = View.VISIBLE
     }
 
     private fun updateCardContent(word: com.example.t_learnappmobile.model.Word) {
+        binding.wordCard.visibility = View.VISIBLE
+        binding.bottomButtons.visibility = View.VISIBLE
+        binding.emptyStateContainer.visibility = View.GONE
+
         val (positiveBtn, negativeBtn) = viewModel.getButtonTexts()
         binding.knownButton.text = positiveBtn
         binding.unknownButton.text = negativeBtn
 
         val cardType = viewModel.getCardType()
-        binding.wordLabel.visibility = if (cardType == CardType.NEW) View.VISIBLE else View.GONE
+        binding.wordLabel.visibility = View.VISIBLE
         binding.wordLabel.text = if (cardType == CardType.NEW) {
             "Новое слово"
         } else {
             "Повторение (${word.stage}/7)"
         }
 
-        // Показываем слово в зависимости от направления перевода
         when (word.translationDirection) {
             TranslationDirection.EN_TO_RU -> {
                 binding.wordText.text = word.englishWord

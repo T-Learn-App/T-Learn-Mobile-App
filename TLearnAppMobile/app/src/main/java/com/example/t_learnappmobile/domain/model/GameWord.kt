@@ -6,10 +6,3 @@ data class GameWord(
     val russian: String
 )
 
-data class GameResult(
-    val score: Int,
-    val wordsCount: Int,
-    val timestamp: Long = System.currentTimeMillis()
-)
-
-enum class GameMode { TIME, WORDS }

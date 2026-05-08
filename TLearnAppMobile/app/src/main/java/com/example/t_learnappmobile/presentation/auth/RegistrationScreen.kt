@@ -1,4 +1,3 @@
-// Файл: presentation/auth/RegistrationScreen.kt
 package com.example.t_learnappmobile.presentation.auth
 
 import android.content.res.Configuration
@@ -9,7 +8,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
+
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -178,7 +177,7 @@ fun RegistrationScreen(
             )
         }
 
-        // Загрузка
+
         if (authState.isLoading) {
             Box(
                 modifier = Modifier

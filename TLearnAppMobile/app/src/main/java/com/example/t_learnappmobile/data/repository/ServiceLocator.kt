@@ -1,3 +1,4 @@
+// Файл: data/repository/ServiceLocator.kt
 package com.example.t_learnappmobile.data.repository
 
 import android.annotation.SuppressLint
@@ -16,7 +17,6 @@ object ServiceLocator {
     lateinit var wordRepository: WordRepository
     lateinit var userRepository: UserRepository
 
-    // Firebase
     lateinit var firebaseAuth: FirebaseAuth
     lateinit var firestore: FirebaseFirestore
     lateinit var firebaseAuthManager: FirebaseAuthManager
@@ -32,20 +32,16 @@ object ServiceLocator {
         firebaseAuthManager = FirebaseAuthManager()
         authRepository = AuthRepository(firebaseAuthManager)
         userRepository = UserRepository()
-
-        // Создаем новый репозиторий слов (с чистым состоянием)
         wordRepository = FirebaseWordRepository()
 
         Log.d("ServiceLocator", "Initialized successfully")
-        Log.d("ServiceLocator", "WordRepository type: ${wordRepository::class.java.simpleName}")
     }
 
-    /**
-     * Сбрасывает репозитории при смене пользователя
-     */
     fun resetRepositories() {
         Log.d("ServiceLocator", "Resetting repositories...")
+        (wordRepository as? FirebaseWordRepository)?.clearState()
         wordRepository = FirebaseWordRepository()
-        Log.d("ServiceLocator", "Repositories reset")
+        userRepository = UserRepository()
+        Log.d("ServiceLocator", "Repositories reset successfully")
     }
 }

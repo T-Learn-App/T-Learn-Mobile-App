@@ -8,6 +8,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.t_learnappmobile.data.repository.ServiceLocator
 import com.example.t_learnappmobile.presentation.auth.LoginScreen
 import com.example.t_learnappmobile.presentation.auth.RegistrationScreen
 import com.example.t_learnappmobile.presentation.auth.AuthViewModel
@@ -33,7 +34,6 @@ sealed class Screen(val route: String) {
 @Composable
 fun NavGraph(
     notificationManager: NotificationManager,
-    isDarkTheme: Boolean = false,
     onThemeChanged: (Boolean) -> Unit = {},
     authViewModel: AuthViewModel = viewModel(),
     cardsViewModel: CardsViewModel = viewModel(),
@@ -59,6 +59,10 @@ fun NavGraph(
         startDestination = startDestination
     ) {
         composable(Screen.Login.route) {
+            LaunchedEffect(Unit) {
+                ServiceLocator.resetRepositories()
+                cardsViewModel.resetAndReload()
+            }
             LoginScreen(
                 authViewModel = authViewModel,
                 notificationManager = notificationManager,
@@ -90,6 +94,7 @@ fun NavGraph(
             )
         }
 
+
         composable(Screen.Cards.route) {
             CardsScreen(
                 viewModel = cardsViewModel,
@@ -105,6 +110,7 @@ fun NavGraph(
                 },
                 onLogout = {
                     authViewModel.logout()
+                    ServiceLocator.resetRepositories()
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Cards.route) { inclusive = true }
                     }
@@ -123,7 +129,7 @@ fun NavGraph(
         }
 
         composable(Screen.Settings.route) {
-            // ДОБАВЛЕНО: Обновляем данные пользователя при каждом открытии настроек
+
             LaunchedEffect(Unit) {
                 settingsViewModel.refreshUserData()
             }
@@ -143,7 +149,7 @@ fun NavGraph(
                         popUpTo(0) { inclusive = true }
                     }
                 },
-                onThemeChanged = onThemeChanged // ← Передаем изменение темы
+                onThemeChanged = onThemeChanged
             )
         }
 

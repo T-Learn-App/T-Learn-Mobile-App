@@ -39,30 +39,21 @@ class SettingsViewModel : ViewModel() {
         loadData()
     }
 
-    /**
-     * ИСПРАВЛЕНО: Загружаем данные ТОЛЬКО из Firebase для текущего пользователя
-     * Больше не используем кэшированные данные из SettingsManager
-     */
+
     private fun loadData() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
             try {
-                // Load dictionaries
-                val dicts = wordRepository.getDictionaries()
+                val dicts = ServiceLocator.wordRepository.getDictionaries()
                 val currentDictId = settingsManager?.getCurrentCategoryId() ?: dicts.firstOrNull()?.id ?: ""
 
-                // ИСПРАВЛЕНО: Загружаем профиль ТОЛЬКО из Firebase через UserRepository
                 val profile = ServiceLocator.userRepository.getCurrentUserProfile()
-
-                // ИСПРАВЛЕНО: Получаем email напрямую из FirebaseAuth
                 val userEmail = authManager.getUserEmail() ?: ""
 
-                // ИСПРАВЛЕНО: Используем данные из Firebase, а не из кэша
                 val firstName = profile?.firstName ?: ""
                 val lastName = profile?.lastName ?: ""
 
-                // Load theme preference
                 val theme = settingsManager?.getTheme() ?: SettingsManager.THEME_SYSTEM
                 val isDarkTheme = theme == SettingsManager.THEME_DARK
 
@@ -72,7 +63,7 @@ class SettingsViewModel : ViewModel() {
                     currentDictionaryId = currentDictId,
                     firstName = firstName,
                     lastName = lastName,
-                    email = userEmail,  // ДОБАВЛЕНО: сохраняем email
+                    email = userEmail,
                     isDarkTheme = isDarkTheme
                 )
             } catch (e: Exception) {
@@ -84,10 +75,7 @@ class SettingsViewModel : ViewModel() {
         }
     }
 
-    /**
-     * НОВЫЙ МЕТОД: Принудительно обновляет данные пользователя
-     * Вызывается при возвращении на экран настроек
-     */
+
     fun refreshUserData() {
         viewModelScope.launch {
             try {
@@ -100,7 +88,7 @@ class SettingsViewModel : ViewModel() {
                     email = userEmail
                 )
             } catch (e: Exception) {
-                // Игнорируем ошибки при обновлении
+
             }
         }
     }
@@ -117,14 +105,14 @@ class SettingsViewModel : ViewModel() {
             try {
                 val success = settingsManager?.updateUserProfile(firstName, lastName) ?: false
                 if (success) {
-                    // ИСПРАВЛЕНО: Обновляем UI только после успешного сохранения
+
                     _uiState.value = _uiState.value.copy(
                         firstName = firstName,
                         lastName = lastName,
                         isLoading = false,
                         isSuccess = true
                     )
-                    // Сбрасываем флаг успеха через 2 секунды
+
                     delay(2000)
                     _uiState.value = _uiState.value.copy(isSuccess = false)
                 } else {
@@ -162,7 +150,7 @@ class SettingsViewModel : ViewModel() {
                         .await()
 
                     for (doc in wordsSnapshot.documents) {
-                        val userWordDocId = "${userId}_${doc.id}"  // ИСПРАВЛЕНО: правильный ID документа
+                        val userWordDocId = "${userId}_${doc.id}"
                         firestore.collection("user_words")
                             .document(userWordDocId)
                             .set(
@@ -204,7 +192,7 @@ class SettingsViewModel : ViewModel() {
 
             if (userId != null) {
                 try {
-                    // Reset all words progress for current user
+
                     val userWordsSnapshot = firestore.collection("user_words")
                         .whereEqualTo("userId", userId)
                         .get()
@@ -214,7 +202,7 @@ class SettingsViewModel : ViewModel() {
                         doc.reference.delete().await()
                     }
 
-                    // Reset game results
+
                     val gamesSnapshot = firestore.collection("game_results")
                         .whereEqualTo("userId", userId)
                         .get()
@@ -223,20 +211,20 @@ class SettingsViewModel : ViewModel() {
                         doc.reference.delete().await()
                     }
 
-                    // Reset leaderboard
+
                     firestore.collection("leaderboard").document(userId).delete().await()
 
-                    // Reset user score
+
                     firestore.collection("users").document(userId).update("totalScore", 0).await()
 
-                    // Reset settings
+
                     settingsManager?.clearAllData()
 
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         firstName = "",
                         lastName = "",
-                        email = ""  // ДОБАВЛЕНО: очищаем email
+                        email = ""
                     )
                 } catch (e: Exception) {
                     _uiState.value = _uiState.value.copy(
@@ -253,7 +241,5 @@ class SettingsViewModel : ViewModel() {
         }
     }
 
-    fun clearError() {
-        _uiState.value = _uiState.value.copy(error = null)
-    }
+
 }

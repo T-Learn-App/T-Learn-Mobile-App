@@ -42,7 +42,7 @@ class UserRepository {
 
             Log.d(TAG, "User profile created: $userProfile")
 
-            // Сразу создаем запись в лидерборде
+
             val displayName = getDisplayName(firstName, lastName, email)
             firestore.collection("leaderboard")
                 .document(uid)
@@ -95,7 +95,7 @@ class UserRepository {
         val uid = authManager.getUserId() ?: return false
 
         return try {
-            // Обновляем профиль пользователя
+
             firestore.collection("users")
                 .document(uid)
                 .set(
@@ -108,7 +108,7 @@ class UserRepository {
                 )
                 .await()
 
-            // Обновляем имя в лидерборде
+
             val email = authManager.getUserEmail()
             val displayName = getDisplayName(firstName, lastName, email)
 
@@ -136,13 +136,13 @@ class UserRepository {
         val uid = authManager.getUserId() ?: return
 
         try {
-            // Обновляем счет пользователя
+
             firestore.collection("users")
                 .document(uid)
                 .update("totalScore", FieldValue.increment(score.toLong()))
                 .await()
 
-            // Получаем профиль для имени
+
             val userProfile = getCurrentUserProfile()
             val displayName = getDisplayName(
                 userProfile?.firstName ?: "",
@@ -150,7 +150,7 @@ class UserRepository {
                 authManager.getUserEmail()
             )
 
-            // Обновляем таблицу лидеров
+
             firestore.collection("leaderboard")
                 .document(uid)
                 .set(
@@ -170,9 +170,7 @@ class UserRepository {
         }
     }
 
-    /**
-     * Формирует отображаемое имя: "Имя Ф." или email если имена нет
-     */
+
     private fun getDisplayName(firstName: String, lastName: String, email: String?): String {
         return if (firstName.isNotEmpty() && lastName.isNotEmpty()) {
             "$firstName ${lastName.first().uppercase()}."

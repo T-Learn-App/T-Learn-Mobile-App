@@ -20,12 +20,12 @@ class AuthRepository(
         return firebaseAuthManager.register(email, password, firstName, lastName)
     }
 
-    suspend fun logout(): AuthState {
+     fun logout(): AuthState {
         firebaseAuthManager.logout()
         return AuthState.LoggedOut
     }
 
-    suspend fun checkAuthState(): AuthState {
+     fun checkAuthState(): AuthState {
         val user = firebaseAuthManager.getCurrentUser()
         return if (user != null) {
             AuthState.Success(

@@ -33,6 +33,9 @@ import com.example.t_learnappmobile.presentation.theme.*
 
 // ==================== ГЛАВНЫЙ ЭКРАН ====================
 
+// Файл: presentation/cards/CardsScreen.kt
+// Добавьте этот код в существующий файл
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CardsScreen(
@@ -54,45 +57,187 @@ fun CardsScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding() // Отступ под статус-бар
-                .padding(top = 4.dp), // Минимальный отступ сверху
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            CardsTopBar(
-                dictionaryName = uiState.currentDictionary?.name ?: "Словарь",
-                onNavigateToStatistics = onNavigateToStatistics,
-                onNavigateToGame = onNavigateToGame,
+        // ДОБАВЛЕНО: Показываем экран выбора словаря для новых пользователей
+        if (uiState.showDictionarySelection) {
+            DictionarySelectionScreen(
+                dictionaries = uiState.dictionaries,
+                onDictionarySelected = { dictionaryId ->
+                    viewModel.selectDictionary(dictionaryId)
+                },
                 onNavigateToSettings = onNavigateToSettings,
                 onLogout = onLogout
             )
+        } else {
+            // Существующий экран карточек
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .padding(top = 4.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                CardsTopBar(
+                    dictionaryName = uiState.currentDictionary?.name ?: "Словарь",
+                    onNavigateToStatistics = onNavigateToStatistics,
+                    onNavigateToGame = onNavigateToGame,
+                    onNavigateToSettings = onNavigateToSettings,
+                    onLogout = onLogout
+                )
 
-            // Контент занимает всё оставшееся пространство
-            Box(modifier = Modifier.weight(1f)) {
-                when {
-                    uiState.isLoading -> LoadingView()
-                    uiState.currentWord != null -> WordCardSection(
-                        word = uiState.currentWord!!,
-                        isTranslationHidden = uiState.isTranslationHidden,
-                        cardType = viewModel.getCardType(),
-                        onToggleTranslation = { viewModel.toggleTranslation() }
+                Box(modifier = Modifier.weight(1f)) {
+                    when {
+                        uiState.isLoading -> LoadingView()
+                        uiState.currentWord != null -> WordCardSection(
+                            word = uiState.currentWord!!,
+                            isTranslationHidden = uiState.isTranslationHidden,
+                            cardType = viewModel.getCardType(),
+                            onToggleTranslation = { viewModel.toggleTranslation() }
+                        )
+                        else -> EmptyWordsView()
+                    }
+                }
+
+                if (uiState.currentWord != null && !uiState.isLoading) {
+                    val (positiveBtn, negativeBtn) = viewModel.getButtonTexts()
+                    ActionButtons(
+                        positiveText = positiveBtn,
+                        negativeText = negativeBtn,
+                        onPositiveClick = { viewModel.onKnowCard() },
+                        onNegativeClick = { viewModel.onDontKnowCard() }
                     )
-                    else -> EmptyWordsView()
                 }
             }
+        }
+    }
+}
 
-            if (uiState.currentWord != null && !uiState.isLoading) {
-                val (positiveBtn, negativeBtn) = viewModel.getButtonTexts()
-                ActionButtons(
-                    positiveText = positiveBtn,
-                    negativeText = negativeBtn,
-                    onPositiveClick = { viewModel.onKnowCard() },
-                    onNegativeClick = { viewModel.onDontKnowCard() }
-                )
+// ДОБАВЛЕНО: Новый экран выбора словаря
+@Composable
+fun DictionarySelectionScreen(
+    dictionaries: List<Dictionary>,
+    onDictionarySelected: (String) -> Unit,
+    onNavigateToSettings: () -> Unit,
+    onLogout: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        // Приветственный текст
+        Text(
+            text = "🎉 Добро пожаловать!",
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text(
+            text = "Выберите словарь для начала изучения:",
+            fontSize = 16.sp,
+            color = MediumGray,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Карточки словарей
+        dictionaries.forEach { dictionary ->
+            DictionaryCard(
+                dictionary = dictionary,
+                onClick = { onDictionarySelected(dictionary.id) }
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Кнопки навигации
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedButton(
+                onClick = onNavigateToSettings,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Настройки")
+            }
+
+            OutlinedButton(
+                onClick = onLogout,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = RedError)
+            ) {
+                Text("Выйти")
             }
         }
+    }
+}
+
+@Composable
+fun DictionaryCard(
+    dictionary: Dictionary,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = dictionary.name,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Описание словаря (можно добавить в модель Dictionary)
+                Text(
+                    text = getDictionaryDescription(dictionary.id),
+                    fontSize = 14.sp,
+                    color = MediumGray
+                )
+            }
+
+            Icon(
+                Icons.Default.ArrowForward,
+                contentDescription = "Выбрать",
+                tint = YellowPrimary,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+    }
+}
+
+
+fun getDictionaryDescription(dictionaryId: String): String {
+    return when (dictionaryId) {
+        "finance" -> "Финансовые термины и выражения"
+        "conversational" -> "Повседневные разговорные слова"
+        "technology" -> "IT и технологические термины"
+        "slang" -> "Современный сленг и выражения"
+        else -> "Изучайте новые слова"
     }
 }
 

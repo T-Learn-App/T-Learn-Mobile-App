@@ -41,7 +41,6 @@ class FirebaseAuthManager {
             val user = result.user
             Log.d(TAG, "Register success: ${user?.uid}")
 
-            // Создаем профиль пользователя через UserRepository с переданными именем и фамилией
             user?.uid?.let { uid ->
                 ServiceLocator.userRepository.createUserProfile(
                     uid = uid,
@@ -62,7 +61,7 @@ class FirebaseAuthManager {
         }
     }
 
-    suspend fun logout() {
+     fun logout() {
         Log.d(TAG, "Logout")
         auth.signOut()
     }
@@ -71,14 +70,7 @@ class FirebaseAuthManager {
     fun getUserId(): String? = auth.currentUser?.uid
     fun getUserEmail(): String? = auth.currentUser?.email
 
-    suspend fun getAccessToken(): String? {
-        return try {
-            auth.currentUser?.getIdToken(true)?.await()?.token
-        } catch (e: Exception) {
-            Log.e(TAG, "Error getting token", e)
-            null
-        }
-    }
+
 
     private fun mapFirebaseAuthError(e: Exception): String {
         return when {

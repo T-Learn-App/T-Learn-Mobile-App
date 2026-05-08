@@ -1,4 +1,3 @@
-// Файл: domain/model/Word.kt
 package com.example.t_learnappmobile.model
 
 enum class CardType {

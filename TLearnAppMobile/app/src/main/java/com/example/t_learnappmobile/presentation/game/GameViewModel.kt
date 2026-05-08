@@ -71,14 +71,14 @@ class GameViewModel : ViewModel() {
 
         val word = gameWords[currentWordIndex]
 
-        // Выбираем один неправильный вариант из других слов
+
         val otherAnswers = gameWords
             .filter { it.id != word.id }
             .shuffled()
             .take(1)
             .map { it.russian }
 
-        // Перемешиваем правильный и неправильный варианты
+
         val options = (listOf(word.russian) + otherAnswers).shuffled()
         val correctIndex = options.indexOf(word.russian)
 
@@ -101,13 +101,13 @@ class GameViewModel : ViewModel() {
 
         currentWordIndex++
 
-        // Показываем результат на короткое время
+
         _uiState.value = state.copy(
             score = newScore,
             lastAnswerCorrect = isCorrect
         )
 
-        // Загружаем следующее слово с небольшой задержкой
+
         viewModelScope.launch {
             kotlinx.coroutines.delay(500)
             if (currentWordIndex >= gameWords.size) {

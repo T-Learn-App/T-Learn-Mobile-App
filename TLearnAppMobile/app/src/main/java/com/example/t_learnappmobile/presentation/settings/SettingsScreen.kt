@@ -9,8 +9,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,7 +23,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import com.example.t_learnappmobile.R
 import com.example.t_learnappmobile.presentation.components.NotificationManager
 import com.example.t_learnappmobile.presentation.components.rememberNotificationManager
@@ -35,10 +36,11 @@ fun SettingsScreen(
     onDictionaryChanged: (String) -> Unit,
     onClose: () -> Unit,
     onLogout: () -> Unit,
-    onThemeChanged: (Boolean) -> Unit = {} // ← Новый параметр
+    onThemeChanged: (Boolean) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showEditProfileDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.error) {
         uiState.error?.let { error -> notificationManager.showError(error) }
@@ -51,7 +53,7 @@ fun SettingsScreen(
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 48.dp, bottom = 16.dp), // ← Опущен экран
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 48.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Заголовок
@@ -69,6 +71,66 @@ fun SettingsScreen(
                     )
                     IconButton(onClick = onClose) {
                         Icon(Icons.Default.Close, contentDescription = "Close")
+                    }
+                }
+            }
+
+            // Профиль пользователя
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = stringResource(R.string.profile),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Отображение текущих имени и фамилии
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Person,
+                                contentDescription = null,
+                                tint = BlueColor,
+                                modifier = Modifier.size(40.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "${uiState.firstName} ${uiState.lastName}",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Имя и фамилия",
+                                    fontSize = 12.sp,
+                                    color = MediumGray
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Кнопка изменить
+                        OutlinedButton(
+                            onClick = { showEditProfileDialog = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = BlueColor),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Изменить имя и фамилию")
+                        }
                     }
                 }
             }
@@ -91,18 +153,7 @@ fun SettingsScreen(
                     isDarkTheme = uiState.isDarkTheme,
                     onThemeSelected = { isDark ->
                         viewModel.updateTheme(isDark)
-                        onThemeChanged(isDark) // ← Уведомляем об изменении темы
-                    }
-                )
-            }
-
-            // Редактор профиля
-            item {
-                ProfileEditor(
-                    firstName = uiState.firstName,
-                    lastName = uiState.lastName,
-                    onSave = { firstName, lastName ->
-                        viewModel.updateProfile(firstName, lastName)
+                        onThemeChanged(isDark)
                     }
                 )
             }
@@ -121,23 +172,12 @@ fun SettingsScreen(
                 Button(
                     onClick = { showLogoutDialog = true },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = RedError
-                    ),
+                    colors = ButtonDefaults.buttonColors(containerColor = RedError),
                     shape = RoundedCornerShape(16.dp)
                 ) {
-                    Icon(
-                        Icons.Default.ExitToApp,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp)
-                    )
+                    Icon(Icons.Default.ExitToApp, contentDescription = null, modifier = Modifier.size(24.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        "Выйти из аккаунта",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
+                    Text("Выйти из аккаунта", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 }
             }
         }
@@ -151,24 +191,59 @@ fun SettingsScreen(
                 CircularProgressIndicator(color = Color.White)
             }
         }
+    }
 
-        // Диалог ошибки
-        uiState.error?.let { error ->
-            Dialog(onDismissRequest = { viewModel.clearError() }) {
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                ) {
-                    Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Ошибка", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = RedError)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(text = error)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { viewModel.clearError() }) { Text("OK") }
-                    }
+    // Диалог изменения профиля
+    if (showEditProfileDialog) {
+        var editFirstName by remember(uiState.firstName) { mutableStateOf(uiState.firstName) }
+        var editLastName by remember(uiState.lastName) { mutableStateOf(uiState.lastName) }
+
+        AlertDialog(
+            onDismissRequest = { showEditProfileDialog = false },
+            title = {
+                Text("Изменить профиль", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+            },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = editFirstName,
+                        onValueChange = { editFirstName = it },
+                        label = { Text(stringResource(R.string.name)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = editLastName,
+                        onValueChange = { editLastName = it },
+                        label = { Text(stringResource(R.string.surname)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp)
+                    )
                 }
-            }
-        }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.updateProfile(editFirstName, editLastName)
+                        showEditProfileDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = YellowPrimary, contentColor = Color.Black),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Сохранить", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditProfileDialog = false }) {
+                    Text("Отмена", color = BlueColor)
+                }
+            },
+            shape = RoundedCornerShape(20.dp),
+            containerColor = MaterialTheme.colorScheme.surface
+        )
     }
 
     // Диалог подтверждения выхода
@@ -202,7 +277,6 @@ fun SettingsScreen(
     }
 }
 
-// Остальные компоненты остаются без изменений
 @Composable
 fun DictionarySelector(
     dictionaries: List<com.example.t_learnappmobile.model.Dictionary>,
@@ -270,33 +344,6 @@ fun ThemeOption(title: String, icon: androidx.compose.ui.graphics.vector.ImageVe
             Icon(icon, contentDescription = title, tint = if (isSelected) Color.Black else MaterialTheme.colorScheme.onSurface)
             Spacer(modifier = Modifier.height(4.dp))
             Text(title, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isSelected) Color.Black else MaterialTheme.colorScheme.onSurface)
-        }
-    }
-}
-
-@Composable
-fun ProfileEditor(firstName: String, lastName: String, onSave: (String, String) -> Unit) {
-    var localFirstName by remember(firstName) { mutableStateOf(firstName) }
-    var localLastName by remember(lastName) { mutableStateOf(lastName) }
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(stringResource(R.string.profile), fontSize = 14.sp, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(12.dp))
-            OutlinedTextField(value = localFirstName, onValueChange = { localFirstName = it }, label = { Text(stringResource(R.string.name)) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-            Spacer(modifier = Modifier.height(8.dp))
-            OutlinedTextField(value = localLastName, onValueChange = { localLastName = it }, label = { Text(stringResource(R.string.surname)) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-            Spacer(modifier = Modifier.height(12.dp))
-            Button(
-                onClick = { onSave(localFirstName, localLastName) },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = YellowPrimary, contentColor = Color.Black)
-            ) { Text(stringResource(R.string.save_profile)) }
         }
     }
 }

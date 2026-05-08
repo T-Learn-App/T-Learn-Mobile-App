@@ -14,17 +14,14 @@ class FirebaseAuthManager {
 
     suspend fun login(email: String, password: String): AuthState {
         return try {
-            Log.d(TAG, "Login: $email")
             val result = auth.signInWithEmailAndPassword(email, password).await()
             val user = result.user
-            Log.d(TAG, "Login success: ${user?.uid}")
 
             AuthState.Success(
-                userId = user?.uid?.hashCode()?.toLong(),
+                userId = user?.uid,  // Теперь String, не hash
                 email = user?.email
             )
         } catch (e: Exception) {
-            Log.e(TAG, "Login error", e)
             AuthState.Error(mapFirebaseAuthError(e))
         }
     }
@@ -36,23 +33,20 @@ class FirebaseAuthManager {
         lastName: String = ""
     ): AuthState {
         return try {
-            Log.d(TAG, "Register: $email, firstName: '$firstName', lastName: '$lastName'")
             val result = auth.createUserWithEmailAndPassword(email, password).await()
             val user = result.user
-            Log.d(TAG, "Register success: ${user?.uid}")
 
             user?.uid?.let { uid ->
                 ServiceLocator.userRepository.createUserProfile(
-                    uid = uid,
+                    uid = uid,  // Теперь String
                     email = email,
                     firstName = firstName,
                     lastName = lastName
                 )
-                Log.d(TAG, "User profile created with firstName='$firstName', lastName='$lastName'")
             }
 
             AuthState.Success(
-                userId = user?.uid?.hashCode()?.toLong(),
+                userId = user?.uid,  // String
                 email = user?.email
             )
         } catch (e: Exception) {

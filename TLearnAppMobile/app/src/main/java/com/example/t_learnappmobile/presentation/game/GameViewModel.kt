@@ -1,4 +1,3 @@
-// Файл: presentation/game/GameViewModel.kt
 package com.example.t_learnappmobile.presentation.game
 
 import androidx.lifecycle.ViewModel
@@ -71,13 +70,11 @@ class GameViewModel : ViewModel() {
 
         val word = gameWords[currentWordIndex]
 
-
         val otherAnswers = gameWords
             .filter { it.id != word.id }
             .shuffled()
             .take(1)
             .map { it.russian }
-
 
         val options = (listOf(word.russian) + otherAnswers).shuffled()
         val correctIndex = options.indexOf(word.russian)
@@ -101,30 +98,32 @@ class GameViewModel : ViewModel() {
 
         currentWordIndex++
 
-
         _uiState.value = state.copy(
             score = newScore,
             lastAnswerCorrect = isCorrect
         )
 
-
         viewModelScope.launch {
             kotlinx.coroutines.delay(500)
             if (currentWordIndex >= gameWords.size) {
-                endGame(newScore)
+                endGame()
             } else {
                 loadNextWord()
             }
         }
     }
 
-    private fun endGame(finalScore: Int = _uiState.value.score) {
+    private fun endGame() {
         viewModelScope.launch {
+            val finalScore = _uiState.value.score
+
+            // ✅ Сохраняем результат, но НЕ ждем его завершения
             gameRepository.saveGameResult(finalScore, gameWords.size)
+
+            // ✅ Сразу показываем результаты, не дожидаясь сохранения
             _uiState.value = _uiState.value.copy(
                 isGameActive = false,
                 showResults = true,
-                score = finalScore,
                 currentWord = null
             )
         }

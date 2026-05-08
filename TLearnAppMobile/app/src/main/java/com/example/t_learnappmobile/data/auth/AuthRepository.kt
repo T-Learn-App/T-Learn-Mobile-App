@@ -25,11 +25,11 @@ class AuthRepository(
         return AuthState.LoggedOut
     }
 
-     fun checkAuthState(): AuthState {
+    fun checkAuthState(): AuthState {
         val user = firebaseAuthManager.getCurrentUser()
         return if (user != null) {
             AuthState.Success(
-                userId = user.uid.toLongOrNull(),
+                userId = user.uid,  // Теперь String
                 email = user.email
             )
         } else {

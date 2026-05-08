@@ -25,18 +25,16 @@ object ServiceLocator {
     fun initContextAwareDependencies(appContext: Context) {
         this.appContext = appContext.applicationContext
 
-        Log.d("ServiceLocator", "Initializing...")
-
         firebaseAuth = FirebaseAuth.getInstance()
         firestore = FirebaseFirestore.getInstance()
         firebaseAuthManager = FirebaseAuthManager()
         authRepository = AuthRepository(firebaseAuthManager)
         userRepository = UserRepository()
-        wordRepository = FirebaseWordRepository()
 
-        Log.d("ServiceLocator", "Initialized successfully")
+        // ✅ Используем гибридный репозиторий
+        val firebaseWordRepo = FirebaseWordRepository()
+        wordRepository = HybridWordRepository(appContext, firebaseWordRepo)
     }
-
     fun resetRepositories() {
         Log.d("ServiceLocator", "Resetting repositories...")
         (wordRepository as? FirebaseWordRepository)?.clearState()

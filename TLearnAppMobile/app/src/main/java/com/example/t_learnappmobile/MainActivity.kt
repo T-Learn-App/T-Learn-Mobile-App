@@ -40,7 +40,7 @@ class MainActivity : ComponentActivity() {
                     Box(modifier = Modifier.fillMaxSize()) {
                         NavGraph(
                             notificationManager = notificationManager,
-                            isDarkTheme = darkTheme,
+
                             onThemeChanged = { newDarkTheme ->
                                 darkTheme = newDarkTheme
                                 val mode = if (newDarkTheme) SettingsManager.THEME_DARK

@@ -14,11 +14,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.tasks.await
 import kotlin.random.Random
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class FirebaseWordRepository : WordRepository {
     private val firestore = Firebase.firestore
     private val auth = ServiceLocator.firebaseAuthManager
     private val TAG = "FirebaseWordRepo"
+    private val firestoreDispatcher = Dispatchers.IO.limitedParallelism(3)
 
     private val reviewIntervals = listOf(
         0L,                          // Этап 0: сразу
@@ -34,27 +37,37 @@ class FirebaseWordRepository : WordRepository {
     private val _currentWord = MutableStateFlow<Word?>(null)
     override fun getCurrentWordFlow(): Flow<Word?> = _currentWord.asStateFlow()
 
+    // Потокобезопасный список слов
+    private val wordPoolMutex = Mutex()
     private val wordPool = mutableListOf<Word>()
+
     private var currentDictionaryId = ""
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-
     private var autoCheckJob: Job? = null
+
+    // Специальный диспатчер для Firestore операций
 
 
     override suspend fun loadWords(dictionaryId: String): LoadWordsResult {
         val userId = auth.getUserId()
         if (userId == null) {
             Log.e(TAG, "User not authenticated")
-            wordPool.clear()
+            wordPoolMutex.withLock {
+                wordPool.clear()
+            }
             _currentWord.value = null
             return LoadWordsResult.Error("Пользователь не авторизован")
         }
 
         currentDictionaryId = dictionaryId
-        wordPool.clear()
 
-        return withContext(Dispatchers.IO) {
+        wordPoolMutex.withLock {
+            wordPool.clear()
+        }
+
+        return withContext(firestoreDispatcher) {
             try {
+                // ✅ 1. Загружаем все слова словаря
                 val wordsSnapshot = firestore.collection("words")
                     .whereEqualTo("dictionaryId", dictionaryId)
                     .get()
@@ -74,29 +87,35 @@ class FirebaseWordRepository : WordRepository {
 
                 Log.d(TAG, "Found ${allWords.size} total words in dictionary")
 
+                // ✅ 2. ОДНИМ запросом получаем ВСЕ user_words для этого пользователя и словаря
+                val userWordsSnapshot = firestore.collection("user_words")
+                    .whereEqualTo("userId", userId)
+                    .whereEqualTo("dictionaryId", dictionaryId)
+                    .get()
+                    .await()
+
+                // 3. Создаем Map для быстрого доступа
+                val userWordsMap = userWordsSnapshot.documents.associateBy { it.id }
+
                 val now = System.currentTimeMillis()
-                val wordsWithProgress = mutableListOf<Word>()
-
-                for (word in allWords) {
+                val wordsWithProgress = allWords.mapNotNull { word ->
                     val userWordDocId = "${userId}_${word.id}"
-                    val userWordDoc = firestore.collection("user_words")
-                        .document(userWordDocId)
-                        .get()
-                        .await()
+                    val userWordDoc = userWordsMap[userWordDocId]
 
-                    if (userWordDoc.exists()) {
+                    if (userWordDoc != null && userWordDoc.exists()) {
                         val data = userWordDoc.data ?: mapOf()
                         val stage = (data["stage"] as? Long)?.toInt() ?: 0
                         val nextReviewDate = (data["nextReviewDate"] as? Long) ?: now
                         val failCount = (data["failCount"] as? Long)?.toInt() ?: 0
 
-                        wordsWithProgress.add(word.copy(
+                        word.copy(
                             stage = stage,
                             nextReviewDate = nextReviewDate,
                             isNew = stage == 0 && failCount == 0,
                             userWordDocId = userWordDocId
-                        ))
+                        )
                     } else {
+                        // ✅ Fire-and-forget: не ждем завершения
                         val initialData = mapOf(
                             "userId" to userId,
                             "wordId" to word.id,
@@ -113,14 +132,13 @@ class FirebaseWordRepository : WordRepository {
                         firestore.collection("user_words")
                             .document(userWordDocId)
                             .set(initialData)
-                            .await()
 
-                        wordsWithProgress.add(word.copy(
+                        word.copy(
                             stage = 0,
                             nextReviewDate = now,
                             isNew = true,
                             userWordDocId = userWordDocId
-                        ))
+                        )
                     }
                 }
 
@@ -128,20 +146,20 @@ class FirebaseWordRepository : WordRepository {
                     .filter { it.stage < 8 && it.nextReviewDate <= now }
                     .sortedBy { it.nextReviewDate }
 
-                wordPool.clear()
-                wordPool.addAll(availableWords)
+                wordPoolMutex.withLock {
+                    wordPool.clear()
+                    wordPool.addAll(availableWords)
+                }
 
                 Log.d(TAG, "📊 Available: ${wordPool.size} | Total with progress: ${wordsWithProgress.size} | Learned: ${wordsWithProgress.count { it.stage >= 8 }}")
 
                 showNextFromPool()
                 startAutoCheck()
 
-
-                return@withContext if (wordPool.isNotEmpty()) {
+                return@withContext if (wordPoolMutex.withLock { wordPool.isNotEmpty() }) {
                     Log.d(TAG, "✅ HasWords — ${wordPool.size} words ready")
                     LoadWordsResult.HasWords
                 } else {
-
                     val futureWords = wordsWithProgress.filter { it.stage in 1..7 && it.nextReviewDate > now }
                     if (futureWords.isNotEmpty()) {
                         Log.d(TAG, "⏳ Empty — ${futureWords.size} words scheduled for later")
@@ -149,7 +167,8 @@ class FirebaseWordRepository : WordRepository {
                         Log.d(TAG, "🈳 Empty — no words at all")
                     }
                     _currentWord.value = null
-                    LoadWordsResult.Empty}
+                    LoadWordsResult.Empty
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading words", e)
                 _currentWord.value = null
@@ -158,13 +177,24 @@ class FirebaseWordRepository : WordRepository {
         }
     }
 
-
     private fun startAutoCheck() {
-        autoCheckJob?.cancel()
-        autoCheckJob = scope.launch {
+        // ✅ Останавливаем старый job перед запуском нового
+        stopAutoCheck()
+
+        autoCheckJob = scope.launch(firestoreDispatcher) {
+            var consecutiveEmptyChecks = 0
+
             Log.d(TAG, "Auto-check started for dictionary: $currentDictionaryId")
+
             while (isActive) {
-                delay(15_000)
+                // ✅ Адаптивная задержка в зависимости от состояния
+                val delayTime = when {
+                    wordPoolMutex.withLock { wordPool.isNotEmpty() } -> 60_000L  // Если есть слова — раз в минуту
+                    consecutiveEmptyChecks > 3 -> 120_000L  // Если долго пусто — раз в 2 минуты
+                    else -> 30_000L  // Обычная проверка
+                }
+
+                delay(delayTime)
 
                 val userId = auth.getUserId() ?: continue
                 val dictId = currentDictionaryId
@@ -174,10 +204,16 @@ class FirebaseWordRepository : WordRepository {
                     continue
                 }
 
+                // ✅ Пропускаем проверку, если в пуле есть слова
+                if (wordPoolMutex.withLock { wordPool.isNotEmpty() }) {
+                    consecutiveEmptyChecks = 0
+                    Log.d(TAG, "Auto-check: pool has ${wordPool.size} words, skipping")
+                    continue
+                }
+
                 val now = System.currentTimeMillis()
 
                 try {
-
                     val pendingWords = firestore.collection("user_words")
                         .whereEqualTo("userId", userId)
                         .whereEqualTo("dictionaryId", dictId)
@@ -188,23 +224,30 @@ class FirebaseWordRepository : WordRepository {
 
                     val pendingCount = pendingWords.documents.size
 
-                    if (pendingCount > 0 && wordPool.isEmpty()) {
+                    if (pendingCount > 0) {
                         Log.d(TAG, "Auto-check: Found $pendingCount words ready, reloading...")
+                        consecutiveEmptyChecks = 0
                         loadWords(dictId)
-                    } else if (pendingCount > 0) {
-                        Log.d(TAG, "Auto-check: $pendingCount words ready, but pool has ${wordPool.size} words")
                     } else {
-                        Log.d(TAG, "Auto-check: No words ready yet")
+                        consecutiveEmptyChecks++
+                        Log.d(TAG, "Auto-check: No words ready yet (consecutive empty: $consecutiveEmptyChecks)")
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "Auto-check error", e)
+                    consecutiveEmptyChecks++
                 }
             }
         }
     }
 
+    private fun stopAutoCheck() {
+        autoCheckJob?.cancel()
+        autoCheckJob = null
+        Log.d(TAG, "Auto-check stopped")
+    }
+
     override suspend fun getDictionaries(): List<Dictionary> {
-        return withContext(Dispatchers.IO) {
+        return withContext(firestoreDispatcher) {
             try {
                 val snapshot = firestore.collection("dictionaries")
                     .orderBy("order")
@@ -221,6 +264,7 @@ class FirebaseWordRepository : WordRepository {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading dictionaries", e)
+                // ✅ Возвращаем fallback словари при ошибке
                 listOf(
                     Dictionary("finance", "Финансы", 1),
                     Dictionary("conversational", "Разговорные слова", 2),
@@ -232,7 +276,7 @@ class FirebaseWordRepository : WordRepository {
     }
 
     override fun answerWord(wordId: String, known: Boolean) {
-        scope.launch {
+        scope.launch(firestoreDispatcher) {
             val userId = auth.getUserId() ?: return@launch
             val userWordDocId = "${userId}_${wordId}"
 
@@ -314,43 +358,52 @@ class FirebaseWordRepository : WordRepository {
     }
 
     override fun markCurrentWordAsShown() {
-        if (wordPool.isNotEmpty()) {
-            wordPool.removeAt(0)
+        scope.launch(firestoreDispatcher) {
+            wordPoolMutex.withLock {
+                if (wordPool.isNotEmpty()) {
+                    wordPool.removeAt(0)
+                }
+            }
+            showNextFromPool()
         }
-        showNextFromPool()
     }
 
-    private fun showNextFromPool() {
-        if (wordPool.isEmpty()) {
-            _currentWord.value = null
-            Log.d(TAG, "No more words to show - pool is empty")
-            return
+    private suspend fun showNextFromPool() {
+        wordPoolMutex.withLock {
+            if (wordPool.isEmpty()) {
+                _currentWord.value = null
+                Log.d(TAG, "No more words to show - pool is empty")
+                return
+            }
+
+            val nextWord = wordPool.first()
+            val cardType = if (nextWord.stage == 0 && nextWord.isNew) CardType.NEW else CardType.ROTATION
+
+            val direction = if (cardType == CardType.NEW) {
+                TranslationDirection.EN_TO_RU
+            } else {
+               if (Random.nextBoolean()) TranslationDirection.EN_TO_RU
+                else TranslationDirection.RU_TO_EN
+            }
+
+            val displayWord = nextWord.copy(
+                translationDirection = direction,
+                isNew = cardType == CardType.NEW
+            )
+
+            _currentWord.value = displayWord
+            Log.d(TAG, "Showing: '${displayWord.englishWord}' (stage=${displayWord.stage}, type=$cardType, isNew=${displayWord.isNew})")
         }
-
-        val nextWord = wordPool.first()
-        val cardType = if (nextWord.stage == 0 && nextWord.isNew) CardType.NEW else CardType.ROTATION
-
-        val direction = if (cardType == CardType.NEW) {
-            TranslationDirection.EN_TO_RU
-        } else {
-            if (Random.nextBoolean()) TranslationDirection.EN_TO_RU
-            else TranslationDirection.RU_TO_EN
-        }
-
-        val displayWord = nextWord.copy(
-            translationDirection = direction,
-            isNew = cardType == CardType.NEW
-        )
-
-        _currentWord.value = displayWord
-        Log.d(TAG, "Showing: '${displayWord.englishWord}' (stage=${displayWord.stage}, type=$cardType, isNew=${displayWord.isNew})")
     }
 
     fun clearState() {
         Log.d(TAG, "Clearing repository state")
-        autoCheckJob?.cancel()
-        autoCheckJob = null
-        wordPool.clear()
+        stopAutoCheck()
+        scope.launch {
+            wordPoolMutex.withLock {
+                wordPool.clear()
+            }
+        }
         _currentWord.value = null
         currentDictionaryId = ""
     }

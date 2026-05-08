@@ -7,7 +7,7 @@ import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
 
 data class UserProfile(
-    val uid: String,
+    val uid: String,  // Теперь String
     val email: String?,
     val firstName: String = "",
     val lastName: String = "",

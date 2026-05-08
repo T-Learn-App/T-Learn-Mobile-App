@@ -75,7 +75,9 @@ fun SettingsScreen(
                 }
             }
 
-            // Профиль пользователя
+            // Замените секцию "Профиль пользователя" в SettingsScreen.kt на этот код:
+
+// Профиль пользователя
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -104,15 +106,20 @@ fun SettingsScreen(
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
+                                // ИСПРАВЛЕНО: Показываем имя или email если имя не задано
                                 Text(
-                                    text = "${uiState.firstName} ${uiState.lastName}",
+                                    text = if (uiState.firstName.isNotEmpty() || uiState.lastName.isNotEmpty())
+                                        "${uiState.firstName} ${uiState.lastName}".trim()
+                                    else
+                                        "Пользователь",
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
+                                // ДОБАВЛЕНО: Отображение email
                                 Text(
-                                    text = "Имя и фамилия",
-                                    fontSize = 12.sp,
+                                    text = uiState.email.ifEmpty { "Email не указан" },
+                                    fontSize = 14.sp,
                                     color = MediumGray
                                 )
                             }

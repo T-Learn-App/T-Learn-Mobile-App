@@ -40,6 +40,35 @@ class SettingsManager(private val context: Context) {
         val profile = ServiceLocator.userRepository.getCurrentUserProfile()
         return profile?.lastName ?: ""
     }
+    // Файл: data/settings/SettingsManager.kt
+// Добавьте этот метод в существующий класс SettingsManager
+
+    /**
+     * ИСПРАВЛЕНО: Получает имя пользователя напрямую из Firebase
+     * вместо кэшированных данных
+     */
+    suspend fun getUserFirstName(): String {
+        val profile = ServiceLocator.userRepository.getCurrentUserProfile()
+        return profile?.firstName ?: ""
+    }
+
+    /**
+     * ИСПРАВЛЕНО: Получает фамилию пользователя напрямую из Firebase
+     */
+    suspend fun getUserLastName(): String {
+        val profile = ServiceLocator.userRepository.getCurrentUserProfile()
+        return profile?.lastName ?: ""
+    }
+
+    /**
+     * НОВЫЙ МЕТОД: Сбрасывает настройки текущего пользователя
+     */
+    fun resetUserSettings() {
+        prefs.edit {
+            remove(KEY_CATEGORY_ID)
+            remove(KEY_CATEGORY_NAME)
+        }
+    }
 
     /**
      * Обновляет имя и фамилию в Firebase

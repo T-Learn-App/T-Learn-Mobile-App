@@ -123,6 +123,11 @@ fun NavGraph(
         }
 
         composable(Screen.Settings.route) {
+            // ДОБАВЛЕНО: Обновляем данные пользователя при каждом открытии настроек
+            LaunchedEffect(Unit) {
+                settingsViewModel.refreshUserData()
+            }
+
             SettingsScreen(
                 viewModel = settingsViewModel,
                 notificationManager = notificationManager,

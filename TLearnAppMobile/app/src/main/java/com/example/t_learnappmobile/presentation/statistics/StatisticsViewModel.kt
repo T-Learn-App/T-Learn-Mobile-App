@@ -4,10 +4,12 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.t_learnappmobile.data.firebase.DailyStats
-import com.example.t_learnappmobile.data.firebase.TotalStats
 import com.example.t_learnappmobile.data.leaderboard.LeaderboardPlayer
 import com.example.t_learnappmobile.data.repository.ServiceLocator
 import com.example.t_learnappmobile.data.settings.SettingsManager
+import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,170 +18,246 @@ import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.*
 
+data class StatisticsUiState(
+    val isLoading: Boolean = false,
+    val dictionaryName: String = "",
+    val newWords: Int = 0,
+    val inProgressWords: Int = 0,
+    val learnedWords: Int = 0,
+    val totalGamesPlayed: Int = 0,
+    val totalScore: Int = 0,
+    val averageScore: Int = 0,
+    val weeklyStats: List<DailyStats> = emptyList(),
+    val leaderboard: List<LeaderboardPlayer> = emptyList(),
+    val yourPosition: LeaderboardPlayer? = null,
+    val yourGameScore: Int = 0,
+    val firstName: String = "",
+    val lastName: String = "",
+    val yourUserId: String = "",
+    val currentWeekOffset: Int = 0
+)
+
 class StatisticsViewModel : ViewModel() {
-    private val firestore = ServiceLocator.firestore
+    private val firestore = Firebase.firestore
     private val authManager = ServiceLocator.firebaseAuthManager
-    private val TAG = "StatisticsViewModel"
+    private val userRepository = ServiceLocator.userRepository
+    private val settingsManager = ServiceLocator.appContext?.let { SettingsManager(it) }
 
-    private val _weekStats = MutableStateFlow<List<DailyStats>>(emptyList())
-    val weekStats: StateFlow<List<DailyStats>> = _weekStats.asStateFlow()
-
-    private val _totalStats = MutableStateFlow(TotalStats())
-    val totalStats: StateFlow<TotalStats> = _totalStats.asStateFlow()
-
-    private val _leaderboardPlayers = MutableStateFlow<List<LeaderboardPlayer>>(emptyList())
-    val leaderboardPlayers: StateFlow<List<LeaderboardPlayer>> = _leaderboardPlayers.asStateFlow()
-
-    private val _yourPosition = MutableStateFlow<LeaderboardPlayer?>(null)
-    val yourPosition: StateFlow<LeaderboardPlayer?> = _yourPosition.asStateFlow()
-
-    private val _yourGameScore = MutableStateFlow(0)
-    val yourGameScore: StateFlow<Int> = _yourGameScore.asStateFlow()
-
-    private val _isLeaderboardLoading = MutableStateFlow(false)
-    val isLeaderboardLoading: StateFlow<Boolean> = _isLeaderboardLoading.asStateFlow()
-
-    private val _learnedWordsCount = MutableStateFlow(0)
-    val learnedWordsCount: StateFlow<Int> = _learnedWordsCount.asStateFlow()
-
-    private val _inProgressWordsCount = MutableStateFlow(0)
-    val inProgressWordsCount: StateFlow<Int> = _inProgressWordsCount.asStateFlow()
-
-    private val _newWordsCount = MutableStateFlow(0)
-    val newWordsCount: StateFlow<Int> = _newWordsCount.asStateFlow()
-
-    private val _currentDictionaryName = MutableStateFlow("Все слова")
-    val currentDictionaryName: StateFlow<String> = _currentDictionaryName.asStateFlow()
-
-    init {
-        refreshStats()
-    }
+    private val _uiState = MutableStateFlow(StatisticsUiState())
+    val uiState: StateFlow<StatisticsUiState> = _uiState.asStateFlow()
 
     fun refreshStats() {
         viewModelScope.launch {
-            loadStatistics()
-            loadLeaderboard()
-            loadUserScore()
+            _uiState.value = _uiState.value.copy(isLoading = true)
+
+            try {
+                val userId = authManager.getUserId()
+
+                if (userId == null) {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+
+                    )
+                    return@launch
+                }
+
+                val profile = userRepository.getCurrentUserProfile()
+                _uiState.value = _uiState.value.copy(
+                    firstName = profile?.firstName ?: "",
+                    lastName = profile?.lastName ?: "",
+                    yourUserId = userId,
+                    yourGameScore = profile?.totalScore ?: 0
+                )
+
+                val dictName = settingsManager?.getCurrentDictionaryName() ?: "Все словари"
+                val dictId = settingsManager?.getCurrentCategoryId() ?: "finance"
+                _uiState.value = _uiState.value.copy(dictionaryName = dictName)
+
+                loadWordStats(userId, dictId)
+                loadGameStats(userId)
+                loadWeeklyStats(userId, _uiState.value.currentWeekOffset)
+                loadLeaderboard(userId)
+
+                _uiState.value = _uiState.value.copy(isLoading = false)
+
+            } catch (e: Exception) {
+                Log.e("StatisticsVM", "Error refreshing stats", e)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+
+                )
+            }
         }
     }
 
-    private suspend fun loadStatistics() {
-        val userId = authManager.getUserId() ?: return
-        val context = ServiceLocator.appContext
-        val settingsManager = SettingsManager(context)
-        val currentDictId = settingsManager.getCurrentCategoryId()
-        val currentDictName = settingsManager.getCurrentDictionaryName()
+    fun previousWeek() {
+        _uiState.value = _uiState.value.copy(currentWeekOffset = _uiState.value.currentWeekOffset - 1)
+        refreshStats()
+    }
 
-        _currentDictionaryName.value = currentDictName ?: "Все слова"
+    fun nextWeek() {
+        if (_uiState.value.currentWeekOffset < 0) {
+            _uiState.value = _uiState.value.copy(currentWeekOffset = _uiState.value.currentWeekOffset + 1)
+            refreshStats()
+        }
+    }
 
+    private suspend fun loadWordStats(userId: String, dictionaryId: String) {
         try {
-            // Загружаем все слова пользователя для текущего словаря
-            val wordsSnapshot = firestore.collection("user_words")
+            val userWordsSnapshot = firestore.collection("user_words")
                 .whereEqualTo("userId", userId)
-                .whereEqualTo("dictionaryId", currentDictId)
+                .whereEqualTo("dictionaryId", dictionaryId)
                 .get()
                 .await()
 
-            var learned = 0
-            var inProgress = 0
             var newWords = 0
+            var inProgress = 0
+            var learned = 0
 
-            for (doc in wordsSnapshot.documents) {
+            for (doc in userWordsSnapshot.documents) {
                 val stage = (doc.getLong("stage") ?: 0).toInt()
                 when {
-                    stage >= 7 -> learned++
-                    stage in 1..6 -> inProgress++
                     stage == 0 -> newWords++
+                    stage in 1..6 -> inProgress++
+                    stage >= 7 -> learned++
                 }
             }
 
-            _learnedWordsCount.value = learned
-            _inProgressWordsCount.value = inProgress
-            _newWordsCount.value = newWords
-
-            Log.d(TAG, "Stats for dict $currentDictId: learned=$learned, inProgress=$inProgress, new=$newWords")
-
-            // Загружаем результаты игр за последние 7 дней
-            val sevenDaysAgo = System.currentTimeMillis() - 7 * 24 * 60 * 60 * 1000L
-            val gamesSnapshot = firestore.collection("game_results")
-                .whereEqualTo("userId", userId)
-                .whereGreaterThan("timestamp", sevenDaysAgo)
-                .get()
-                .await()
-
-            // Группируем по дням
-            val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-            val statsMap = mutableMapOf<String, DailyStats>()
-
-            // Инициализируем все 7 дней
-            for (i in 0 until 7) {
-                val calendar = Calendar.getInstance()
-                calendar.add(Calendar.DAY_OF_YEAR, -i)
-                val date = dateFormat.format(calendar.time)
-                statsMap[date] = DailyStats(date = date)
-            }
-
-            var totalGamesPlayed = 0
-            var totalScoreSum = 0
-
-            for (doc in gamesSnapshot.documents) {
-                val timestamp = doc.getLong("timestamp") ?: continue
-                val date = dateFormat.format(Date(timestamp))
-                val score = doc.getLong("score")?.toInt() ?: 0
-
-                totalGamesPlayed++
-                totalScoreSum += score
-
-                val existing = statsMap[date] ?: DailyStats(date = date)
-                statsMap[date] = existing.copy(
-                    gamesPlayed = existing.gamesPlayed + 1,
-                    totalScore = existing.totalScore + score
-                )
-            }
-
-            _weekStats.value = statsMap.values.sortedBy { it.date }
-            _totalStats.value = TotalStats(
-                totalWordsLearned = learned,
-                totalGamesPlayed = totalGamesPlayed,
-                totalScore = totalScoreSum,
-                averageScore = if (totalGamesPlayed > 0) totalScoreSum / totalGamesPlayed else 0
+            _uiState.value = _uiState.value.copy(
+                newWords = newWords,
+                inProgressWords = inProgress,
+                learnedWords = learned
             )
-
         } catch (e: Exception) {
-            Log.e(TAG, "Error loading statistics", e)
+            Log.e("StatisticsVM", "Error loading word stats", e)
         }
     }
 
-    private suspend fun loadLeaderboard() {
+    private suspend fun loadGameStats(userId: String) {
         try {
-            _isLeaderboardLoading.value = true
+            val gamesSnapshot = firestore.collection("game_results")
+                .whereEqualTo("userId", userId)
+                .get()
+                .await()
+
+            var totalGames = 0
+            var totalScore = 0
+
+            for (doc in gamesSnapshot.documents) {
+                totalGames++
+                totalScore += (doc.getLong("score") ?: 0).toInt()
+            }
+
+            _uiState.value = _uiState.value.copy(
+                totalGamesPlayed = totalGames,
+                totalScore = totalScore,
+                averageScore = if (totalGames > 0) totalScore / totalGames else 0
+            )
+        } catch (e: Exception) {
+            Log.e("StatisticsVM", "Error loading game stats", e)
+        }
+    }
+
+    private suspend fun loadWeeklyStats(userId: String, weekOffset: Int) {
+        try {
+            val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale("ru"))
+
+            val startCal = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+
+                // Находим понедельник текущей недели
+                val dayOfWeek = get(Calendar.DAY_OF_WEEK)
+                val daysToMonday = if (dayOfWeek == Calendar.SUNDAY) -6 else Calendar.MONDAY - dayOfWeek
+                add(Calendar.DAY_OF_YEAR, daysToMonday)
+                add(Calendar.WEEK_OF_YEAR, weekOffset)
+            }
+
+            val endCal = startCal.clone() as Calendar
+            endCal.add(Calendar.DAY_OF_YEAR, 7)
+
+            val startTime = startCal.timeInMillis
+            val endTime = endCal.timeInMillis
+
+            val snapshot = firestore.collection("game_results")
+                .whereEqualTo("userId", userId)
+                .whereGreaterThanOrEqualTo("timestamp", startTime)
+                .whereLessThan("timestamp", endTime)
+                .orderBy("timestamp", Query.Direction.ASCENDING)
+                .get()
+                .await()
+
+            val statsMap = linkedMapOf<String, DailyStats>()
+            for (i in 0 until 7) {
+                val dayCal = startCal.clone() as Calendar
+                dayCal.add(Calendar.DAY_OF_YEAR, i)
+                val date = dateFormat.format(dayCal.time)
+                statsMap[date] = DailyStats(date = date)
+            }
+
+            for (doc in snapshot.documents) {
+                val timestamp = doc.getLong("timestamp") ?: continue
+                val score = doc.getLong("score")?.toInt() ?: 0
+                val date = dateFormat.format(Date(timestamp))
+                val current = statsMap[date] ?: continue
+                statsMap[date] = current.copy(
+                    gamesPlayed = current.gamesPlayed + 1,
+                    totalScore = current.totalScore + score
+                )
+            }
+
+            _uiState.value = _uiState.value.copy(weeklyStats = statsMap.values.toList())
+        } catch (e: Exception) {
+            Log.e("StatisticsVM", "Error loading weekly stats", e)
+        }
+    }
+
+    private suspend fun loadLeaderboard(currentUserId: String) {
+        try {
             val snapshot = firestore.collection("leaderboard")
-                .orderBy("totalScore", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                .orderBy("totalScore", Query.Direction.DESCENDING)
                 .limit(100)
                 .get()
                 .await()
 
             val players = snapshot.documents.mapIndexed { index, doc ->
                 LeaderboardPlayer(
-                    id = doc.id.hashCode(),
-                    name = doc.getString("username") ?: "Anonymous",
+                    id = doc.id,
+                    name = doc.getString("username") ?: "Игрок",
                     score = doc.getLong("totalScore")?.toInt() ?: 0,
                     position = index + 1
                 )
             }
-            _leaderboardPlayers.value = players
 
-            val userId = authManager.getUserId()
-            _yourPosition.value = players.find { it.id.toString() == userId }
+            var yourPosition = players.find { it.id == currentUserId }
+
+            if (yourPosition == null) {
+                val userDoc = firestore.collection("leaderboard")
+                    .document(currentUserId)
+                    .get()
+                    .await()
+
+                if (userDoc.exists()) {
+                    val userScore = userDoc.getLong("totalScore")?.toInt() ?: 0
+                    val userName = userDoc.getString("username") ?: "Вы"
+                    yourPosition = LeaderboardPlayer(
+                        id = currentUserId,
+                        name = userName,
+                        score = userScore,
+                        position = players.size + 1
+                    )
+                }
+            }
+
+            _uiState.value = _uiState.value.copy(
+                leaderboard = players,
+                yourPosition = yourPosition,
+                yourGameScore = yourPosition?.score ?: _uiState.value.yourGameScore
+            )
         } catch (e: Exception) {
-            Log.e(TAG, "Error loading leaderboard", e)
-        } finally {
-            _isLeaderboardLoading.value = false
+            Log.e("StatisticsVM", "Error loading leaderboard", e)
         }
-    }
-
-    private suspend fun loadUserScore() {
-        val profile = ServiceLocator.userRepository.getCurrentUserProfile()
-        _yourGameScore.value = profile?.totalScore ?: 0
     }
 }

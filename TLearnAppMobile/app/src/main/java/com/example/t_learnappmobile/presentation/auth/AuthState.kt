@@ -1,7 +1,5 @@
 package com.example.t_learnappmobile.presentation.auth
 
-
-
 sealed class AuthState {
     object Idle : AuthState()
     object Loading : AuthState()
@@ -9,5 +7,3 @@ sealed class AuthState {
     data class Error(val message: String) : AuthState()
     object LoggedOut : AuthState()
 }
-
-

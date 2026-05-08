@@ -9,10 +9,6 @@ import com.example.t_learnappmobile.data.user.UserRepository
 import com.example.t_learnappmobile.domain.repository.WordRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import okhttp3.OkHttpClient
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
-import java.util.concurrent.TimeUnit
 
 @SuppressLint("StaticFieldLeak")
 object ServiceLocator {
@@ -26,11 +22,6 @@ object ServiceLocator {
     lateinit var firebaseAuthManager: FirebaseAuthManager
     lateinit var authRepository: AuthRepository
 
-    // API для карточек (бэкенд) - больше не используется, но оставим
-    lateinit var wordApi: WordApi
-
-    private val BACKEND_URL = "http://10.0.2.2:8080/"
-
     fun initContextAwareDependencies(appContext: Context) {
         this.appContext = appContext.applicationContext
 
@@ -42,10 +33,19 @@ object ServiceLocator {
         authRepository = AuthRepository(firebaseAuthManager)
         userRepository = UserRepository()
 
-        // ВАЖНО: Создаем репозиторий слов на Firebase
+        // Создаем новый репозиторий слов (с чистым состоянием)
         wordRepository = FirebaseWordRepository()
 
         Log.d("ServiceLocator", "Initialized successfully")
         Log.d("ServiceLocator", "WordRepository type: ${wordRepository::class.java.simpleName}")
+    }
+
+    /**
+     * Сбрасывает репозитории при смене пользователя
+     */
+    fun resetRepositories() {
+        Log.d("ServiceLocator", "Resetting repositories...")
+        wordRepository = FirebaseWordRepository()
+        Log.d("ServiceLocator", "Repositories reset")
     }
 }

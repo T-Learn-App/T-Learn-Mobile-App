@@ -23,18 +23,30 @@ class SettingsManager(private val context: Context) {
 
     fun setTheme(mode: Int) {
         prefs.edit { putInt(KEY_THEME, mode) }
-        AppCompatDelegate.setDefaultNightMode(mode)
     }
 
-    fun saveUserProfile(firstName: String, lastName: String) {
-        prefs.edit {
-            putString("user_first_name", firstName)
-            putString("user_last_name", lastName)
-        }
+    /**
+     * Возвращает имя пользователя из Firebase (актуальное для текущего аккаунта)
+     */
+    suspend fun getFirstName(): String {
+        val profile = ServiceLocator.userRepository.getCurrentUserProfile()
+        return profile?.firstName ?: ""
     }
 
-    fun getFirstName(): String = prefs.getString("user_first_name", "") ?: ""
-    fun getLastName(): String = prefs.getString("user_last_name", "") ?: ""
+    /**
+     * Возвращает фамилию пользователя из Firebase (актуальную для текущего аккаунта)
+     */
+    suspend fun getLastName(): String {
+        val profile = ServiceLocator.userRepository.getCurrentUserProfile()
+        return profile?.lastName ?: ""
+    }
+
+    /**
+     * Обновляет имя и фамилию в Firebase
+     */
+    suspend fun updateUserProfile(firstName: String, lastName: String): Boolean {
+        return ServiceLocator.userRepository.updateProfile(firstName, lastName)
+    }
 
     fun getCurrentCategoryId(): String =
         prefs.getString(KEY_CATEGORY_ID, "finance") ?: "finance"
@@ -50,13 +62,13 @@ class SettingsManager(private val context: Context) {
         prefs.edit { putString(KEY_CATEGORY_NAME, name) }
     }
 
-    suspend fun updateUserProfile(firstName: String, lastName: String): Boolean {
-        saveUserProfile(firstName, lastName)
-        return ServiceLocator.userRepository.updateProfile(firstName, lastName)
-    }
-
     suspend fun clearAllData() {
-        prefs.edit { clear() }
+        // Очищаем только тему и выбор словаря, но не имя/фамилию (они в Firebase)
+        prefs.edit {
+            remove(KEY_THEME)
+            remove(KEY_CATEGORY_ID)
+            remove(KEY_CATEGORY_NAME)
+        }
         AppCompatDelegate.setDefaultNightMode(THEME_SYSTEM)
     }
 }

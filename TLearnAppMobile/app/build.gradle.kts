@@ -107,6 +107,8 @@ dependencies {
     implementation(libs.androidx.datastore.core)
     implementation(libs.core.ktx)
     implementation(libs.androidx.adapters)
+    implementation(libs.google.firebase.crashlytics.buildtools)
+    implementation(libs.androidx.compose.foundation)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -160,4 +162,15 @@ dependencies {
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
     implementation("com.google.android.gms:play-services-base:18.5.0")
+
+
+    // В блок dependencies добавь:
+    implementation("androidx.compose.ui:ui:1.5.4")
+    implementation("androidx.compose.ui:ui-tooling-preview:1.5.4")
+    implementation("androidx.compose.material3:material3:1.1.2")
+    implementation("androidx.compose.material:material-icons-extended:1.5.4")
+    implementation("androidx.activity:activity-compose:1.8.1")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.6.2")
+    implementation("androidx.navigation:navigation-compose:2.7.5")
 }

@@ -18,6 +18,8 @@ coreKtxVersion = "1.7.0"
 firebaseAppdistributionGradle = "5.2.0"
 firebaseFirestoreKtx = "26.1.0"
 adapters = "3.2.0-alpha11"
+firebaseCrashlyticsBuildtoolsVersion = "3.0.7"
+foundation = "1.11.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -44,6 +46,8 @@ core-ktx = { group = "androidx.test", name = "core-ktx", version.ref = "coreKtxV
 firebase-appdistribution-gradle = { group = "com.google.firebase", name = "firebase-appdistribution-gradle", version.ref = "firebaseAppdistributionGradle" }
 firebase-firestore-ktx = { group = "com.google.firebase", name = "firebase-firestore-ktx", version.ref = "firebaseFirestoreKtx" }
 androidx-adapters = { group = "androidx.databinding", name = "adapters", version.ref = "adapters" }
+google-firebase-crashlytics-buildtools = { group = "com.google.firebase", name = "firebase-crashlytics-buildtools", version.ref = "firebaseCrashlyticsBuildtoolsVersion" }
+androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

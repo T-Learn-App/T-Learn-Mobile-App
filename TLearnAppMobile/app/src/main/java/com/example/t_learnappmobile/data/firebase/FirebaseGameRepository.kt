@@ -19,7 +19,7 @@ class FirebaseGameRepository {
     val gameWords: StateFlow<List<GameWord>> = _gameWords.asStateFlow()
 
     suspend fun loadGameWords(dictionaryId: String, limit: Int = 10): List<GameWord> {
-        try {
+        return try {
             val snapshot = firestore.collection("words")
                 .whereEqualTo("dictionaryId", dictionaryId)
                 .limit(limit.toLong())
@@ -36,10 +36,10 @@ class FirebaseGameRepository {
             }
             _gameWords.value = words
             Log.d(TAG, "Loaded ${words.size} game words")
-            return words
+            words
         } catch (e: Exception) {
             Log.e(TAG, "Error loading game words", e)
-            return emptyList()
+            emptyList()
         }
     }
 
@@ -50,15 +50,14 @@ class FirebaseGameRepository {
                 "userId" to userId,
                 "score" to score,
                 "wordsCount" to wordsCount,
-                "timestamp" to System.currentTimeMillis()
+                "timestamp" to System.currentTimeMillis() // Это Long
             )
             firestore.collection("game_results")
                 .add(gameResult)
                 .await()
 
-            // Обновляем общий счет пользователя
             ServiceLocator.userRepository.updateGameScore(score)
-            Log.d(TAG, "Game result saved: score=$score")
+            Log.d(TAG, "Game result saved: score=$score, timestamp=${System.currentTimeMillis()}")
         } catch (e: Exception) {
             Log.e(TAG, "Error saving game result", e)
         }

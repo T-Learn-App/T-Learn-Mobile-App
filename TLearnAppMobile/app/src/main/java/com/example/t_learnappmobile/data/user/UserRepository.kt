@@ -41,6 +41,22 @@ class UserRepository {
                 .await()
 
             Log.d(TAG, "User profile created: $userProfile")
+
+            // Сразу создаем запись в лидерборде
+            val displayName = getDisplayName(firstName, lastName, email)
+            firestore.collection("leaderboard")
+                .document(uid)
+                .set(
+                    mapOf(
+                        "userId" to uid,
+                        "username" to displayName,
+                        "totalScore" to 0,
+                        "updatedAt" to System.currentTimeMillis()
+                    )
+                )
+                .await()
+
+            Log.d(TAG, "Leaderboard entry created for: $displayName")
             true
         } catch (e: Exception) {
             Log.e(TAG, "Error creating user profile", e)
@@ -67,7 +83,7 @@ class UserRepository {
                     createdAt = document.getLong("createdAt") ?: System.currentTimeMillis()
                 )
             } else {
-                UserProfile(uid = uid, email = authManager.getUserEmail())
+                null
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error getting profile", e)
@@ -79,6 +95,7 @@ class UserRepository {
         val uid = authManager.getUserId() ?: return false
 
         return try {
+            // Обновляем профиль пользователя
             firestore.collection("users")
                 .document(uid)
                 .set(
@@ -90,6 +107,24 @@ class UserRepository {
                     SetOptions.merge()
                 )
                 .await()
+
+            // Обновляем имя в лидерборде
+            val email = authManager.getUserEmail()
+            val displayName = getDisplayName(firstName, lastName, email)
+
+            firestore.collection("leaderboard")
+                .document(uid)
+                .set(
+                    mapOf(
+                        "userId" to uid,
+                        "username" to displayName,
+                        "updatedAt" to System.currentTimeMillis()
+                    ),
+                    SetOptions.merge()
+                )
+                .await()
+
+            Log.d(TAG, "Profile and leaderboard updated for: $displayName")
             true
         } catch (e: Exception) {
             Log.e(TAG, "Error updating profile", e)
@@ -109,13 +144,11 @@ class UserRepository {
 
             // Получаем профиль для имени
             val userProfile = getCurrentUserProfile()
-            val firstName = userProfile?.firstName ?: ""
-            val lastName = userProfile?.lastName ?: ""
-            val displayName = if (firstName.isNotEmpty()) {
-                "${firstName} ${lastName.firstOrNull() ?: ""}."
-            } else {
-                authManager.getUserEmail()?.split("@")?.firstOrNull() ?: "User"
-            }
+            val displayName = getDisplayName(
+                userProfile?.firstName ?: "",
+                userProfile?.lastName ?: "",
+                authManager.getUserEmail()
+            )
 
             // Обновляем таблицу лидеров
             firestore.collection("leaderboard")
@@ -134,6 +167,21 @@ class UserRepository {
             Log.d(TAG, "Game score updated: +$score for user $displayName")
         } catch (e: Exception) {
             Log.e(TAG, "Error updating score", e)
+        }
+    }
+
+    /**
+     * Формирует отображаемое имя: "Имя Ф." или email если имена нет
+     */
+    private fun getDisplayName(firstName: String, lastName: String, email: String?): String {
+        return if (firstName.isNotEmpty() && lastName.isNotEmpty()) {
+            "$firstName ${lastName.first().uppercase()}."
+        } else if (firstName.isNotEmpty()) {
+            firstName
+        } else if (email != null && email.isNotEmpty()) {
+            email.split("@").firstOrNull() ?: "User"
+        } else {
+            "User"
         }
     }
 }

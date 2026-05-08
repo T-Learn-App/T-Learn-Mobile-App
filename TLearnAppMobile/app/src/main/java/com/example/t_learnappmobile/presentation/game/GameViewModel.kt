@@ -1,76 +1,84 @@
+// Файл: presentation/game/GameViewModel.kt
 package com.example.t_learnappmobile.presentation.game
 
-import android.app.Application
-import android.util.Log
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.t_learnappmobile.data.firebase.FirebaseGameRepository
 import com.example.t_learnappmobile.data.repository.ServiceLocator
-import com.example.t_learnappmobile.domain.model.GameMode
 import com.example.t_learnappmobile.domain.model.GameWord
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class GameViewModel(application: Application) : AndroidViewModel(application) {
-    private val gameRepository = FirebaseGameRepository()
-    private val MAX_WORDS = 10
+data class GameUiState(
+    val currentWord: GameWord? = null,
+    val score: Int = 0,
+    val currentWordIndex: Int = 0,
+    val totalWords: Int = 10,
+    val options: List<String> = emptyList(),
+    val correctOptionIndex: Int = 0,
+    val isGameActive: Boolean = false,
+    val showResults: Boolean = false,
+    val isLoading: Boolean = false,
+    val error: String? = null,
+    val lastAnswerCorrect: Boolean? = null
+)
 
-    private val _uiState = MutableStateFlow(GameState())
-    val uiState: StateFlow<GameState> = _uiState
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading
+class GameViewModel : ViewModel() {
+    private val gameRepository = FirebaseGameRepository()
+    private val settingsManager = ServiceLocator.appContext?.let {
+        com.example.t_learnappmobile.data.settings.SettingsManager(it)
+    }
+
+    private val _uiState = MutableStateFlow(GameUiState())
+    val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
 
     private var gameWords: List<GameWord> = emptyList()
     private var currentWordIndex = 0
-    private var currentDictionaryId = ""
 
-    fun setDictionary(dictionaryId: String) {
-        currentDictionaryId = dictionaryId
-    }
-
-    fun startGame(mode: GameMode) {
+    fun startGame() {
         viewModelScope.launch {
-            _isLoading.value = true
-            _uiState.value = GameState(isGameActive = false)
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
-            try {
-                gameWords = gameRepository.loadGameWords(currentDictionaryId, MAX_WORDS)
+            val dictionaryId = settingsManager?.getCurrentCategoryId() ?: "finance"
+            gameWords = gameRepository.loadGameWords(dictionaryId, 10)
 
-                if (gameWords.isEmpty()) {
-                    _uiState.value = GameState(isGameActive = false, totalWords = 0)
-                    _isLoading.value = false
-                    return@launch
-                }
-
-                currentWordIndex = 0
-                loadNextWord()
+            if (gameWords.isEmpty()) {
                 _uiState.value = _uiState.value.copy(
-                    isGameActive = true,
-                    totalWords = gameWords.size
+                    isLoading = false,
+                    error = "Нет слов для игры. Изучите новые слова!"
                 )
-            } catch (e: Exception) {
-                Log.e("GameViewModel", "Error starting game", e)
-                _uiState.value = GameState(isGameActive = false, totalWords = 0)
-            } finally {
-                _isLoading.value = false
+                return@launch
             }
+
+            currentWordIndex = 0
+            loadNextWord()
+            _uiState.value = _uiState.value.copy(
+                isGameActive = true,
+                totalWords = gameWords.size,
+                isLoading = false,
+                score = 0
+            )
         }
     }
 
-    private suspend fun loadNextWord() {
+    private fun loadNextWord() {
         if (currentWordIndex >= gameWords.size) {
             endGame()
             return
         }
 
         val word = gameWords[currentWordIndex]
+
+        // Выбираем один неправильный вариант из других слов
         val otherAnswers = gameWords
             .filter { it.id != word.id }
             .shuffled()
             .take(1)
             .map { it.russian }
 
+        // Перемешиваем правильный и неправильный варианты
         val options = (listOf(word.russian) + otherAnswers).shuffled()
         val correctIndex = options.indexOf(word.russian)
 
@@ -79,7 +87,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             options = options,
             correctOptionIndex = correctIndex,
             currentWordIndex = currentWordIndex,
-            wordsLeft = gameWords.size - currentWordIndex
+            lastAnswerCorrect = null
         )
     }
 
@@ -93,35 +101,36 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
         currentWordIndex++
 
+        // Показываем результат на короткое время
+        _uiState.value = state.copy(
+            score = newScore,
+            lastAnswerCorrect = isCorrect
+        )
+
+        // Загружаем следующее слово с небольшой задержкой
         viewModelScope.launch {
+            kotlinx.coroutines.delay(500)
             if (currentWordIndex >= gameWords.size) {
                 endGame(newScore)
             } else {
-                _uiState.value = state.copy(
-                    score = newScore,
-                    currentWordIndex = currentWordIndex
-                )
                 loadNextWord()
             }
         }
     }
 
-    private suspend fun endGame(finalScore: Int = _uiState.value.score) {
-        try {
+    private fun endGame(finalScore: Int = _uiState.value.score) {
+        viewModelScope.launch {
             gameRepository.saveGameResult(finalScore, gameWords.size)
-        } catch (e: Exception) {
-            Log.e("GameViewModel", "Error saving game result", e)
+            _uiState.value = _uiState.value.copy(
+                isGameActive = false,
+                showResults = true,
+                score = finalScore,
+                currentWord = null
+            )
         }
-
-        _uiState.value = _uiState.value.copy(
-            isGameActive = false,
-            showResults = true,
-            score = finalScore,
-            totalWords = gameWords.size
-        )
     }
 
     fun closeResults() {
-        _uiState.value = GameState()
+        _uiState.value = GameUiState()
     }
 }

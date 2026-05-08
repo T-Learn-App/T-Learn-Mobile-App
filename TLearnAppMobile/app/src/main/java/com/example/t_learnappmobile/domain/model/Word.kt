@@ -1,3 +1,4 @@
+// Файл: domain/model/Word.kt
 package com.example.t_learnappmobile.model
 
 enum class CardType {
@@ -18,25 +19,26 @@ enum class PartOfSpeech(val russian: String) {
     PRONOUN("местоимение"),
     PREPOSITION("предлог"),
     CONJUNCTION("союз"),
-    INTERJECTION("междометие")
+    INTERJECTION("междометие"),
+    UNKNOWN("неизвестно")
 }
 
 data class Word(
     val id: String,
-    val dictionaryId: String,
-    val englishWord: String,
-    val translation: String,
-    val transcription: String,
-    val partOfSpeech: PartOfSpeech,
+    val dictionaryId: String = "",
+    val englishWord: String = "",
+    val translation: String = "",
+    val transcription: String = "",
+    val partOfSpeech: PartOfSpeech = PartOfSpeech.UNKNOWN,
     val stage: Int = 0,
     val nextReviewDate: Long = 0,
     val isNew: Boolean = true,
     val translationDirection: TranslationDirection = TranslationDirection.EN_TO_RU,
-    val userWordDocId: String = ""  // ID документа в user_words: "{userId}_{wordId}"
+    val userWordDocId: String = ""
 )
 
 data class Dictionary(
     val id: String,
     val name: String,
-    val order: Int
+    val order: Int = 0
 )

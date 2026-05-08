@@ -36,12 +36,12 @@ class FirebaseAuthManager {
         lastName: String = ""
     ): AuthState {
         return try {
-            Log.d(TAG, "Register: $email, firstName: $firstName, lastName: $lastName")
+            Log.d(TAG, "Register: $email, firstName: '$firstName', lastName: '$lastName'")
             val result = auth.createUserWithEmailAndPassword(email, password).await()
             val user = result.user
             Log.d(TAG, "Register success: ${user?.uid}")
 
-            // Создаем профиль пользователя через UserRepository
+            // Создаем профиль пользователя через UserRepository с переданными именем и фамилией
             user?.uid?.let { uid ->
                 ServiceLocator.userRepository.createUserProfile(
                     uid = uid,
@@ -49,6 +49,7 @@ class FirebaseAuthManager {
                     firstName = firstName,
                     lastName = lastName
                 )
+                Log.d(TAG, "User profile created with firstName='$firstName', lastName='$lastName'")
             }
 
             AuthState.Success(

@@ -1,3 +1,4 @@
+// presentation/statistics/StatisticsScreen.kt
 package com.example.t_learnappmobile.presentation.statistics
 
 import android.content.res.Configuration
@@ -25,8 +26,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.t_learnappmobile.data.firebase.DailyStats
-import com.example.t_learnappmobile.data.leaderboard.LeaderboardPlayer
+import com.example.t_learnappmobile.domain.model.DailyStats
+import com.example.t_learnappmobile.domain.model.LeaderboardPlayer
 import com.example.t_learnappmobile.presentation.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
@@ -49,7 +50,6 @@ fun StatisticsScreen(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 48.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Заголовок
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -66,7 +66,6 @@ fun StatisticsScreen(
                 }
             }
 
-            // Общая статистика
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -86,17 +85,14 @@ fun StatisticsScreen(
                 }
             }
 
-            // Недельная диаграмма игр
             item {
                 WeeklyStatsCard(uiState.weeklyStats, uiState.currentWeekOffset, viewModel)
             }
 
-            // Таблица лидеров в отдельной карточке с прокруткой
             item {
                 LeaderboardCard(uiState)
             }
 
-            // Карточка пользователя
             item {
                 UserPositionCard(uiState)
             }
@@ -184,12 +180,10 @@ fun LeaderboardCard(uiState: StatisticsUiState) {
                     Text("Нет данных", color = MediumGray)
                 }
             } else {
-                // Топ-3 подиум
                 TopThreeLeaders(uiState.leaderboard.take(3))
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Прокручиваемый список внутри карточки (места 4-100)
                 val otherPlayers = uiState.leaderboard.drop(3)
                 if (otherPlayers.isNotEmpty()) {
                     LazyColumn(
@@ -256,7 +250,6 @@ fun getWeekLabel(weekOffset: Int): String {
     calendar.set(Calendar.SECOND, 0)
     calendar.set(Calendar.MILLISECOND, 0)
 
-    // Находим понедельник текущей недели
     val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
     val daysToMonday = if (dayOfWeek == Calendar.SUNDAY) -6 else Calendar.MONDAY - dayOfWeek
     calendar.add(Calendar.DAY_OF_YEAR, daysToMonday)
@@ -342,7 +335,6 @@ fun getWeekDates(weekOffset: Int): List<String> {
     calendar.set(Calendar.SECOND, 0)
     calendar.set(Calendar.MILLISECOND, 0)
 
-    // Находим понедельник текущей недели
     val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
     val daysToMonday = if (dayOfWeek == Calendar.SUNDAY) -6 else Calendar.MONDAY - dayOfWeek
     calendar.add(Calendar.DAY_OF_YEAR, daysToMonday)
@@ -483,6 +475,8 @@ fun StatItem(value: String, label: String, color: Color) {
 @Composable
 fun StatisticsScreenPreview() {
     TLearnAppMobileTheme {
-        StatisticsScreen(viewModel = remember { StatisticsViewModel() }, onClose = {})
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("Statistics Preview")
+        }
     }
 }

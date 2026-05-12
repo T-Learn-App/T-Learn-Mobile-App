@@ -1,3 +1,4 @@
+// presentation/components/NotificationManager.kt
 package com.example.t_learnappmobile.presentation.components
 
 import androidx.compose.foundation.layout.*
@@ -20,10 +21,7 @@ class NotificationManager {
         this.scope = scope
     }
 
-    fun show(
-        text: String,
-        duration: Long = 2000
-    ) {
+    fun show(text: String, duration: Long = 2000) {
         _message.value = text
         scope?.launch {
             kotlinx.coroutines.delay(duration)
@@ -31,13 +29,8 @@ class NotificationManager {
         }
     }
 
-    fun showError(text: String) {
-        show(text)
-    }
-
-    fun showSuccess(text: String) {
-        show(text)
-    }
+    fun showError(text: String) = show(text)
+    fun showSuccess(text: String) = show(text)
 }
 
 @Composable
@@ -67,7 +60,7 @@ fun AppNotificationHost(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(8.dp)),
                 colors = CardDefaults.cardColors(
-                    containerColor = if (message.contains("Ошибка") || message.contains("error"))
+                    containerColor = if (message.contains("error", ignoreCase = true))
                         MaterialTheme.colorScheme.error
                     else
                         MaterialTheme.colorScheme.primary

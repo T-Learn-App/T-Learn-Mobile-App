@@ -1,6 +1,6 @@
+// presentation/cards/CardsScreen.kt
 package com.example.t_learnappmobile.presentation.cards
 
-import android.R.attr.padding
 import android.content.res.Configuration
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
@@ -22,14 +22,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.t_learnappmobile.model.CardType
-import com.example.t_learnappmobile.model.Dictionary
-import com.example.t_learnappmobile.model.PartOfSpeech
-import com.example.t_learnappmobile.model.TranslationDirection
-import com.example.t_learnappmobile.model.Word
+import com.example.t_learnappmobile.domain.model.CardType
+import com.example.t_learnappmobile.domain.model.Dictionary
+import com.example.t_learnappmobile.domain.model.PartOfSpeech
+import com.example.t_learnappmobile.domain.model.TranslationDirection
+import com.example.t_learnappmobile.domain.model.Word
 import com.example.t_learnappmobile.presentation.components.NotificationManager
 import com.example.t_learnappmobile.presentation.components.rememberNotificationManager
 import com.example.t_learnappmobile.presentation.theme.*
+
+// Остальной код CardsScreen без изменений...
 
 // ==================== ГЛАВНЫЙ ЭКРАН ====================
 
@@ -386,7 +388,7 @@ fun WordCardSection(
                 if (word.partOfSpeech != PartOfSpeech.UNKNOWN) {
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = word.partOfSpeech.russian,
+                        text = word.partOfSpeech.displayName,
                         fontSize = 18.sp,
                         color = DarkGray,
                         fontWeight = FontWeight.Medium

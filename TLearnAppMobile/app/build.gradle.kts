@@ -109,6 +109,7 @@ dependencies {
     implementation(libs.androidx.adapters)
     implementation(libs.google.firebase.crashlytics.buildtools)
     implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.lifecycle.runtime.compose)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -173,4 +174,9 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.6.2")
     implementation("androidx.navigation:navigation-compose:2.7.5")
+
+
+
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
+
 }

@@ -1,3 +1,4 @@
+// MainActivity.kt
 package com.example.t_learnappmobile
 
 import android.os.Bundle
@@ -9,7 +10,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import com.example.t_learnappmobile.data.settings.SettingsManager
+import com.example.t_learnappmobile.data.local.SettingsLocalSource
 import com.example.t_learnappmobile.presentation.components.AppNotificationHost
 import com.example.t_learnappmobile.presentation.components.rememberNotificationManager
 import com.example.t_learnappmobile.presentation.navigation.NavGraph
@@ -19,16 +20,12 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val settingsManager = SettingsManager(this)
-        val isDarkTheme = settingsManager.getTheme() == SettingsManager.THEME_DARK
+        val appModule = (application as App).appModule
+        val themeMode = appModule.settingsLocalSource.getTheme()
+        val isDarkTheme = themeMode == SettingsLocalSource.THEME_DARK
 
         setContent {
             var darkTheme by remember { mutableStateOf(isDarkTheme) }
-
-            // Слушаем изменения темы
-            LaunchedEffect(settingsManager) {
-                // Можно добавить listener при необходимости
-            }
 
             TLearnAppMobileTheme(darkTheme = darkTheme) {
                 val notificationManager = rememberNotificationManager()
@@ -38,21 +35,24 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
+                        // КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Используем key(darkTheme) только для темы,
+                        // но НЕ пересоздаем NavGraph
                         NavGraph(
                             notificationManager = notificationManager,
-
                             onThemeChanged = { newDarkTheme ->
                                 darkTheme = newDarkTheme
-                                val mode = if (newDarkTheme) SettingsManager.THEME_DARK
-                                else SettingsManager.THEME_LIGHT
-                                settingsManager.setTheme(mode)
-                            }
+                                val mode = if (newDarkTheme) {
+                                    SettingsLocalSource.THEME_DARK
+                                } else {
+                                    SettingsLocalSource.THEME_LIGHT
+                                }
+                                appModule.settingsLocalSource.setTheme(mode)
+                                // НЕ вызываем рекомпозицию NavGraph
+                            },
+                            appModule = appModule
                         )
 
-                        AppNotificationHost(
-                            manager = notificationManager,
-                            modifier = Modifier
-                        )
+                        AppNotificationHost(manager = notificationManager)
                     }
                 }
             }

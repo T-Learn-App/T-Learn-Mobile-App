@@ -1,3 +1,4 @@
+// presentation/auth/LoginScreen.kt - исправить все ссылки на authState на uiState
 package com.example.t_learnappmobile.presentation.auth
 
 import android.content.res.Configuration
@@ -36,14 +37,14 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
 
-    val authState by authViewModel.authState.collectAsState()
+    val uiState by authViewModel.uiState.collectAsState()
 
-    LaunchedEffect(authState.error) {
-        authState.error?.let { error -> notificationManager.showError(error) }
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { error -> notificationManager.showError(error) }
     }
 
-    LaunchedEffect(authState.isSuccess) {
-        if (authState.isSuccess) onLoginSuccess()
+    LaunchedEffect(uiState.isSuccess) {
+        if (uiState.isSuccess) onLoginSuccess()
     }
 
     Box(
@@ -57,8 +58,6 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            
-
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(24.dp),
@@ -83,7 +82,7 @@ fun LoginScreen(
                         label = { Text(stringResource(R.string.mail)) },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        isError = authState.error != null && email.isNotEmpty(),
+                        isError = uiState.error != null && email.isNotEmpty(),
                         shape = RoundedCornerShape(12.dp)
                     )
 
@@ -107,7 +106,7 @@ fun LoginScreen(
                             }
                         },
                         singleLine = true,
-                        isError = authState.error != null && password.isNotEmpty(),
+                        isError = uiState.error != null && password.isNotEmpty(),
                         shape = RoundedCornerShape(12.dp)
                     )
 
@@ -143,7 +142,7 @@ fun LoginScreen(
             )
         }
 
-        if (authState.isLoading) {
+        if (uiState.isLoading) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -155,7 +154,7 @@ fun LoginScreen(
             }
         }
 
-        authState.error?.let { error ->
+        uiState.error?.let { error ->
             Snackbar(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -178,96 +177,12 @@ fun LoginScreen(
     }
 }
 
-// ============ PREVIEW ============
-
 @Preview(showBackground = true, showSystemUi = true, widthDp = 360, heightDp = 720)
 @Composable
 fun LoginScreenPreview() {
     TLearnAppMobileTheme {
-        Surface(modifier = Modifier.fillMaxSize()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
-                    .padding(horizontal = 24.dp, vertical = 48.dp)
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text("T-Learn", fontSize = 36.sp, fontWeight = FontWeight.Bold, color = YellowPrimary)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("Учи английский легко", fontSize = 16.sp, color = MediumGray, modifier = Modifier.padding(bottom = 48.dp))
-
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(24.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("Вход", fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 32.dp))
-
-                            var email by remember { mutableStateOf("user@example.com") }
-                            var password by remember { mutableStateOf("password") }
-                            var passwordVisible by remember { mutableStateOf(false) }
-
-                            OutlinedTextField(
-                                value = email,
-                                onValueChange = { email = it },
-                                label = { Text("Почта") },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true,
-                                shape = RoundedCornerShape(12.dp)
-                            )
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            OutlinedTextField(
-                                value = password,
-                                onValueChange = { password = it },
-                                label = { Text("Пароль") },
-                                modifier = Modifier.fillMaxWidth(),
-                                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                                trailingIcon = {
-                                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                                        Icon(
-                                            if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                            contentDescription = null,
-                                            tint = MediumGray
-                                        )
-                                    }
-                                },
-                                singleLine = true,
-                                shape = RoundedCornerShape(12.dp)
-                            )
-
-                            Spacer(modifier = Modifier.height(24.dp))
-
-                            Button(
-                                onClick = {},
-                                modifier = Modifier.fillMaxWidth().height(56.dp),
-                                shape = RoundedCornerShape(16.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = YellowPrimary, contentColor = Color.Black),
-                                enabled = true
-                            ) {
-                                Text("Войти", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    Text(
-                        text = "Зарегистрироваться",
-                        modifier = Modifier.clickable { }.padding(12.dp),
-                        color = BlueColor,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("Login Preview")
         }
     }
 }

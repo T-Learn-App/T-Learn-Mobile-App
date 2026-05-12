@@ -1,4 +1,4 @@
-// Файл: presentation/theme/Theme.kt
+// presentation/theme/Theme.kt
 package com.example.t_learnappmobile.presentation.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -8,7 +8,6 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-// Фирменные цвета
 val YellowPrimary = Color(0xFFFFC107)
 val YellowDark = Color(0xFFFFB300)
 val RedError = Color(0xFFF44336)

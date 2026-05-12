@@ -1,3 +1,4 @@
+// data/local/entities/Entities.kt
 package com.example.t_learnappmobile.data.local.entities
 
 import androidx.room.Entity
@@ -29,7 +30,7 @@ data class UserWordEntity(
     val totalViews: Int,
     val correctCount: Int,
     val incorrectCount: Int,
-    val isSynced: Boolean = false,  // ← false = нужно синхронизировать с Firebase
+    val isSynced: Boolean = false,
     val updatedAt: Long = System.currentTimeMillis()
 )
 

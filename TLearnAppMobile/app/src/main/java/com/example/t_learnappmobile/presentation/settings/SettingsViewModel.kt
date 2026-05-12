@@ -1,16 +1,21 @@
+// presentation/settings/SettingsViewModel.kt
 package com.example.t_learnappmobile.presentation.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.t_learnappmobile.data.repository.ServiceLocator
-import com.example.t_learnappmobile.data.settings.SettingsManager
-import com.example.t_learnappmobile.model.Dictionary
+import com.example.t_learnappmobile.domain.model.Dictionary
+import com.example.t_learnappmobile.domain.repository.AuthRepository
+import com.example.t_learnappmobile.domain.repository.UserRepository
+import com.example.t_learnappmobile.domain.repository.WordRepository
+import com.example.t_learnappmobile.domain.usecase.settings.SettingsUseCase
+import com.example.t_learnappmobile.domain.usecase.user.ResetUserDataUseCase
+import com.example.t_learnappmobile.domain.usecase.user.UpdateProfileUseCase
+import com.example.t_learnappmobile.domain.usecase.words.GetDictionariesUseCase
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 
 data class SettingsUiState(
     val isLoading: Boolean = false,
@@ -19,18 +24,22 @@ data class SettingsUiState(
     val currentDictionaryId: String = "",
     val firstName: String = "",
     val lastName: String = "",
-    val email: String = "",  // ДОБАВЛЕНО: поле для email
+    val email: String = "",
     val isDarkTheme: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val showResetDictionaryDialog: Boolean = false,
+    val showResetAllDialog: Boolean = false
 )
 
-class SettingsViewModel : ViewModel() {
-    private val firestore = ServiceLocator.firestore
-    private val authManager = ServiceLocator.firebaseAuthManager
-    private val wordRepository = ServiceLocator.wordRepository
-    private val settingsManager = ServiceLocator.appContext?.let {
-        SettingsManager(it)
-    }
+class SettingsViewModel(
+    private val getDictionariesUseCase: GetDictionariesUseCase,
+    private val updateProfileUseCase: UpdateProfileUseCase,
+    private val resetUserDataUseCase: ResetUserDataUseCase,
+    private val settingsUseCase: SettingsUseCase,
+    private val authRepository: AuthRepository,
+    private val userRepository: UserRepository,
+    private val wordRepository: WordRepository
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -39,48 +48,44 @@ class SettingsViewModel : ViewModel() {
         loadData()
     }
 
-
     private fun loadData() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
             try {
-                val dicts = ServiceLocator.wordRepository.getDictionaries()
-                val currentDictId = settingsManager?.getCurrentCategoryId() ?: dicts.firstOrNull()?.id ?: ""
+                val dicts = getDictionariesUseCase()
+                val currentDictId = settingsUseCase.getCurrentDictionaryId() ?: dicts.firstOrNull()?.id ?: ""
 
-                val profile = ServiceLocator.userRepository.getCurrentUserProfile()
-                val userEmail = authManager.getUserEmail() ?: ""
+                val userId = authRepository.getCurrentUserId()
+                val profile = userId?.let { userRepository.getUserProfile(it) }
+                val userEmail = authRepository.getUserEmail() ?: ""
 
-                val firstName = profile?.firstName ?: ""
-                val lastName = profile?.lastName ?: ""
-
-                val theme = settingsManager?.getTheme() ?: SettingsManager.THEME_SYSTEM
-                val isDarkTheme = theme == SettingsManager.THEME_DARK
+                val isDarkTheme = settingsUseCase.isDarkTheme()
 
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     dictionaries = dicts,
                     currentDictionaryId = currentDictId,
-                    firstName = firstName,
-                    lastName = lastName,
+                    firstName = profile?.firstName ?: "",
+                    lastName = profile?.lastName ?: "",
                     email = userEmail,
                     isDarkTheme = isDarkTheme
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = "Ошибка загрузки данных: ${e.message}"
+                    error = "Error loading data: ${e.message}"
                 )
             }
         }
     }
 
-
     fun refreshUserData() {
         viewModelScope.launch {
             try {
-                val profile = ServiceLocator.userRepository.getCurrentUserProfile()
-                val userEmail = authManager.getUserEmail() ?: ""
+                val userId = authRepository.getCurrentUserId()
+                val profile = userId?.let { userRepository.getUserProfile(it) }
+                val userEmail = authRepository.getUserEmail() ?: ""
 
                 _uiState.value = _uiState.value.copy(
                     firstName = profile?.firstName ?: "",
@@ -88,13 +93,14 @@ class SettingsViewModel : ViewModel() {
                     email = userEmail
                 )
             } catch (e: Exception) {
-
+                // Silently fail
             }
         }
     }
 
     fun updateDictionary(dictionaryId: String) {
-        settingsManager?.setCurrentCategoryId(dictionaryId)
+        val dict = _uiState.value.dictionaries.find { it.id == dictionaryId } ?: return
+        settingsUseCase.setCurrentDictionary(dictionaryId, dict.name)
         _uiState.value = _uiState.value.copy(currentDictionaryId = dictionaryId)
     }
 
@@ -102,74 +108,48 @@ class SettingsViewModel : ViewModel() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, isSuccess = false)
 
-            try {
-                val success = settingsManager?.updateUserProfile(firstName, lastName) ?: false
-                if (success) {
-
+            updateProfileUseCase(firstName, lastName).fold(
+                onSuccess = {
                     _uiState.value = _uiState.value.copy(
                         firstName = firstName,
                         lastName = lastName,
                         isLoading = false,
                         isSuccess = true
                     )
-
                     delay(2000)
                     _uiState.value = _uiState.value.copy(isSuccess = false)
-                } else {
+                },
+                onFailure = { e ->
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        error = "Ошибка сохранения профиля"
+                        error = e.message
                     )
                 }
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = "Ошибка: ${e.message}"
-                )
-            }
+            )
         }
     }
 
     fun updateTheme(isDarkTheme: Boolean) {
-        val theme = if (isDarkTheme) SettingsManager.THEME_DARK else SettingsManager.THEME_LIGHT
-        settingsManager?.setTheme(theme)
+        settingsUseCase.setTheme(isDarkTheme)
         _uiState.value = _uiState.value.copy(isDarkTheme = isDarkTheme)
     }
 
     fun resetDictionaryStatistics() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
-            val userId = authManager.getUserId()
+            val userId = authRepository.getCurrentUserId()
             val currentDictId = _uiState.value.currentDictionaryId
 
             if (userId != null && currentDictId.isNotEmpty()) {
                 try {
-                    val wordsSnapshot = firestore.collection("words")
-                        .whereEqualTo("dictionaryId", currentDictId)
-                        .get()
-                        .await()
-
-                    for (doc in wordsSnapshot.documents) {
-                        val userWordDocId = "${userId}_${doc.id}"
-                        firestore.collection("user_words")
-                            .document(userWordDocId)
-                            .set(
-                                mapOf(
-                                    "userId" to userId,
-                                    "wordId" to doc.id,
-                                    "dictionaryId" to currentDictId,
-                                    "stage" to 0,
-                                    "nextReviewDate" to System.currentTimeMillis(),
-                                    "lastReviewDate" to null,
-                                    "totalViews" to 0,
-                                    "correctCount" to 0,
-                                    "incorrectCount" to 0,
-                                    "failCount" to 0
-                                )
-                            )
-                            .await()
-                    }
-                    _uiState.value = _uiState.value.copy(isLoading = false)
+                    // Сбрасываем прогресс только для текущего словаря
+                    wordRepository.resetDictionaryProgress(userId, currentDictId)
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        isSuccess = true
+                    )
+                    delay(2000)
+                    _uiState.value = _uiState.value.copy(isSuccess = false)
                 } catch (e: Exception) {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
@@ -188,44 +168,26 @@ class SettingsViewModel : ViewModel() {
     fun resetAllData() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
-            val userId = authManager.getUserId()
+            val userId = authRepository.getCurrentUserId()
 
             if (userId != null) {
                 try {
+                    // Сбрасываем прогресс для всех словарей
+                    wordRepository.resetAllProgress(userId)
 
-                    val userWordsSnapshot = firestore.collection("user_words")
-                        .whereEqualTo("userId", userId)
-                        .get()
-                        .await()
-
-                    for (doc in userWordsSnapshot.documents) {
-                        doc.reference.delete().await()
-                    }
-
-
-                    val gamesSnapshot = firestore.collection("game_results")
-                        .whereEqualTo("userId", userId)
-                        .get()
-                        .await()
-                    for (doc in gamesSnapshot.documents) {
-                        doc.reference.delete().await()
-                    }
-
-
-                    firestore.collection("leaderboard").document(userId).delete().await()
-
-
-                    firestore.collection("users").document(userId).update("totalScore", 0).await()
-
-
-                    settingsManager?.clearAllData()
+                    // Сбрасываем настройки
+                    settingsUseCase.clearAllSettings()
 
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
+                        isSuccess = true,
                         firstName = "",
                         lastName = "",
-                        email = ""
+                        email = "",
+                        currentDictionaryId = ""
                     )
+                    delay(2000)
+                    _uiState.value = _uiState.value.copy(isSuccess = false)
                 } catch (e: Exception) {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
@@ -240,6 +202,4 @@ class SettingsViewModel : ViewModel() {
             }
         }
     }
-
-
 }

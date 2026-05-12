@@ -1,3 +1,4 @@
+// presentation/settings/SettingsScreen.kt
 package com.example.t_learnappmobile.presentation.settings
 
 import android.content.res.Configuration
@@ -24,6 +25,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.t_learnappmobile.R
+import com.example.t_learnappmobile.domain.model.Dictionary
 import com.example.t_learnappmobile.presentation.components.NotificationManager
 import com.example.t_learnappmobile.presentation.components.rememberNotificationManager
 import com.example.t_learnappmobile.presentation.theme.*
@@ -75,9 +77,7 @@ fun SettingsScreen(
                 }
             }
 
-            // Замените секцию "Профиль пользователя" в SettingsScreen.kt на этот код:
-
-// Профиль пользователя
+            // Профиль пользователя
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -93,7 +93,6 @@ fun SettingsScreen(
                         )
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // Отображение текущих имени и фамилии
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
@@ -106,7 +105,6 @@ fun SettingsScreen(
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                // ИСПРАВЛЕНО: Показываем имя или email если имя не задано
                                 Text(
                                     text = if (uiState.firstName.isNotEmpty() || uiState.lastName.isNotEmpty())
                                         "${uiState.firstName} ${uiState.lastName}".trim()
@@ -116,7 +114,6 @@ fun SettingsScreen(
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
-                                // ДОБАВЛЕНО: Отображение email
                                 Text(
                                     text = uiState.email.ifEmpty { "Email не указан" },
                                     fontSize = 14.sp,
@@ -127,7 +124,6 @@ fun SettingsScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // Кнопка изменить
                         OutlinedButton(
                             onClick = { showEditProfileDialog = true },
                             modifier = Modifier.fillMaxWidth(),
@@ -189,7 +185,6 @@ fun SettingsScreen(
             }
         }
 
-        // Индикатор загрузки
         if (uiState.isLoading) {
             Box(
                 modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)).clickable(enabled = false) { },
@@ -284,9 +279,10 @@ fun SettingsScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DictionarySelector(
-    dictionaries: List<com.example.t_learnappmobile.model.Dictionary>,
+    dictionaries: List<Dictionary>,
     currentDictionaryId: String,
     onDictionarySelected: (String) -> Unit
 ) {
@@ -311,7 +307,10 @@ fun DictionarySelector(
                     dictionaries.forEach { dict ->
                         DropdownMenuItem(
                             text = { Text(dict.name) },
-                            onClick = { onDictionarySelected(dict.id); expanded = false }
+                            onClick = {
+                                onDictionarySelected(dict.id)
+                                expanded = false
+                            }
                         )
                     }
                 }
@@ -354,6 +353,8 @@ fun ThemeOption(title: String, icon: androidx.compose.ui.graphics.vector.ImageVe
         }
     }
 }
+// presentation/settings/SettingsScreen.kt
+// Замените функцию DataManagement на эту:
 
 @Composable
 fun DataManagement(onResetDictionary: () -> Unit, onResetAll: () -> Unit) {
@@ -367,7 +368,7 @@ fun DataManagement(onResetDictionary: () -> Unit, onResetAll: () -> Unit) {
             Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(stringResource(R.string.delete_dict), fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    Text(stringResource(R.string.delete_stats_or_current_dict), fontSize = 12.sp, color = MediumGray)
+                    Text("Сбросить прогресс текущего словаря", fontSize = 12.sp, color = MediumGray)
                 }
                 OutlinedButton(onClick = { showDictionaryDialog = true }, colors = ButtonDefaults.outlinedButtonColors(contentColor = RedError)) {
                     Text(stringResource(R.string.delete))
@@ -381,7 +382,7 @@ fun DataManagement(onResetDictionary: () -> Unit, onResetAll: () -> Unit) {
             Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(stringResource(R.string.delete_data), fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    Text(stringResource(R.string.delete_data_and_progress), fontSize = 12.sp, color = MediumGray)
+                    Text("Сбросить прогресс всех словарей", fontSize = 12.sp, color = MediumGray)
                 }
                 OutlinedButton(onClick = { showAllDialog = true }, colors = ButtonDefaults.outlinedButtonColors(contentColor = RedError)) {
                     Text(stringResource(R.string.delete))
@@ -392,9 +393,16 @@ fun DataManagement(onResetDictionary: () -> Unit, onResetAll: () -> Unit) {
         if (showDictionaryDialog) {
             AlertDialog(
                 onDismissRequest = { showDictionaryDialog = false },
-                title = { Text("Сброс статистики категории") },
-                text = { Text("Весь прогресс изучения слов в текущей категории будет безвозвратно удален.") },
-                confirmButton = { TextButton(onClick = { onResetDictionary(); showDictionaryDialog = false }) { Text("Да, удалить", color = RedError) } },
+                title = { Text("Сброс прогресса словаря") },
+                text = { Text("Весь прогресс изучения слов в текущем словаре будет сброшен. Все слова станут новыми. Игровые очки сохранены.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        onResetDictionary()
+                        showDictionaryDialog = false
+                    }) {
+                        Text("Сбросить", color = RedError)
+                    }
+                },
                 dismissButton = { TextButton(onClick = { showDictionaryDialog = false }) { Text("Отмена") } }
             )
         }
@@ -403,39 +411,27 @@ fun DataManagement(onResetDictionary: () -> Unit, onResetAll: () -> Unit) {
             AlertDialog(
                 onDismissRequest = { showAllDialog = false },
                 title = { Text("Сброс всех данных") },
-                text = { Text("Будут удалены:\n• Прогресс изучения всех слов\n• Результаты игр\n• Все настройки приложения\n\nЭто действие нельзя отменить.") },
-                confirmButton = { TextButton(onClick = { onResetAll(); showAllDialog = false }) { Text("Да, удалить", color = RedError) } },
+                text = { Text("Будет сброшен:\n• Прогресс изучения всех слов во всех словарях\n• Все настройки приложения\n\nБудут сохранены:\n• Игровые очки\n• Результаты игр\n• Позиция в таблице лидеров\n\nЭто действие нельзя отменить.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        onResetAll()
+                        showAllDialog = false
+                    }) {
+                        Text("Сбросить", color = RedError)
+                    }
+                },
                 dismissButton = { TextButton(onClick = { showAllDialog = false }) { Text("Отмена") } }
             )
         }
     }
 }
 
-// Превью
 @Preview(showBackground = true, showSystemUi = true, widthDp = 360, heightDp = 720)
 @Composable
 fun SettingsScreenPreview() {
     TLearnAppMobileTheme {
-        SettingsScreen(
-            viewModel = remember { SettingsViewModel() },
-            notificationManager = rememberNotificationManager(),
-            onDictionaryChanged = {},
-            onClose = {},
-            onLogout = {}
-        )
-    }
-}
-
-@Preview(showBackground = true, showSystemUi = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun SettingsScreenDarkPreview() {
-    TLearnAppMobileTheme(darkTheme = true) {
-        SettingsScreen(
-            viewModel = remember { SettingsViewModel() },
-            notificationManager = rememberNotificationManager(),
-            onDictionaryChanged = {},
-            onClose = {},
-            onLogout = {}
-        )
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("Settings Preview")
+        }
     }
 }

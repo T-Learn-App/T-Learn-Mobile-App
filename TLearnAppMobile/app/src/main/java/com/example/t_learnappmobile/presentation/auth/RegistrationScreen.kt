@@ -1,3 +1,4 @@
+// presentation/auth/RegistrationScreen.kt
 package com.example.t_learnappmobile.presentation.auth
 
 import android.content.res.Configuration
@@ -8,7 +9,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -41,14 +41,14 @@ fun RegistrationScreen(
     var lastName by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
 
-    val authState by authViewModel.authState.collectAsState()
+    val uiState by authViewModel.uiState.collectAsState()
 
-    LaunchedEffect(authState.error) {
-        authState.error?.let { error -> notificationManager.showError(error) }
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { error -> notificationManager.showError(error) }
     }
 
-    LaunchedEffect(authState.isSuccess) {
-        if (authState.isSuccess) onRegisterSuccess()
+    LaunchedEffect(uiState.isSuccess) {
+        if (uiState.isSuccess) onRegisterSuccess()
     }
 
     Box(
@@ -64,10 +64,6 @@ fun RegistrationScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-
-
-
-
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(24.dp),
@@ -177,8 +173,7 @@ fun RegistrationScreen(
             )
         }
 
-
-        if (authState.isLoading) {
+        if (uiState.isLoading) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -196,11 +191,8 @@ fun RegistrationScreen(
 @Composable
 fun RegistrationScreenPreview() {
     TLearnAppMobileTheme {
-        RegistrationScreen(
-            authViewModel = remember { AuthViewModel() },
-            notificationManager = rememberNotificationManager(),
-            onRegisterSuccess = {},
-            onNavigateToLogin = {}
-        )
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("Registration Preview")
+        }
     }
 }

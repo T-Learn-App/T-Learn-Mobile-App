@@ -1,19 +1,22 @@
+// presentation/cards/CardsViewModel.kt
 package com.example.t_learnappmobile.presentation.cards
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.t_learnappmobile.data.repository.ServiceLocator
+import com.example.t_learnappmobile.data.sync.SyncManager
+import com.example.t_learnappmobile.domain.model.*
+import com.example.t_learnappmobile.domain.repository.AuthRepository
 import com.example.t_learnappmobile.domain.repository.LoadWordsResult
-import com.example.t_learnappmobile.model.CardType
-import com.example.t_learnappmobile.model.Dictionary
-import com.example.t_learnappmobile.model.Word
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
+import com.example.t_learnappmobile.domain.usecase.settings.SettingsUseCase
+import com.example.t_learnappmobile.domain.usecase.words.GetDictionariesUseCase
+import com.example.t_learnappmobile.domain.usecase.words.LoadWordsUseCase
+import com.example.t_learnappmobile.domain.usecase.words.ProcessAnswerUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlin.random.Random
 
 data class CardsUiState(
     val currentWord: Word? = null,
@@ -25,57 +28,32 @@ data class CardsUiState(
     val showDictionarySelection: Boolean = false
 )
 
-class CardsViewModel : ViewModel() {
-    private val TAG = "CardsViewModel"
-    private val settingsManager = ServiceLocator.appContext?.let {
-        com.example.t_learnappmobile.data.settings.SettingsManager(it)
-    }
+class CardsViewModel(
+    private val authRepository: AuthRepository,
+    private val loadWordsUseCase: LoadWordsUseCase,
+    private val processAnswerUseCase: ProcessAnswerUseCase,
+    private val getDictionariesUseCase: GetDictionariesUseCase,
+    private val settingsUseCase: SettingsUseCase,
+    private val syncManager: SyncManager
+) : ViewModel() {
 
+    private val TAG = "CardsViewModel"
     private val _uiState = MutableStateFlow(CardsUiState())
     val uiState: StateFlow<CardsUiState> = _uiState.asStateFlow()
 
-    private var observeJob: Job? = null
+    // Состояние теперь в ViewModel
+    private var wordQueue = mutableListOf<Word>()
+    private var currentWordIndex = 0
 
     init {
         Log.d(TAG, "ViewModel created")
-        startObservingCurrentWord()
         loadDictionaries()
-    }
-
-    private fun startObservingCurrentWord() {
-        observeJob?.cancel()
-        observeJob = viewModelScope.launch {
-            Log.d(TAG, "👀 Starting to observe word flow from ${ServiceLocator.wordRepository.hashCode()}")
-
-            val timeoutJob = launch {
-                delay(5_000)
-                if (_uiState.value.isLoading) {
-                    Log.d(TAG, "⚠️ Timeout — no word received in 5 seconds")
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        currentWord = null
-                    )
-                }
-            }
-
-            ServiceLocator.wordRepository.getCurrentWordFlow().collect { word ->
-                timeoutJob.cancel()
-                Log.d(TAG, "📖 Flow emitted: word=${word?.englishWord ?: "null"}, stage=${word?.stage}")
-                _uiState.value = _uiState.value.copy(
-                    currentWord = word,
-                    isTranslationHidden = true,
-                    isLoading = false
-                )
-            }
-        }
     }
 
     private fun loadDictionaries() {
         viewModelScope.launch {
-            Log.d(TAG, "loadDictionaries START")
             try {
-                val dicts = ServiceLocator.wordRepository.getDictionaries()
-                Log.d(TAG, "Loaded ${dicts.size} dictionaries")
+                val dicts = getDictionariesUseCase()
 
                 if (dicts.isEmpty()) {
                     _uiState.value = _uiState.value.copy(
@@ -87,13 +65,14 @@ class CardsViewModel : ViewModel() {
 
                 _uiState.value = _uiState.value.copy(dictionaries = dicts)
 
-                val hasSelected = settingsManager?.hasSelectedDictionary() ?: false
-                Log.d(TAG, "hasSelectedDictionary = $hasSelected")
-
-                if (hasSelected) {
-                    val savedDictId = settingsManager?.getCurrentCategoryId()
-                    val currentDict = dicts.find { it.id == savedDictId } ?: dicts.first()
-                    selectDictionary(currentDict.id)
+                val currentDictId = settingsUseCase.getCurrentDictionaryId()
+                if (currentDictId != null) {
+                    val currentDict = dicts.find { it.id == currentDictId }
+                    if (currentDict != null) {
+                        selectDictionary(currentDict.id)
+                    } else {
+                        selectDictionary(dicts.first().id)
+                    }
                 } else {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
@@ -101,7 +80,7 @@ class CardsViewModel : ViewModel() {
                     )
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "loadDictionaries ERROR", e)
+                Log.e(TAG, "Error loading dictionaries", e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = e.message
@@ -110,127 +89,97 @@ class CardsViewModel : ViewModel() {
         }
     }
 
-
-
     fun selectDictionary(dictionaryId: String) {
         viewModelScope.launch {
-            Log.d(TAG, "selectDictionary: $dictionaryId")
-            _uiState.value = _uiState.value.copy(
-                isLoading = true,
-                error = null,
-                showDictionarySelection = false
-            )
-
-            try {
-                val dict = _uiState.value.dictionaries.find { it.id == dictionaryId }
-                if (dict == null) {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = "Словарь не найден",
-                        showDictionarySelection = true
-                    )
-                    return@launch
-                }
-
-                _uiState.value = _uiState.value.copy(currentDictionary = dict)
-
-                settingsManager?.setCurrentCategoryId(dictionaryId)
-                settingsManager?.setCurrentDictionaryName(dict.name)
-
-
-                startObservingCurrentWord()
-
-
-                val result = ServiceLocator.wordRepository.loadWords(dictionaryId)
-                Log.d(TAG, "loadWords result: $result")
-
-                when (result) {
-                    is LoadWordsResult.HasWords -> {
-
-                        Log.d(TAG, "Waiting for flow...")
-                    }
-                    is LoadWordsResult.Empty -> {
-                        _uiState.value = _uiState.value.copy(
-                            isLoading = false,
-                            currentWord = null
-                        )
-                    }
-                    is LoadWordsResult.Error -> {
-                        _uiState.value = _uiState.value.copy(
-                            isLoading = false,
-                            error = result.message,
-                            showDictionarySelection = true
-                        )
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "selectDictionary ERROR", e)
+            val userId = authRepository.getCurrentUserId()
+            if (userId == null) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = e.message,
-                    showDictionarySelection = true
+                    error = "Пользователь не авторизован"
                 )
+                return@launch
+            }
+
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null, showDictionarySelection = false)
+
+            val dict = _uiState.value.dictionaries.find { it.id == dictionaryId }
+            if (dict == null) {
+                _uiState.value = _uiState.value.copy(isLoading = false, error = "Словарь не найден")
+                return@launch
+            }
+
+            _uiState.value = _uiState.value.copy(currentDictionary = dict)
+            settingsUseCase.setCurrentDictionary(dictionaryId, dict.name)
+
+            when (val result = loadWordsUseCase(userId, dictionaryId)) {
+                is LoadWordsResult.HasWords -> {
+                    wordQueue = result.words.toMutableList()
+                    currentWordIndex = 0
+                    showNextWord()
+
+                    // Синхронизация теперь в ViewModel
+                    syncManager.syncPendingChanges()
+                }
+                is LoadWordsResult.Empty -> {
+                    _uiState.value = _uiState.value.copy(isLoading = false, currentWord = null)
+                }
+                is LoadWordsResult.Error -> {
+                    _uiState.value = _uiState.value.copy(isLoading = false, error = result.message)
+                }
             }
         }
     }
 
-    fun resetAndReload() {
-        Log.d(TAG, "resetAndReload")
-        viewModelScope.launch {
-            _uiState.value = CardsUiState()
-            startObservingCurrentWord()
-            loadDictionaries()
+    private fun showNextWord() {
+        if (currentWordIndex >= wordQueue.size) {
+            // Все слова закончились
+            _uiState.value = _uiState.value.copy(isLoading = false, currentWord = null)
+            return
         }
+
+        val word = wordQueue[currentWordIndex]
+        val direction = if (word.isNew) {
+            TranslationDirection.EN_TO_RU
+        } else {
+            if (Random.nextBoolean()) TranslationDirection.EN_TO_RU else TranslationDirection.RU_TO_EN
+        }
+
+        _uiState.value = _uiState.value.copy(
+            currentWord = word.copy(translationDirection = direction),
+            isTranslationHidden = true,
+            isLoading = false
+        )
     }
-
-
 
     fun toggleTranslation() {
         _uiState.value = _uiState.value.copy(
             isTranslationHidden = !_uiState.value.isTranslationHidden
         )
     }
-    fun refreshStatistics() {
-        viewModelScope.launch {
-            try {
-                val userId = ServiceLocator.firebaseAuthManager.getUserId() ?: return@launch
-                val dictionaryId = _uiState.value.currentDictionary?.id ?: return@launch
 
-                val context = ServiceLocator.appContext
-                val database = com.example.t_learnappmobile.data.local.AppDatabase.getInstance(context)
-                val userWords = database.wordDao().getUserWords(userId, dictionaryId)
-
-                var newWords = 0
-                var inProgress = 0
-                var learned = 0
-
-                for (word in userWords) {
-                    when {
-                        word.stage == 0 -> newWords++
-                        word.stage in 1..7 -> inProgress++
-                        word.stage >= 8 -> learned++
-                    }
-                }
-
-                Log.d(TAG, "📊 Statistics refreshed: new=$newWords, inProgress=$inProgress, learned=$learned")
-
-                // Здесь можно сохранить статистику или передать в UI
-                // Например, через SettingsManager или отдельный StateFlow
-
-            } catch (e: Exception) {
-                Log.e(TAG, "Error refreshing statistics", e)
-            }
-        }
-    }
     fun onKnowCard() {
-        _uiState.value.currentWord?.let { word ->
-            ServiceLocator.wordRepository.answerWord(word.id, known = true)
-        }
+        processAnswer(known = true)
     }
 
     fun onDontKnowCard() {
-        _uiState.value.currentWord?.let { word ->
-            ServiceLocator.wordRepository.answerWord(word.id, known = false)
+        processAnswer(known = false)
+    }
+
+    private fun processAnswer(known: Boolean) {
+        val currentWord = _uiState.value.currentWord ?: return
+
+        viewModelScope.launch {
+            val userId = authRepository.getCurrentUserId() ?: return@launch
+
+            // Обрабатываем ответ
+            processAnswerUseCase(userId, currentWord.id, currentWord.dictionaryId, known)
+
+            // Переходим к следующему слову
+            currentWordIndex++
+            showNextWord()
+
+            // Синхронизируем изменения
+            syncManager.syncPendingChanges()
         }
     }
 
@@ -245,5 +194,16 @@ class CardsViewModel : ViewModel() {
         } else {
             "Я запомнил" to "Я не запомнил"
         }
+    }
+
+    fun resetAndReload() {
+        wordQueue.clear()
+        currentWordIndex = 0
+        _uiState.value = CardsUiState()
+        loadDictionaries()
+    }
+
+    fun refreshStatistics() {
+        // Можно обновить статистику при необходимости
     }
 }

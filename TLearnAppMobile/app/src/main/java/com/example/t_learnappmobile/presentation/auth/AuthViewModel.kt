@@ -1,9 +1,11 @@
+// presentation/auth/AuthViewModel.kt
 package com.example.t_learnappmobile.presentation.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.t_learnappmobile.data.repository.ServiceLocator
-import com.example.t_learnappmobile.data.sync.SyncManager
+import com.example.t_learnappmobile.domain.repository.AuthRepository
+import com.example.t_learnappmobile.domain.usecase.auth.LoginUseCase
+import com.example.t_learnappmobile.domain.usecase.auth.RegisterUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,60 +17,54 @@ data class AuthUiState(
     val error: String? = null
 )
 
-class AuthViewModel : ViewModel() {
-    private val repository = ServiceLocator.authRepository
+class AuthViewModel(
+    private val loginUseCase: LoginUseCase,
+    private val registerUseCase: RegisterUseCase,
+    private val authRepository: AuthRepository
+) : ViewModel() {
 
-    private val _authState = MutableStateFlow(AuthUiState())
-    val authState: StateFlow<AuthUiState> = _authState.asStateFlow()
+    private val _uiState = MutableStateFlow(AuthUiState())
+    val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
     fun login(email: String, password: String) {
         viewModelScope.launch {
-            _authState.value = AuthUiState(isLoading = true)
-            val result = repository.login(email, password)
-            _authState.value = when (result) {
-                is AuthState.Success -> {
-                    // ✅ После успешного входа синхронизируем данные
-                    val syncManager = ServiceLocator.syncManager
-                    syncManager.syncAllData()
-                    syncManager.startPeriodicSync()
-                    AuthUiState(isSuccess = true)
-                }
-                is AuthState.Error -> AuthUiState(error = result.message)
-                else -> AuthUiState(error = "Неизвестная ошибка")
-            }
+            _uiState.value = AuthUiState(isLoading = true)
+            loginUseCase(email, password).fold(
+                onSuccess = { _uiState.value = AuthUiState(isSuccess = true) },
+                onFailure = { e -> _uiState.value = AuthUiState(error = e.message) }
+            )
         }
     }
 
     fun register(email: String, password: String, firstName: String, lastName: String) {
         viewModelScope.launch {
-            _authState.value = AuthUiState(isLoading = true)
-            val result = repository.register(email, password, firstName, lastName)
-            _authState.value = when (result) {
-                is AuthState.Success -> AuthUiState(isSuccess = true)
-                is AuthState.Error -> AuthUiState(error = result.message)
-                else -> AuthUiState(error = "Неизвестная ошибка")
-            }
+            _uiState.value = AuthUiState(isLoading = true)
+            registerUseCase(email, password, firstName, lastName).fold(
+                onSuccess = { _uiState.value = AuthUiState(isSuccess = true) },
+                onFailure = { e -> _uiState.value = AuthUiState(error = e.message) }
+            )
         }
     }
 
     fun logout() {
         viewModelScope.launch {
-            repository.logout()
-            _authState.value = AuthUiState()
+            authRepository.logout()
+            _uiState.value = AuthUiState()
         }
     }
 
     fun checkAuthState() {
-        viewModelScope.launch {
-            val result = repository.checkAuthState()
-            _authState.value = when (result) {
-                is AuthState.Success -> AuthUiState(isSuccess = true)
-                else -> AuthUiState()
-            }
+        // Проверяем, авторизован ли пользователь
+        if (authRepository.isAuthenticated()) {
+            _uiState.value = AuthUiState(isSuccess = true)
         }
     }
 
+    fun clearError() {
+        _uiState.value = _uiState.value.copy(error = null)
+    }
+
     fun resetState() {
-        _authState.value = AuthUiState()
+        _uiState.value = AuthUiState()
     }
 }

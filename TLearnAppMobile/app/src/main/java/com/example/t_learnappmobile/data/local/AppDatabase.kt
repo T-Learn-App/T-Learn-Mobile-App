@@ -1,3 +1,4 @@
+// data/local/AppDatabase.kt
 package com.example.t_learnappmobile.data.local
 
 import androidx.room.Database

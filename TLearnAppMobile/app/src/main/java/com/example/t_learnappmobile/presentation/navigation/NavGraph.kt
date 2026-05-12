@@ -1,17 +1,16 @@
+// presentation/navigation/NavGraph.kt
 package com.example.t_learnappmobile.presentation.navigation
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.t_learnappmobile.data.repository.ServiceLocator
+import com.example.t_learnappmobile.di.AppModule
+import com.example.t_learnappmobile.presentation.auth.AuthViewModel
 import com.example.t_learnappmobile.presentation.auth.LoginScreen
 import com.example.t_learnappmobile.presentation.auth.RegistrationScreen
-import com.example.t_learnappmobile.presentation.auth.AuthViewModel
 import com.example.t_learnappmobile.presentation.cards.CardsScreen
 import com.example.t_learnappmobile.presentation.cards.CardsViewModel
 import com.example.t_learnappmobile.presentation.components.NotificationManager
@@ -35,32 +34,83 @@ sealed class Screen(val route: String) {
 fun NavGraph(
     notificationManager: NotificationManager,
     onThemeChanged: (Boolean) -> Unit = {},
-    authViewModel: AuthViewModel = viewModel(),
-    cardsViewModel: CardsViewModel = viewModel(),
-    gameViewModel: GameViewModel = viewModel(),
-    settingsViewModel: SettingsViewModel = viewModel(),
-    statisticsViewModel: StatisticsViewModel = viewModel()
+    appModule: AppModule
 ) {
     val navController = rememberNavController()
-    val authState by authViewModel.authState.collectAsState()
 
+    // Создаем ViewModel'ы через remember, чтобы они не пересоздавались при рекомпозиции
+    val authViewModel = remember {
+        AuthViewModel(
+            loginUseCase = appModule.loginUseCase,
+            registerUseCase = appModule.registerUseCase,
+            authRepository = appModule.authRepository
+        )
+    }
+
+    // presentation/navigation/NavGraph.kt
+// В месте создания CardsViewModel:
+
+    val cardsViewModel = remember {
+        CardsViewModel(
+            authRepository = appModule.authRepository,
+            loadWordsUseCase = appModule.loadWordsUseCase,
+            processAnswerUseCase = appModule.processAnswerUseCase,
+            getDictionariesUseCase = appModule.getDictionariesUseCase,
+            settingsUseCase = appModule.settingsUseCase,
+            syncManager = appModule.syncManager
+        )
+    }
+
+    val gameViewModel = remember {
+        GameViewModel(
+            loadGameWordsUseCase = appModule.loadGameWordsUseCase,
+            saveGameResultUseCase = appModule.saveGameResultUseCase,
+            settingsUseCase = appModule.settingsUseCase
+        )
+    }
+
+    val settingsViewModel = remember {
+        SettingsViewModel(
+            getDictionariesUseCase = appModule.getDictionariesUseCase,
+            updateProfileUseCase = appModule.updateProfileUseCase,
+            resetUserDataUseCase = appModule.resetUserDataUseCase,
+            settingsUseCase = appModule.settingsUseCase,
+            authRepository = appModule.authRepository,
+            userRepository = appModule.userRepository,
+            wordRepository = appModule.wordRepository
+        )
+    }
+
+    val statisticsViewModel = remember {
+        StatisticsViewModel(
+            getWordStatsUseCase = appModule.getWordStatsUseCase,
+            getWeeklyStatsUseCase = appModule.getWeeklyStatsUseCase,
+            getLeaderboardUseCase = appModule.getLeaderboardUseCase,
+            authRepository = appModule.authRepository,
+            userRepository = appModule.userRepository,
+            settingsUseCase = appModule.settingsUseCase
+        )
+    }
+
+    val authState by authViewModel.uiState.collectAsState()
+
+    // Проверяем аутентификацию при первом запуске
     LaunchedEffect(Unit) {
         authViewModel.checkAuthState()
     }
 
-    val startDestination = if (authState.isSuccess) {
-        Screen.Cards.route
-    } else {
-        Screen.Login.route
+    // Определяем стартовый экран один раз при инициализации
+    val startDestination = remember {
+        if (appModule.authRepository.isAuthenticated()) {
+            Screen.Cards.route
+        } else {
+            Screen.Login.route
+        }
     }
 
-    NavHost(
-        navController = navController,
-        startDestination = startDestination
-    ) {
+    NavHost(navController = navController, startDestination = startDestination) {
         composable(Screen.Login.route) {
             LaunchedEffect(Unit) {
-                ServiceLocator.resetRepositories()
                 cardsViewModel.resetAndReload()
             }
             LoginScreen(
@@ -94,7 +144,6 @@ fun NavGraph(
             )
         }
 
-
         composable(Screen.Cards.route) {
             CardsScreen(
                 viewModel = cardsViewModel,
@@ -110,7 +159,8 @@ fun NavGraph(
                 },
                 onLogout = {
                     authViewModel.logout()
-                    ServiceLocator.resetRepositories()
+                    // Сбрасываем репозитории при выходе
+
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Cards.route) { inclusive = true }
                     }
@@ -129,11 +179,9 @@ fun NavGraph(
         }
 
         composable(Screen.Settings.route) {
-
             LaunchedEffect(Unit) {
                 settingsViewModel.refreshUserData()
             }
-
             SettingsScreen(
                 viewModel = settingsViewModel,
                 notificationManager = notificationManager,
@@ -145,6 +193,7 @@ fun NavGraph(
                 },
                 onLogout = {
                     authViewModel.logout()
+
                     navController.navigate(Screen.Login.route) {
                         popUpTo(0) { inclusive = true }
                     }
@@ -152,7 +201,6 @@ fun NavGraph(
                 onThemeChanged = onThemeChanged
             )
         }
-
 
         composable(Screen.Statistics.route) {
             StatisticsScreen(

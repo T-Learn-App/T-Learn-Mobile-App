@@ -1,3 +1,4 @@
+// data/local/dao/WordDao.kt
 package com.example.t_learnappmobile.data.local.dao
 
 import androidx.room.*
@@ -6,7 +7,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface WordDao {
-    // ============ Слова ============
+    // ============ Words ============
     @Query("SELECT * FROM words WHERE dictionaryId = :dictionaryId")
     suspend fun getWordsByDictionary(dictionaryId: String): List<WordEntity>
 
@@ -19,7 +20,7 @@ interface WordDao {
     @Query("DELETE FROM words WHERE dictionaryId = :dictionaryId")
     suspend fun deleteWordsByDictionary(dictionaryId: String)
 
-    // ============ Прогресс пользователя ============
+    // ============ User Progress ============
     @Query("SELECT * FROM user_words WHERE userId = :userId AND dictionaryId = :dictionaryId")
     suspend fun getUserWords(userId: String, dictionaryId: String): List<UserWordEntity>
 
@@ -32,7 +33,6 @@ interface WordDao {
     @Update
     suspend fun updateUserWord(userWord: UserWordEntity)
 
-    // ✅ Новые методы для синхронизации
     @Query("SELECT * FROM user_words WHERE userId = :userId AND isSynced = 0")
     suspend fun getUnsyncedUserWords(userId: String): List<UserWordEntity>
 
@@ -42,7 +42,7 @@ interface WordDao {
     @Query("DELETE FROM user_words WHERE userId = :userId AND dictionaryId = :dictionaryId")
     suspend fun deleteUserWordsByDictionary(userId: String, dictionaryId: String)
 
-    // ============ Словари ============
+    // ============ Dictionaries ============
     @Query("SELECT * FROM dictionaries ORDER BY `order`")
     suspend fun getDictionaries(): List<DictionaryEntity>
 

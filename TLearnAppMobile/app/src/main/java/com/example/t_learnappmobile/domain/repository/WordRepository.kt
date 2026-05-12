@@ -1,19 +1,21 @@
+// domain/repository/WordRepository.kt
 package com.example.t_learnappmobile.domain.repository
 
-import com.example.t_learnappmobile.model.Dictionary
-import com.example.t_learnappmobile.model.Word
-import kotlinx.coroutines.flow.Flow
+import com.example.t_learnappmobile.domain.model.Dictionary
+import com.example.t_learnappmobile.domain.model.Word
+import com.example.t_learnappmobile.domain.model.WordStats
 
 sealed class LoadWordsResult {
-    object HasWords : LoadWordsResult()
+    data class HasWords(val words: List<Word>) : LoadWordsResult()
     object Empty : LoadWordsResult()
     data class Error(val message: String) : LoadWordsResult()
 }
 
 interface WordRepository {
-    suspend fun loadWords(dictionaryId: String): LoadWordsResult  // ИЗМЕНЕНО: возвращает результат
+    suspend fun loadWords(userId: String, dictionaryId: String): LoadWordsResult
     suspend fun getDictionaries(): List<Dictionary>
-    fun answerWord(wordId: String, known: Boolean)
-    fun getCurrentWordFlow(): Flow<Word?>
-    fun markCurrentWordAsShown()
+    suspend fun processAnswer(userId: String, wordId: String, dictionaryId: String, known: Boolean): Word?
+    suspend fun getStats(userId: String, dictionaryId: String): WordStats
+    suspend fun resetDictionaryProgress(userId: String, dictionaryId: String)
+    suspend fun resetAllProgress(userId: String)
 }

@@ -54,10 +54,7 @@ class StatisticsViewModel : ViewModel() {
                 val userId = authManager.getUserId()
 
                 if (userId == null) {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-
-                    )
+                    _uiState.value = _uiState.value.copy(isLoading = false)
                     return@launch
                 }
 
@@ -82,10 +79,7 @@ class StatisticsViewModel : ViewModel() {
 
             } catch (e: Exception) {
                 Log.e("StatisticsVM", "Error refreshing stats", e)
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-
-                )
+                _uiState.value = _uiState.value.copy(isLoading = false)
             }
         }
     }
@@ -104,32 +98,105 @@ class StatisticsViewModel : ViewModel() {
 
     private suspend fun loadWordStats(userId: String, dictionaryId: String) {
         try {
-            val userWordsSnapshot = firestore.collection("user_words")
-                .whereEqualTo("userId", userId)
-                .whereEqualTo("dictionaryId", dictionaryId)
-                .get()
-                .await()
+            Log.d("StatisticsVM", "📊 Loading word stats for userId=$userId, dictId=$dictionaryId")
+
+            // 1. ВСЕГДА сначала загружаем из Room
+            val localStats = loadLocalWordStats(userId, dictionaryId)
+
+            if (localStats != null) {
+                val (newWords, inProgress, learned) = localStats
+                Log.d("StatisticsVM", "📊 Room stats: new=$newWords, inProgress=$inProgress, learned=$learned")
+
+                // СРАЗУ обновляем UI с локальными данными
+                _uiState.value = _uiState.value.copy(
+                    newWords = newWords,
+                    inProgressWords = inProgress,
+                    learnedWords = learned
+                )
+            } else {
+                Log.d("StatisticsVM", "⚠️ No local stats, setting zeros")
+                _uiState.value = _uiState.value.copy(
+                    newWords = 0,
+                    inProgressWords = 0,
+                    learnedWords = 0
+                )
+            }
+
+            // 2. Затем пробуем Firebase
+            try {
+                val userWordsSnapshot = firestore.collection("user_words")
+                    .whereEqualTo("userId", userId)
+                    .whereEqualTo("dictionaryId", dictionaryId)
+                    .get()
+                    .await()
+
+                var fbNewWords = 0
+                var fbInProgress = 0
+                var fbLearned = 0
+
+                for (doc in userWordsSnapshot.documents) {
+                    val stage = (doc.getLong("stage") ?: 0).toInt()
+                    when {
+                        stage == 0 -> fbNewWords++
+                        stage in 1..7 -> fbInProgress++
+                        stage >= 8 -> fbLearned++
+                    }
+                }
+
+                Log.d("StatisticsVM", "📊 Firebase stats: new=$fbNewWords, inProgress=$fbInProgress, learned=$fbLearned")
+
+                if (fbNewWords > 0 || fbInProgress > 0 || fbLearned > 0) {
+                    _uiState.value = _uiState.value.copy(
+                        newWords = fbNewWords,
+                        inProgressWords = fbInProgress,
+                        learnedWords = fbLearned
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e("StatisticsVM", "Cannot load from Firebase, keeping local data", e)
+            }
+
+        } catch (e: Exception) {
+            Log.e("StatisticsVM", "Error loading word stats", e)
+            _uiState.value = _uiState.value.copy(
+                newWords = 0,
+                inProgressWords = 0,
+                learnedWords = 0
+            )
+        }
+    }
+
+    private suspend fun loadLocalWordStats(userId: String, dictionaryId: String): Triple<Int, Int, Int>? {
+        return try {
+            val context = ServiceLocator.appContext
+            val database = com.example.t_learnappmobile.data.local.AppDatabase.getInstance(context)
+            val userWords = database.wordDao().getUserWords(userId, dictionaryId)
+
+            Log.d("StatisticsVM", "📊 Room query returned ${userWords.size} user words")
+
+            if (userWords.isEmpty()) {
+                Log.d("StatisticsVM", "⚠️ No words in Room for userId=$userId, dictId=$dictionaryId")
+                return null
+            }
 
             var newWords = 0
             var inProgress = 0
             var learned = 0
 
-            for (doc in userWordsSnapshot.documents) {
-                val stage = (doc.getLong("stage") ?: 0).toInt()
+            for (word in userWords) {
+                Log.d("StatisticsVM", "  Word: ${word.wordId}, stage=${word.stage}, isSynced=${word.isSynced}")
                 when {
-                    stage == 0 -> newWords++
-                    stage in 1..6 -> inProgress++
-                    stage >= 7 -> learned++
+                    word.stage == 0 -> newWords++
+                    word.stage in 1..7 -> inProgress++
+                    word.stage >= 8 -> learned++
                 }
             }
 
-            _uiState.value = _uiState.value.copy(
-                newWords = newWords,
-                inProgressWords = inProgress,
-                learnedWords = learned
-            )
+            Log.d("StatisticsVM", "📊 Local stats: new=$newWords, inProgress=$inProgress, learned=$learned")
+            Triple(newWords, inProgress, learned)
         } catch (e: Exception) {
-            Log.e("StatisticsVM", "Error loading word stats", e)
+            Log.e("StatisticsVM", "Error loading local stats", e)
+            null
         }
     }
 
@@ -168,7 +235,6 @@ class StatisticsViewModel : ViewModel() {
                 set(Calendar.SECOND, 0)
                 set(Calendar.MILLISECOND, 0)
 
-                // Находим понедельник текущей недели
                 val dayOfWeek = get(Calendar.DAY_OF_WEEK)
                 val daysToMonday = if (dayOfWeek == Calendar.SUNDAY) -6 else Calendar.MONDAY - dayOfWeek
                 add(Calendar.DAY_OF_YEAR, daysToMonday)

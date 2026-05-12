@@ -33,7 +33,8 @@ data class Word(
     val nextReviewDate: Long = 0,
     val isNew: Boolean = true,
     val translationDirection: TranslationDirection = TranslationDirection.EN_TO_RU,
-    val userWordDocId: String = ""
+    val userWordDocId: String = "",
+    val failCount: Int = 0  // ← ДОБАВИТЬ!
 )
 
 data class Dictionary(

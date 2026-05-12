@@ -29,7 +29,7 @@ data class UserWordEntity(
     val totalViews: Int,
     val correctCount: Int,
     val incorrectCount: Int,
-    val isSynced: Boolean = true,  // Для отслеживания несинхронизированных изменений
+    val isSynced: Boolean = false,  // ← false = нужно синхронизировать с Firebase
     val updatedAt: Long = System.currentTimeMillis()
 )
 

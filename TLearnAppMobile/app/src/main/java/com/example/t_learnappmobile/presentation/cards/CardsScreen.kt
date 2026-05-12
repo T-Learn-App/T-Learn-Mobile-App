@@ -48,6 +48,9 @@ fun CardsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    LaunchedEffect(Unit) {
+        viewModel.refreshStatistics()
+    }
     LaunchedEffect(uiState.error) {
         uiState.error?.let { error -> notificationManager.showError(error) }
     }

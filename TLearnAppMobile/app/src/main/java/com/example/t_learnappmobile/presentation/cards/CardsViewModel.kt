@@ -190,7 +190,38 @@ class CardsViewModel : ViewModel() {
             isTranslationHidden = !_uiState.value.isTranslationHidden
         )
     }
+    fun refreshStatistics() {
+        viewModelScope.launch {
+            try {
+                val userId = ServiceLocator.firebaseAuthManager.getUserId() ?: return@launch
+                val dictionaryId = _uiState.value.currentDictionary?.id ?: return@launch
 
+                val context = ServiceLocator.appContext
+                val database = com.example.t_learnappmobile.data.local.AppDatabase.getInstance(context)
+                val userWords = database.wordDao().getUserWords(userId, dictionaryId)
+
+                var newWords = 0
+                var inProgress = 0
+                var learned = 0
+
+                for (word in userWords) {
+                    when {
+                        word.stage == 0 -> newWords++
+                        word.stage in 1..7 -> inProgress++
+                        word.stage >= 8 -> learned++
+                    }
+                }
+
+                Log.d(TAG, "📊 Statistics refreshed: new=$newWords, inProgress=$inProgress, learned=$learned")
+
+                // Здесь можно сохранить статистику или передать в UI
+                // Например, через SettingsManager или отдельный StateFlow
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Error refreshing statistics", e)
+            }
+        }
+    }
     fun onKnowCard() {
         _uiState.value.currentWord?.let { word ->
             ServiceLocator.wordRepository.answerWord(word.id, known = true)

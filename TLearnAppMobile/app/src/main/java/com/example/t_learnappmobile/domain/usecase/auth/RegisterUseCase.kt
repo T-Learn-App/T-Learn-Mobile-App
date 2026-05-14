@@ -18,8 +18,17 @@ class RegisterUseCase(
         if (email.isBlank()) {
             return Result.failure(IllegalArgumentException("Email cannot be empty"))
         }
-        if (password.length < 6) {
-            return Result.failure(IllegalArgumentException("Password must be at least 6 characters"))
+
+        // Валидация пароля
+        val passwordErrors = mutableListOf<String>()
+        if (password.length < 8) passwordErrors.add("Минимум 8 символов")
+        if (!password.any { it.isUpperCase() }) passwordErrors.add("Заглавная буква")
+        if (!password.any { it.isLowerCase() }) passwordErrors.add("Строчная буква")
+        if (!password.any { it.isDigit() }) passwordErrors.add("Цифра")
+        if (!password.any { "!@#\$%^&*()_+-=[]{}|;:,.<>?".contains(it) }) passwordErrors.add("Спецсимвол")
+
+        if (passwordErrors.isNotEmpty()) {
+            return Result.failure(IllegalArgumentException(passwordErrors.joinToString("\n")))
         }
 
         val result = authRepository.register(email, password, firstName, lastName)

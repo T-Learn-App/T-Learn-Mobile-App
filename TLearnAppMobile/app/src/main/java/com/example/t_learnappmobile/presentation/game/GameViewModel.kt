@@ -98,8 +98,10 @@ class GameViewModel(
         )
     }
 
+    // presentation/game/GameViewModel.kt
+// Замените метод selectAnswer:
+
     fun selectAnswer(selectedIndex: Int) {
-        // Игнорируем повторные нажатия
         if (isAnswerInProgress) return
 
         val state = _uiState.value
@@ -117,14 +119,17 @@ class GameViewModel(
         )
 
         viewModelScope.launch {
-            delay(800) // Небольшая задержка для отображения результата
-            currentWordIndex++
-            isAnswerInProgress = false
+            try {
+                delay(800)
+                currentWordIndex++
 
-            if (currentWordIndex >= gameWords.size) {
-                endGame()
-            } else {
-                loadNextWord()
+                if (currentWordIndex >= gameWords.size) {
+                    endGame()
+                } else {
+                    loadNextWord()
+                }
+            } finally {
+                isAnswerInProgress = false
             }
         }
     }

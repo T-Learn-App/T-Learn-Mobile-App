@@ -165,6 +165,9 @@ class WordRepositoryImpl(
         }
     }
 
+    // data/repository/WordRepositoryImpl.kt
+// Замените метод createInitialProgress:
+
     private suspend fun createInitialProgress(
         userId: String,
         dictionaryId: String,
@@ -172,22 +175,26 @@ class WordRepositoryImpl(
     ) {
         val now = System.currentTimeMillis()
         words.forEach { word ->
-            localSource.saveUserProgress(
-                UserWordEntity(
-                    userId = userId,
-                    wordId = word.id,
-                    dictionaryId = dictionaryId,
-                    stage = 0,
-                    nextReviewDate = now,
-                    failCount = 0,
-                    lastReviewDate = null,
-                    totalViews = 0,
-                    correctCount = 0,
-                    incorrectCount = 0,
-                    isSynced = false,
-                    updatedAt = now
+            try {
+                localSource.saveUserProgress(
+                    UserWordEntity(
+                        userId = userId,
+                        wordId = word.id,
+                        dictionaryId = dictionaryId,
+                        stage = 0,
+                        nextReviewDate = now,
+                        failCount = 0,
+                        lastReviewDate = null,
+                        totalViews = 0,
+                        correctCount = 0,
+                        incorrectCount = 0,
+                        isSynced = false,
+                        updatedAt = now
+                    )
                 )
-            )
+            } catch (e: Exception) {
+                Log.e(TAG, "Error saving progress for word ${word.id}", e)
+            }
         }
     }
 

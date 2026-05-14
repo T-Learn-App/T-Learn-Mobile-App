@@ -12,6 +12,7 @@ import com.example.t_learnappmobile.domain.usecase.settings.SettingsUseCase
 import com.example.t_learnappmobile.domain.usecase.words.GetDictionariesUseCase
 import com.example.t_learnappmobile.domain.usecase.words.LoadWordsUseCase
 import com.example.t_learnappmobile.domain.usecase.words.ProcessAnswerUseCase
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,7 +26,7 @@ data class CardsUiState(
     val dictionaries: List<Dictionary> = emptyList(),
     val currentDictionary: Dictionary? = null,
     val isTranslationHidden: Boolean = true,
-    val showDictionarySelection: Boolean = false
+    val showDictionarySelection: Boolean = true  // По умолчанию показываем выбор
 )
 
 class CardsViewModel(
@@ -41,9 +42,9 @@ class CardsViewModel(
     private val _uiState = MutableStateFlow(CardsUiState())
     val uiState: StateFlow<CardsUiState> = _uiState.asStateFlow()
 
-    // Состояние теперь в ViewModel
     private var wordQueue = mutableListOf<Word>()
     private var currentWordIndex = 0
+    private var isProcessing = false
 
     init {
         Log.d(TAG, "ViewModel created")
@@ -53,78 +54,118 @@ class CardsViewModel(
     private fun loadDictionaries() {
         viewModelScope.launch {
             try {
-                val dicts = getDictionariesUseCase()
+                Log.d(TAG, "=== loadDictionaries START ===")
 
-                if (dicts.isEmpty()) {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = "Нет доступных словарей"
-                    )
-                    return@launch
+                // Загружаем словари
+                val dicts = try {
+                    getDictionariesUseCase()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error loading dicts", e)
+                    emptyList()
                 }
 
-                _uiState.value = _uiState.value.copy(dictionaries = dicts)
-
-                val currentDictId = settingsUseCase.getCurrentDictionaryId()
-                if (currentDictId != null) {
-                    val currentDict = dicts.find { it.id == currentDictId }
-                    if (currentDict != null) {
-                        selectDictionary(currentDict.id)
-                    } else {
-                        selectDictionary(dicts.first().id)
-                    }
-                } else {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        showDictionarySelection = true
+                val displayDicts = dicts.ifEmpty {
+                    Log.d(TAG, "Using default dictionaries")
+                    listOf(
+                        Dictionary("finance", "Финансы", 1),
+                        Dictionary("conversational", "Разговорные слова", 2),
+                        Dictionary("technology", "Технологии", 3),
+                        Dictionary("slang", "Сленг", 4)
                     )
                 }
+
+                _uiState.value = _uiState.value.copy(
+                    dictionaries = displayDicts,
+                    isLoading = false,
+                    showDictionarySelection = true  // Всегда показываем выбор словаря
+                )
+
+                Log.d(TAG, "=== loadDictionaries END - showing selection ===")
             } catch (e: Exception) {
-                Log.e(TAG, "Error loading dictionaries", e)
+                Log.e(TAG, "Error in loadDictionaries", e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = e.message
+                    showDictionarySelection = true,
+                    dictionaries = listOf(
+                        Dictionary("finance", "Финансы", 1),
+                        Dictionary("conversational", "Разговорные слова", 2),
+                        Dictionary("technology", "Технологии", 3),
+                        Dictionary("slang", "Сленг", 4)
+                    )
                 )
             }
         }
     }
 
     fun selectDictionary(dictionaryId: String) {
+        Log.d(TAG, "=== selectDictionary: $dictionaryId ===")
         viewModelScope.launch {
             val userId = authRepository.getCurrentUserId()
             if (userId == null) {
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = "Пользователь не авторизован"
-                )
-                return@launch
+                Log.e(TAG, "User not authenticated, waiting...")
+                // Ждем авторизацию
+                var attempts = 0
+                var uid: String? = null
+                while (attempts < 30) {
+                    uid = authRepository.getCurrentUserId()
+                    if (uid != null) break
+                    delay(200)
+                    attempts++
+                }
+                if (uid == null) {
+                    Log.e(TAG, "Still not authenticated after waiting")
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        showDictionarySelection = true
+                    )
+                    return@launch
+                }
+                selectDictionaryInternal(uid, dictionaryId)
+            } else {
+                selectDictionaryInternal(userId, dictionaryId)
             }
+        }
+    }
 
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null, showDictionarySelection = false)
+    private fun selectDictionaryInternal(userId: String, dictionaryId: String) {
+        viewModelScope.launch {
+            Log.d(TAG, "Loading words for dict: $dictionaryId, userId: $userId")
+
+            _uiState.value = _uiState.value.copy(
+                isLoading = true,
+                showDictionarySelection = false,
+                currentWord = null
+            )
 
             val dict = _uiState.value.dictionaries.find { it.id == dictionaryId }
-            if (dict == null) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = "Словарь не найден")
-                return@launch
+            if (dict != null) {
+                _uiState.value = _uiState.value.copy(currentDictionary = dict)
+                settingsUseCase.setCurrentDictionary(dictionaryId, dict.name)
+                Log.d(TAG, "Saved dictionary: ${dict.name}")
             }
-
-            _uiState.value = _uiState.value.copy(currentDictionary = dict)
-            settingsUseCase.setCurrentDictionary(dictionaryId, dict.name)
 
             when (val result = loadWordsUseCase(userId, dictionaryId)) {
                 is LoadWordsResult.HasWords -> {
-                    wordQueue = result.words.toMutableList()
+                    Log.d(TAG, "Loaded ${result.words.size} words")
+                    wordQueue.clear()
+                    wordQueue.addAll(result.words)
                     currentWordIndex = 0
                     showNextWord()
-
-                    // Синхронизация теперь в ViewModel
                     syncManager.syncPendingChanges()
                 }
                 is LoadWordsResult.Empty -> {
-                    _uiState.value = _uiState.value.copy(isLoading = false, currentWord = null)
+                    Log.d(TAG, "No words available")
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        currentWord = null
+                    )
                 }
                 is LoadWordsResult.Error -> {
-                    _uiState.value = _uiState.value.copy(isLoading = false, error = result.message)
+                    Log.e(TAG, "Error: ${result.message}")
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        currentWord = null
+                    )
                 }
             }
         }
@@ -132,7 +173,7 @@ class CardsViewModel(
 
     private fun showNextWord() {
         if (currentWordIndex >= wordQueue.size) {
-            // Все слова закончились
+            Log.d(TAG, "No more words")
             _uiState.value = _uiState.value.copy(isLoading = false, currentWord = null)
             return
         }
@@ -144,6 +185,7 @@ class CardsViewModel(
             if (Random.nextBoolean()) TranslationDirection.EN_TO_RU else TranslationDirection.RU_TO_EN
         }
 
+        Log.d(TAG, "Showing word: ${word.englishWord}")
         _uiState.value = _uiState.value.copy(
             currentWord = word.copy(translationDirection = direction),
             isTranslationHidden = true,
@@ -157,29 +199,24 @@ class CardsViewModel(
         )
     }
 
-    fun onKnowCard() {
-        processAnswer(known = true)
-    }
-
-    fun onDontKnowCard() {
-        processAnswer(known = false)
-    }
+    fun onKnowCard() { processAnswer(known = true) }
+    fun onDontKnowCard() { processAnswer(known = false) }
 
     private fun processAnswer(known: Boolean) {
+        if (isProcessing) return
         val currentWord = _uiState.value.currentWord ?: return
+        isProcessing = true
 
         viewModelScope.launch {
-            val userId = authRepository.getCurrentUserId() ?: return@launch
-
-            // Обрабатываем ответ
-            processAnswerUseCase(userId, currentWord.id, currentWord.dictionaryId, known)
-
-            // Переходим к следующему слову
-            currentWordIndex++
-            showNextWord()
-
-            // Синхронизируем изменения
-            syncManager.syncPendingChanges()
+            try {
+                val userId = authRepository.getCurrentUserId() ?: return@launch
+                processAnswerUseCase(userId, currentWord.id, currentWord.dictionaryId, known)
+                currentWordIndex++
+                showNextWord()
+                syncManager.syncPendingChanges()
+            } finally {
+                isProcessing = false
+            }
         }
     }
 
@@ -199,11 +236,10 @@ class CardsViewModel(
     fun resetAndReload() {
         wordQueue.clear()
         currentWordIndex = 0
+        isProcessing = false
         _uiState.value = CardsUiState()
         loadDictionaries()
     }
 
-    fun refreshStatistics() {
-        // Можно обновить статистику при необходимости
-    }
+    fun refreshStatistics() {}
 }

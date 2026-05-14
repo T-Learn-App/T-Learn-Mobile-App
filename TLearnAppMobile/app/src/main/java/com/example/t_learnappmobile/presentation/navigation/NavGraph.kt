@@ -2,8 +2,6 @@
 package com.example.t_learnappmobile.presentation.navigation
 
 import androidx.compose.runtime.*
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -38,7 +36,6 @@ fun NavGraph(
 ) {
     val navController = rememberNavController()
 
-    // Создаем ViewModel'ы через remember, чтобы они не пересоздавались при рекомпозиции
     val authViewModel = remember {
         AuthViewModel(
             loginUseCase = appModule.loginUseCase,
@@ -46,9 +43,6 @@ fun NavGraph(
             authRepository = appModule.authRepository
         )
     }
-
-    // presentation/navigation/NavGraph.kt
-// В месте создания CardsViewModel:
 
     val cardsViewModel = remember {
         CardsViewModel(
@@ -94,12 +88,10 @@ fun NavGraph(
 
     val authState by authViewModel.uiState.collectAsState()
 
-    // Проверяем аутентификацию при первом запуске
     LaunchedEffect(Unit) {
         authViewModel.checkAuthState()
     }
 
-    // Определяем стартовый экран один раз при инициализации
     val startDestination = remember {
         if (appModule.authRepository.isAuthenticated()) {
             Screen.Cards.route
@@ -109,14 +101,13 @@ fun NavGraph(
     }
 
     NavHost(navController = navController, startDestination = startDestination) {
+
         composable(Screen.Login.route) {
-            LaunchedEffect(Unit) {
-                cardsViewModel.resetAndReload()
-            }
             LoginScreen(
                 authViewModel = authViewModel,
                 notificationManager = notificationManager,
                 onLoginSuccess = {
+                    cardsViewModel.resetAndReload()
                     navController.navigate(Screen.Cards.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
@@ -132,6 +123,7 @@ fun NavGraph(
                 authViewModel = authViewModel,
                 notificationManager = notificationManager,
                 onRegisterSuccess = {
+                    cardsViewModel.resetAndReload()
                     navController.navigate(Screen.Cards.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
@@ -159,8 +151,6 @@ fun NavGraph(
                 },
                 onLogout = {
                     authViewModel.logout()
-                    // Сбрасываем репозитории при выходе
-
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Cards.route) { inclusive = true }
                     }
@@ -193,7 +183,6 @@ fun NavGraph(
                 },
                 onLogout = {
                     authViewModel.logout()
-
                     navController.navigate(Screen.Login.route) {
                         popUpTo(0) { inclusive = true }
                     }

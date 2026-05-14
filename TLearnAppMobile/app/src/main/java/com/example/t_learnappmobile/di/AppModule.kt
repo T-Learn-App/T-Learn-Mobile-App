@@ -30,12 +30,23 @@ class AppModule(private val context: Context) {
     val settingsLocalSource by lazy { SettingsLocalSource(context) }
     val firebaseAuthSource by lazy { FirebaseAuthSource() }
     val firebaseFirestoreSource by lazy { FirebaseFirestoreSource() }
-    val firebaseGameSource by lazy { FirebaseGameSource(context = context) }
+    val firebaseGameSource by lazy {
+        FirebaseGameSource(
+            firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance(),
+            context = context
+        )
+    }
 
-    // Sync
-    val syncManager by lazy { SyncManager(wordLocalSource, firebaseFirestoreSource) }
+    // Sync - теперь принимает 3 параметра
+    val syncManager by lazy {
+        SyncManager(
+            localSource = wordLocalSource,
+            remoteSource = firebaseFirestoreSource,
+            authSource = firebaseAuthSource
+        )
+    }
 
-    // Repositories (больше не зависят от AuthSource)
+    // Repositories
     val authRepository: AuthRepository by lazy {
         AuthRepositoryImpl(firebaseAuthSource, firebaseFirestoreSource)
     }
@@ -49,7 +60,7 @@ class AppModule(private val context: Context) {
         GameRepositoryImpl(firebaseGameSource, firebaseAuthSource, userRepository)
     }
 
-    // Use Cases (больше не зависят от SyncManager)
+    // Use Cases
     val loginUseCase by lazy { LoginUseCase(authRepository) }
     val registerUseCase by lazy { RegisterUseCase(authRepository, userRepository) }
     val loadWordsUseCase by lazy { LoadWordsUseCase(wordRepository) }

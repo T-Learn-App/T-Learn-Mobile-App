@@ -3,6 +3,7 @@ package com.example.t_learnappmobile.data.local
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import androidx.core.content.edit
 
 class SettingsLocalSource(private val context: Context) {
@@ -25,17 +26,6 @@ class SettingsLocalSource(private val context: Context) {
         prefs.edit { putInt(KEY_THEME, mode) }
     }
 
-    fun getCurrentDictionaryId(): String? = prefs.getString(KEY_CATEGORY_ID, null)
-
-    fun setCurrentDictionaryId(categoryId: String) {
-        prefs.edit { putString(KEY_CATEGORY_ID, categoryId) }
-    }
-
-    fun getCurrentDictionaryName(): String? = prefs.getString(KEY_CATEGORY_NAME, null)
-
-    fun setCurrentDictionaryName(name: String) {
-        prefs.edit { putString(KEY_CATEGORY_NAME, name) }
-    }
 
     fun clearAllData() {
         prefs.edit {
@@ -43,5 +33,29 @@ class SettingsLocalSource(private val context: Context) {
             remove(KEY_CATEGORY_ID)
             remove(KEY_CATEGORY_NAME)
         }
+    }
+    // data/local/SettingsLocalSource.kt
+// Добавьте логирование в методы:
+
+    fun getCurrentDictionaryId(): String? {
+        val value = prefs.getString(KEY_CATEGORY_ID, null)
+        Log.d("SettingsLocal", "getCurrentDictionaryId: '$value'")
+        return value
+    }
+
+    fun setCurrentDictionaryId(categoryId: String) {
+        Log.d("SettingsLocal", "setCurrentDictionaryId: '$categoryId'")
+        prefs.edit { putString(KEY_CATEGORY_ID, categoryId) }
+    }
+
+    fun getCurrentDictionaryName(): String? {
+        val value = prefs.getString(KEY_CATEGORY_NAME, null)
+        Log.d("SettingsLocal", "getCurrentDictionaryName: '$value'")
+        return value
+    }
+
+    fun setCurrentDictionaryName(name: String) {
+        Log.d("SettingsLocal", "setCurrentDictionaryName: '$name'")
+        prefs.edit { putString(KEY_CATEGORY_NAME, name) }
     }
 }

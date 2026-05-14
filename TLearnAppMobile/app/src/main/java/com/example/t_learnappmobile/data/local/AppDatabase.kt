@@ -7,10 +7,10 @@ import androidx.room.RoomDatabase
 import android.content.Context
 import com.example.t_learnappmobile.data.local.dao.WordDao
 import com.example.t_learnappmobile.data.local.entities.*
-
+// data/local/AppDatabase.kt
 @Database(
     entities = [WordEntity::class, UserWordEntity::class, DictionaryEntity::class],
-    version = 1,
+    version = 3,  // Увеличено с 2 до 3
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -26,7 +26,9 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "t_learn_database"
-                ).build()
+                )
+                    .fallbackToDestructiveMigration()
+                    .build()
                 INSTANCE = instance
                 instance
             }

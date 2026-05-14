@@ -2,6 +2,7 @@
 package com.example.t_learnappmobile.data.local.entities
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(tableName = "words")
@@ -17,7 +18,8 @@ data class WordEntity(
 
 @Entity(
     tableName = "user_words",
-    primaryKeys = ["userId", "wordId"]
+    primaryKeys = ["userId", "wordId"],
+    indices = [Index(value = ["userId", "dictionaryId"])]
 )
 data class UserWordEntity(
     val userId: String,

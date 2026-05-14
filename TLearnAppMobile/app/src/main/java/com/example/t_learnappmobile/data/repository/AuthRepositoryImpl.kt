@@ -21,17 +21,8 @@ class AuthRepositoryImpl(
         firstName: String,
         lastName: String
     ): Result<AuthResult> {
-        return authSource.signUp(email, password).also { result ->
-            if (result.isSuccess) {
-                val authResult = result.getOrNull()!!
-                firestoreSource.createUserProfile(
-                    uid = authResult.userId,
-                    email = authResult.email,
-                    firstName = firstName,
-                    lastName = lastName
-                )
-            }
-        }
+        // Только регистрация, профиль создается в RegisterUseCase
+        return authSource.signUp(email, password)
     }
 
     override suspend fun logout() {

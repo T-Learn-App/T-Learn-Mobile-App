@@ -1,7 +1,6 @@
 // presentation/auth/RegistrationScreen.kt
 package com.example.t_learnappmobile.presentation.auth
 
-import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -25,7 +24,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.t_learnappmobile.R
 import com.example.t_learnappmobile.presentation.components.NotificationManager
-import com.example.t_learnappmobile.presentation.components.rememberNotificationManager
 import com.example.t_learnappmobile.presentation.theme.*
 
 @Composable
@@ -42,6 +40,22 @@ fun RegistrationScreen(
     var passwordVisible by remember { mutableStateOf(false) }
 
     val uiState by authViewModel.uiState.collectAsState()
+
+    // Валидация пароля
+    val passwordErrors = remember(password) {
+        val errors = mutableListOf<String>()
+        if (password.isNotEmpty()) {
+            if (password.length < 8) errors.add("Минимум 8 символов")
+            if (!password.any { it.isUpperCase() }) errors.add("Заглавная буква")
+            if (!password.any { it.isLowerCase() }) errors.add("Строчная буква")
+            if (!password.any { it.isDigit() }) errors.add("Цифра")
+            if (!password.any { "!@#\$%^&*()_+-=[]{}|;:,.<>?".contains(it) }) errors.add("Спецсимвол")
+        }
+        errors
+    }
+
+    val isPasswordValid = password.isNotEmpty() && passwordErrors.isEmpty()
+    val isFormValid = email.isNotEmpty() && isPasswordValid
 
     LaunchedEffect(uiState.error) {
         uiState.error?.let { error -> notificationManager.showError(error) }
@@ -133,7 +147,21 @@ fun RegistrationScreen(
                             }
                         },
                         singleLine = true,
-                        shape = RoundedCornerShape(12.dp)
+                        isError = password.isNotEmpty() && !isPasswordValid,
+                        shape = RoundedCornerShape(12.dp),
+                        supportingText = if (passwordErrors.isNotEmpty()) {
+                            {
+                                Column {
+                                    passwordErrors.forEach { error ->
+                                        Text(
+                                            text = "• $error",
+                                            color = MaterialTheme.colorScheme.error,
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                }
+                            }
+                        } else null
                     )
 
                     Spacer(modifier = Modifier.height(24.dp))
@@ -148,7 +176,7 @@ fun RegistrationScreen(
                             containerColor = YellowPrimary,
                             contentColor = Color.Black
                         ),
-                        enabled = email.isNotEmpty() && password.isNotEmpty() && password.length >= 6
+                        enabled = isFormValid
                     ) {
                         Text(
                             text = "Зарегистрироваться",

@@ -1,6 +1,7 @@
 // presentation/settings/SettingsViewModel.kt
 package com.example.t_learnappmobile.presentation.settings
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.t_learnappmobile.domain.model.Dictionary
@@ -48,13 +49,29 @@ class SettingsViewModel(
         loadData()
     }
 
+    // presentation/settings/SettingsViewModel.kt
+// Замените метод loadData:
+
     private fun loadData() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
             try {
                 val dicts = getDictionariesUseCase()
-                val currentDictId = settingsUseCase.getCurrentDictionaryId() ?: dicts.firstOrNull()?.id ?: ""
+
+                // Получаем сохраненный ID словаря
+                val savedDictId = settingsUseCase.getCurrentDictionaryId()
+                Log.d("SettingsVM", "Saved dictionary ID from settings: '$savedDictId'")
+
+                // Если сохраненный ID есть и он есть в списке - используем его
+                // Иначе берем первый из списка
+                val currentDictId = if (!savedDictId.isNullOrEmpty() && dicts.any { it.id == savedDictId }) {
+                    savedDictId
+                } else {
+                    dicts.firstOrNull()?.id ?: ""
+                }
+
+                Log.d("SettingsVM", "Using dictionary ID: '$currentDictId'")
 
                 val userId = authRepository.getCurrentUserId()
                 val profile = userId?.let { userRepository.getUserProfile(it) }
@@ -79,7 +96,16 @@ class SettingsViewModel(
             }
         }
     }
+    // presentation/settings/SettingsViewModel.kt
+// Добавьте этот метод:
 
+    fun loadCurrentDictionary() {
+        val savedDictId = settingsUseCase.getCurrentDictionaryId()
+        Log.d("SettingsVM", "loadCurrentDictionary: '$savedDictId'")
+        if (!savedDictId.isNullOrEmpty()) {
+            _uiState.value = _uiState.value.copy(currentDictionaryId = savedDictId)
+        }
+    }
     fun refreshUserData() {
         viewModelScope.launch {
             try {

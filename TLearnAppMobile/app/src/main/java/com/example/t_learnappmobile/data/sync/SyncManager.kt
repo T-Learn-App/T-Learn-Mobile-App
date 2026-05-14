@@ -3,12 +3,14 @@ package com.example.t_learnappmobile.data.sync
 
 import android.util.Log
 import com.example.t_learnappmobile.data.local.WordLocalSource
+import com.example.t_learnappmobile.data.remote.FirebaseAuthSource
 import com.example.t_learnappmobile.data.remote.FirebaseFirestoreSource
 import kotlinx.coroutines.*
 
 class SyncManager(
     private val localSource: WordLocalSource,
-    private val remoteSource: FirebaseFirestoreSource
+    private val remoteSource: FirebaseFirestoreSource,
+    private val authSource: FirebaseAuthSource  // Сохраняем как private val
 ) {
     private val TAG = "SyncManager"
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -18,7 +20,7 @@ class SyncManager(
         syncJob?.cancel()
         syncJob = scope.launch {
             while (isActive) {
-                delay(60_000) // Sync every minute
+                delay(60_000)
                 syncPendingChanges()
             }
         }
@@ -28,17 +30,15 @@ class SyncManager(
     fun stopPeriodicSync() {
         syncJob?.cancel()
         syncJob = null
+        scope.cancel()  // Закрываем scope
         Log.d(TAG, "Periodic sync stopped")
     }
 
     suspend fun syncPendingChanges() {
         try {
-            // Sync all unsynced words for all users (we'll get from local source)
-            // In a real app, you'd need to get the current user ID
             val unsyncedProgress = getAllUnsyncedProgress()
 
             if (unsyncedProgress.isEmpty()) {
-                Log.d(TAG, "No pending changes to sync")
                 return
             }
 
@@ -48,13 +48,10 @@ class SyncManager(
                 try {
                     remoteSource.saveUserProgress(progress)
                     localSource.markAsSynced(progress.userId, progress.wordId)
-                    Log.d(TAG, "Synced: ${progress.wordId}")
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to sync ${progress.wordId}", e)
                 }
             }
-
-            Log.d(TAG, "Sync completed")
         } catch (e: Exception) {
             Log.e(TAG, "Sync error", e)
         }
@@ -72,5 +69,8 @@ class SyncManager(
         }
     }
 
-    private suspend fun getAllUnsyncedProgress() = localSource.getUnsyncedProgress("")
+    private suspend fun getAllUnsyncedProgress(): List<com.example.t_learnappmobile.data.local.entities.UserWordEntity> {
+        val userId = authSource.getCurrentUserId() ?: return emptyList()
+        return localSource.getUnsyncedProgress(userId)
+    }
 }

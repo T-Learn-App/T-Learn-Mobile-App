@@ -28,15 +28,7 @@ import com.example.t_learnappmobile.domain.model.PartOfSpeech
 import com.example.t_learnappmobile.domain.model.TranslationDirection
 import com.example.t_learnappmobile.domain.model.Word
 import com.example.t_learnappmobile.presentation.components.NotificationManager
-import com.example.t_learnappmobile.presentation.components.rememberNotificationManager
 import com.example.t_learnappmobile.presentation.theme.*
-
-// Остальной код CardsScreen без изменений...
-
-// ==================== ГЛАВНЫЙ ЭКРАН ====================
-
-// Файл: presentation/cards/CardsScreen.kt
-// Добавьте этот код в существующий файл
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,31 +41,33 @@ fun CardsScreen(
     onLogout: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+// presentation/cards/CardsScreen.kt
+// Замените Box с условиями на этот:
 
-    LaunchedEffect(Unit) {
-        viewModel.refreshStatistics()
-    }
-    LaunchedEffect(uiState.error) {
-        uiState.error?.let { error -> notificationManager.showError(error) }
-    }
+    // presentation/cards/CardsScreen.kt
+// Замените Box с условиями:
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // ДОБАВЛЕНО: Показываем экран выбора словаря для новых пользователей
-        if (uiState.showDictionarySelection) {
-            DictionarySelectionScreen(
-                dictionaries = uiState.dictionaries,
+        if (uiState.showDictionarySelection || uiState.currentDictionary == null) {
+            WelcomeScreen(
+                dictionaries = uiState.dictionaries.ifEmpty {
+                    listOf(
+                        Dictionary("finance", "Финансы", 1),
+                        Dictionary("conversational", "Разговорные слова", 2),
+                        Dictionary("technology", "Технологии", 3),
+                        Dictionary("slang", "Сленг", 4)
+                    )
+                },
                 onDictionarySelected = { dictionaryId ->
                     viewModel.selectDictionary(dictionaryId)
                 },
-                onNavigateToSettings = onNavigateToSettings,
                 onLogout = onLogout
             )
         } else {
-            // Существующий экран карточек
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -82,7 +76,7 @@ fun CardsScreen(
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
                 CardsTopBar(
-                    dictionaryName = uiState.currentDictionary?.name ?: "Словарь",
+                    dictionaryName = uiState.currentDictionary!!.name,
                     onNavigateToStatistics = onNavigateToStatistics,
                     onNavigateToGame = onNavigateToGame,
                     onNavigateToSettings = onNavigateToSettings,
@@ -113,15 +107,15 @@ fun CardsScreen(
                 }
             }
         }
+
     }
 }
 
-// ДОБАВЛЕНО: Новый экран выбора словаря
+// Новый экран приветствия с кнопками словарей
 @Composable
-fun DictionarySelectionScreen(
+fun WelcomeScreen(
     dictionaries: List<Dictionary>,
     onDictionarySelected: (String) -> Unit,
-    onNavigateToSettings: () -> Unit,
     onLogout: () -> Unit
 ) {
     Column(
@@ -131,7 +125,6 @@ fun DictionarySelectionScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Приветственный текст
         Text(
             text = "🎉 Добро пожаловать!",
             fontSize = 28.sp,
@@ -140,7 +133,7 @@ fun DictionarySelectionScreen(
             textAlign = TextAlign.Center
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         Text(
             text = "Выберите словарь для начала изучения:",
@@ -151,90 +144,69 @@ fun DictionarySelectionScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Карточки словарей
+        // Кнопки словарей
         dictionaries.forEach { dictionary ->
-            DictionaryCard(
-                dictionary = dictionary,
-                onClick = { onDictionarySelected(dictionary.id) }
-            )
-            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = { onDictionarySelected(dictionary.id) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(64.dp)
+                    .padding(vertical = 4.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ),
+                elevation = ButtonDefaults.buttonElevation(
+                    defaultElevation = 4.dp,
+                    pressedElevation = 8.dp
+                )
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        horizontalAlignment = Alignment.Start
+                    ) {
+                        Text(
+                            text = dictionary.name,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = getDictionaryDescription(dictionary.id),
+                            fontSize = 12.sp,
+                            color = MediumGray
+                        )
+                    }
+                    Icon(
+                        Icons.Default.ArrowForward,
+                        contentDescription = "Выбрать",
+                        tint = YellowPrimary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Кнопки навигации
-        Row(
+        // Кнопка выхода
+        OutlinedButton(
+            onClick = onLogout,
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = RedError)
         ) {
-            OutlinedButton(
-                onClick = onNavigateToSettings,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text("Настройки")
-            }
-
-            OutlinedButton(
-                onClick = onLogout,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = RedError)
-            ) {
-                Text("Выйти")
-            }
+            Text("Выйти")
         }
     }
 }
-
-@Composable
-fun DictionaryCard(
-    dictionary: Dictionary,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = dictionary.name,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Описание словаря (можно добавить в модель Dictionary)
-                Text(
-                    text = getDictionaryDescription(dictionary.id),
-                    fontSize = 14.sp,
-                    color = MediumGray
-                )
-            }
-
-            Icon(
-                Icons.Default.ArrowForward,
-                contentDescription = "Выбрать",
-                tint = YellowPrimary,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-    }
-}
-
 
 fun getDictionaryDescription(dictionaryId: String): String {
     return when (dictionaryId) {
@@ -246,7 +218,6 @@ fun getDictionaryDescription(dictionaryId: String): String {
     }
 }
 
-// ==================== КОМПОНЕНТЫ ====================
 @Composable
 fun CardsTopBar(
     dictionaryName: String,
@@ -269,39 +240,30 @@ fun CardsTopBar(
         ) {
             Text(
                 text = dictionaryName,
-                fontSize = 16.sp, // ← Уменьшен шрифт чтобы помещалось
+                fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier
-                    .widthIn(max = 140.dp) // ← Ограничение максимальной ширины
+                    .widthIn(max = 140.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(YellowPrimary.copy(alpha = 0.15f))
                     .padding(horizontal = 16.dp, vertical = 10.dp),
                 color = YellowDark,
-                maxLines = 2, // ← Разрешить перенос на 2 строки
+                maxLines = 2,
                 textAlign = TextAlign.Center,
-                lineHeight = 18.sp // ← Межстрочный интервал
+                lineHeight = 18.sp
             )
 
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(
-                    onClick = onNavigateToStatistics,
-                    modifier = Modifier.size(56.dp)
-                ) {
+                IconButton(onClick = onNavigateToStatistics, modifier = Modifier.size(56.dp)) {
                     Icon(Icons.Filled.Leaderboard, contentDescription = "Статистика", tint = DarkGray, modifier = Modifier.size(32.dp))
                 }
-                IconButton(
-                    onClick = onNavigateToGame,
-                    modifier = Modifier.size(56.dp)
-                ) {
+                IconButton(onClick = onNavigateToGame, modifier = Modifier.size(56.dp)) {
                     Icon(Icons.Filled.SportsEsports, contentDescription = "Игра", tint = DarkGray, modifier = Modifier.size(32.dp))
                 }
-                IconButton(
-                    onClick = onNavigateToSettings,
-                    modifier = Modifier.size(56.dp)
-                ) {
+                IconButton(onClick = onNavigateToSettings, modifier = Modifier.size(56.dp)) {
                     Icon(Icons.Filled.Tune, contentDescription = "Настройки", tint = DarkGray, modifier = Modifier.size(32.dp))
                 }
             }
@@ -310,6 +272,7 @@ fun CardsTopBar(
 
     HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
 }
+
 @Composable
 fun WordCardSection(
     word: Word,
@@ -333,11 +296,10 @@ fun WordCardSection(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState()) // ← ДОБАВЬТЕ ПРОКРУТКУ
+                    .verticalScroll(rememberScrollState())
                     .padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Тип карточки
                 Surface(
                     modifier = Modifier.align(Alignment.End),
                     shape = RoundedCornerShape(16.dp),
@@ -360,7 +322,6 @@ fun WordCardSection(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Основное слово
                 Text(
                     text = when (word.translationDirection) {
                         TranslationDirection.EN_TO_RU -> word.englishWord
@@ -373,7 +334,6 @@ fun WordCardSection(
                     lineHeight = 42.sp
                 )
 
-                // Транскрипция
                 if (word.translationDirection == TranslationDirection.EN_TO_RU && word.transcription.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
@@ -384,7 +344,6 @@ fun WordCardSection(
                     )
                 }
 
-                // Часть речи
                 if (word.partOfSpeech != PartOfSpeech.UNKNOWN) {
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
@@ -397,7 +356,6 @@ fun WordCardSection(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Кнопка показать/скрыть перевод
                 TextButton(
                     onClick = onToggleTranslation,
                     colors = ButtonDefaults.textButtonColors(contentColor = BlueColor),
@@ -415,7 +373,6 @@ fun WordCardSection(
                     )
                 }
 
-                // Перевод
                 AnimatedVisibility(
                     visible = !isTranslationHidden,
                     enter = fadeIn() + expandVertically(),
@@ -442,20 +399,20 @@ fun WordCardSection(
                     }
                 }
 
-                // Дополнительный отступ снизу для скролла
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }
 }
+
 @Composable
 fun EmptyWordsView() {
     Column(
         modifier = Modifier
-            .fillMaxSize() // ← Измените с fillMaxWidth на fillMaxSize
+            .fillMaxSize()
             .padding(horizontal = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center // ← Это центрирует по вертикали
+        verticalArrangement = Arrangement.Center
     ) {
         Icon(
             Icons.Default.CheckCircle,
@@ -481,6 +438,7 @@ fun EmptyWordsView() {
         Spacer(modifier = Modifier.height(32.dp))
     }
 }
+
 @Composable
 fun LoadingView() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -491,6 +449,7 @@ fun LoadingView() {
         }
     }
 }
+
 @Composable
 fun ActionButtons(
     positiveText: String,
@@ -501,208 +460,63 @@ fun ActionButtons(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .fillMaxHeight(0.45f) // Увеличено с 0.33f до 0.45f - почти половина экрана
-            .padding(horizontal = 12.dp, vertical = 12.dp), // Увеличены отступы
+            .fillMaxHeight(0.45f)
+            .padding(horizontal = 12.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Button(
             onClick = onNegativeClick,
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight(),
+            modifier = Modifier.weight(1f).fillMaxHeight(),
             colors = ButtonDefaults.buttonColors(containerColor = RedError),
-            shape = RoundedCornerShape(24.dp), // Более скругленные углы
-            elevation = ButtonDefaults.buttonElevation(
-                defaultElevation = 6.dp, // Больше тень
-                pressedElevation = 10.dp
-            )
+            shape = RoundedCornerShape(24.dp),
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp, pressedElevation = 10.dp)
         ) {
             Column(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = null,
-                    modifier = Modifier.size(48.dp), // Увеличена иконка с 36 до 48
-                    tint = Color.White
-                )
-                Spacer(modifier = Modifier.height(12.dp)) // Увеличен отступ
-                Text(
-                    negativeText,
-                    fontSize = 20.sp, // Увеличен шрифт с 18 до 20
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    textAlign = TextAlign.Center,
-                    maxLines = 2,
-                    lineHeight = 24.sp
-                )
+                Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(48.dp), tint = Color.White)
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(negativeText, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White, textAlign = TextAlign.Center, maxLines = 2, lineHeight = 24.sp)
             }
         }
 
         Button(
             onClick = onPositiveClick,
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight(),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = YellowPrimary,
-                contentColor = Color.Black
-            ),
-            shape = RoundedCornerShape(24.dp), // Более скругленные углы
-            elevation = ButtonDefaults.buttonElevation(
-                defaultElevation = 6.dp, // Больше тень
-                pressedElevation = 10.dp
-            )
+            modifier = Modifier.weight(1f).fillMaxHeight(),
+            colors = ButtonDefaults.buttonColors(containerColor = YellowPrimary, contentColor = Color.Black),
+            shape = RoundedCornerShape(24.dp),
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp, pressedElevation = 10.dp)
         ) {
             Column(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                Icon(
-                    Icons.Default.Check,
-                    contentDescription = null,
-                    modifier = Modifier.size(48.dp), // Увеличена иконка с 36 до 48
-                    tint = Color.Black
-                )
-                Spacer(modifier = Modifier.height(12.dp)) // Увеличен отступ
-                Text(
-                    positiveText,
-                    fontSize = 18.sp, // Увеличен шрифт с 18 до 20
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black,
-                    textAlign = TextAlign.Center,
-                    maxLines = 2,
-                    lineHeight = 24.sp
-                )
+                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(48.dp), tint = Color.Black)
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(positiveText, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black, textAlign = TextAlign.Center, maxLines = 2, lineHeight = 24.sp)
             }
         }
     }
 }
-
-// ==================== PREVIEW ====================
 
 @Preview(showBackground = true, showSystemUi = true, widthDp = 360, heightDp = 720)
 @Composable
 fun CardsScreenPreview() {
     TLearnAppMobileTheme {
-        // Напрямую отрисовываем UI с тестовыми данными
-        var isTranslationHidden by remember { mutableStateOf(true) }
-        val testWord = Word(
-            id = "1",
-            englishWord = "investment",
-            translation = "инвестиция",
-            transcription = "ɪnˈvestmənt",
-            partOfSpeech = PartOfSpeech.NOUN,
-            stage = 0,
-            isNew = true,
-            translationDirection = TranslationDirection.EN_TO_RU
-        )
-        val testDictionaries = listOf(
-            Dictionary("finance", "Финансы", 1),
-            Dictionary("conversational", "Разговорные слова", 2),
-            Dictionary("technology", "Технологии", 3),
-            Dictionary("slang", "Сленг", 4)
-        )
-
         Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-            Column(modifier = Modifier.fillMaxSize().padding(top = 4.dp), verticalArrangement = Arrangement.SpaceBetween) {
-                CardsTopBar(
-                    dictionaryName = "Финансы",
-                    onNavigateToStatistics = {},
-                    onNavigateToGame = {},
-                    onNavigateToSettings = {},
-                    onLogout = {}
-                )
-
-                WordCardSection(
-                    word = testWord,
-                    isTranslationHidden = isTranslationHidden,
-                    cardType = CardType.NEW,
-                    onToggleTranslation = { isTranslationHidden = !isTranslationHidden }
-                )
-
-                ActionButtons(
-                    positiveText = "Я знаю это слово",
-                    negativeText = "Я не знаю это слово",
-                    onPositiveClick = {},
-                    onNegativeClick = {}
-                )
-            }
-        }
-    }
-}
-
-@Preview(showBackground = true, showSystemUi = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun CardsScreenDarkPreview() {
-    TLearnAppMobileTheme(darkTheme = true) {
-        val testWord = Word(
-            id = "1",
-            englishWord = "investment",
-            translation = "инвестиция",
-            transcription = "ɪnˈvestmənt",
-            partOfSpeech = PartOfSpeech.NOUN,
-            stage = 3,
-            isNew = false,
-            translationDirection = TranslationDirection.RU_TO_EN
-        )
-
-        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-            Column(modifier = Modifier.fillMaxSize().padding(top = 16.dp), verticalArrangement = Arrangement.SpaceBetween) {
-                CardsTopBar(
-                    dictionaryName = "Технологии",
-                    onNavigateToStatistics = {},
-                    onNavigateToGame = {},
-                    onNavigateToSettings = {},
-                    onLogout = {}
-                )
-
-                WordCardSection(
-                    word = testWord,
-                    isTranslationHidden = false,
-                    cardType = CardType.ROTATION,
-                    onToggleTranslation = {}
-                )
-
-                ActionButtons(
-                    positiveText = "Я запомнил",
-                    negativeText = "Я не запомнил",
-                    onPositiveClick = {},
-                    onNegativeClick = {}
-                )
-            }
-        }
-    }
-}
-
-@Preview(showBackground = true, showSystemUi = true, name = "Empty Words")
-@Composable
-fun CardsScreenEmptyPreview() {
-    TLearnAppMobileTheme {
-        val testDictionaries = listOf(
-            Dictionary("finance", "Финансы", 1),
-            Dictionary("technology", "Технологии", 2)
-        )
-
-        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-            Column(modifier = Modifier.fillMaxSize().padding(top = 16.dp), verticalArrangement = Arrangement.SpaceBetween) {
-                CardsTopBar(
-                    dictionaryName = "Финансы",
-                    onNavigateToStatistics = {},
-                    onNavigateToGame = {},
-                    onNavigateToSettings = {},
-                    onLogout = {}
-                )
-
-                Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-                    EmptyWordsView(
-
-                    )
-                }
-            }
+            WelcomeScreen(
+                dictionaries = listOf(
+                    Dictionary("finance", "Финансы", 1),
+                    Dictionary("conversational", "Разговорные слова", 2),
+                    Dictionary("technology", "Технологии", 3),
+                    Dictionary("slang", "Сленг", 4)
+                ),
+                onDictionarySelected = {},
+                onLogout = {}
+            )
         }
     }
 }

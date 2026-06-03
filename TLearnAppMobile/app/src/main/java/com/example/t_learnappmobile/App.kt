@@ -1,4 +1,3 @@
-// App.kt
 package com.example.t_learnappmobile
 
 import android.app.Application
@@ -15,7 +14,7 @@ class App : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        // Initialize Firebase
+
         try {
             if (FirebaseApp.getApps(this).isEmpty()) {
                 FirebaseApp.initializeApp(this)
@@ -25,14 +24,14 @@ class App : Application() {
             Log.e("App", "Firebase init error", e)
         }
 
-        // Initialize AppModule (Dependency Injection)
+
         appModule = AppModule(this)
 
-        // Set initial theme
+
         val theme = appModule.settingsLocalSource.getTheme()
         AppCompatDelegate.setDefaultNightMode(theme)
 
-        // Start periodic sync
+
         appModule.syncManager.startPeriodicSync()
 
         Log.d("App", "Application initialized successfully")

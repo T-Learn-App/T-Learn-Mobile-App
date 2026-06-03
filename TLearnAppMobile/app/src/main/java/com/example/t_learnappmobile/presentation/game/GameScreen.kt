@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.t_learnappmobile.domain.model.GameWord
 import com.example.t_learnappmobile.presentation.components.NotificationManager
+import com.example.t_learnappmobile.presentation.components.SmartGameOptionText
+import com.example.t_learnappmobile.presentation.components.SmartGameWordText
 import com.example.t_learnappmobile.presentation.components.rememberNotificationManager
 import com.example.t_learnappmobile.presentation.theme.*
 @Composable
@@ -41,7 +43,6 @@ fun GameScreen(
         viewModel.startGame()
     }
 
-    // Сбрасываем selectedAnswer при загрузке нового слова
     LaunchedEffect(uiState.currentWord) {
         selectedAnswer = null
     }
@@ -81,7 +82,6 @@ fun GameScreen(
         }
     }
 
-    // Диалог подтверждения выхода
     if (showExitDialog) {
         AlertDialog(
             onDismissRequest = { showExitDialog = false },
@@ -150,7 +150,7 @@ fun ActiveGameView(
             .padding(horizontal = 24.dp)
             .padding(top = 36.dp)
     ) {
-        // Верхняя панель
+
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -174,9 +174,10 @@ fun ActiveGameView(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Карточка слова
         Card(
-            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.4f),
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.35f),
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
@@ -189,14 +190,13 @@ fun ActiveGameView(
                         color = MediumGray,
                         modifier = Modifier.padding(bottom = 12.dp)
                     )
-                    Text(
+
+
+                    SmartGameWordText(
                         text = currentWord,
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(bottom = 12.dp)
+                        color = MaterialTheme.colorScheme.onSurface
                     )
+
                     Text(
                         text = "${currentIndex + 1}/$totalWords",
                         fontSize = 16.sp,
@@ -208,12 +208,14 @@ fun ActiveGameView(
             }
         }
 
-        Spacer(modifier = Modifier.height(48.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
-        // Кнопки вариантов
+
         Column(
-            modifier = Modifier.padding(bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             options.forEachIndexed { index, option ->
                 val isSelected = selectedAnswer == index
@@ -221,8 +223,8 @@ fun ActiveGameView(
                 val isWrong = selectedAnswer == index && index != correctIndex
 
                 val borderColor = when {
-                    isCorrect -> Color(0xFF4CAF50) // Зеленый для правильного
-                    isWrong -> RedError // Красный для неправильного
+                    isCorrect -> Color(0xFF4CAF50)
+                    isWrong -> RedError
                     else -> Color.Transparent
                 }
 
@@ -234,8 +236,8 @@ fun ActiveGameView(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(72.dp)
-                        .border(borderWidth, borderColor, RoundedCornerShape(20.dp)), // ← Обводка
+                        .height(80.dp)
+                        .border(borderWidth, borderColor, RoundedCornerShape(20.dp)),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = when {
                             isCorrect -> Color(0xFF4CAF50)
@@ -253,10 +255,9 @@ fun ActiveGameView(
                         pressedElevation = 10.dp
                     )
                 ) {
-                    Text(
+
+                    SmartGameOptionText(
                         text = option,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
                         color = when {
                             isCorrect || isWrong -> Color.White
                             else -> Color.Black
@@ -266,7 +267,7 @@ fun ActiveGameView(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
     }
 }
 
@@ -306,7 +307,6 @@ fun GameResultsView(
     }
 }
 
-// ==================== PREVIEW ====================
 
 @Preview(showBackground = true, showSystemUi = true, widthDp = 360, heightDp = 720)
 @Composable
@@ -340,7 +340,7 @@ fun GameScreenCorrectPreview() {
                 totalWords = 10,
                 options = listOf("инвестиция", "расход"),
                 correctIndex = 0,
-                selectedAnswer = 0, // Правильный ответ
+                selectedAnswer = 0,
                 onOptionClick = {},
                 onExitClick = {}
             )
@@ -360,7 +360,7 @@ fun GameScreenWrongPreview() {
                 totalWords = 10,
                 options = listOf("инвестиция", "расход"),
                 correctIndex = 0,
-                selectedAnswer = 1, // Неправильный ответ
+                selectedAnswer = 1,
                 onOptionClick = {},
                 onExitClick = {}
             )

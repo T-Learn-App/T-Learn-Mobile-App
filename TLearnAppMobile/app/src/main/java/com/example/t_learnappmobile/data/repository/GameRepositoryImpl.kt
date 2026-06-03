@@ -1,4 +1,3 @@
-// data/repository/GameRepositoryImpl.kt
 package com.example.t_learnappmobile.data.repository
 
 import com.example.t_learnappmobile.data.remote.FirebaseAuthSource
@@ -8,37 +7,57 @@ import com.example.t_learnappmobile.domain.model.GameResult
 import com.example.t_learnappmobile.domain.model.GameWord
 import com.example.t_learnappmobile.domain.model.LeaderboardPlayer
 import com.example.t_learnappmobile.domain.repository.GameRepository
-import com.example.t_learnappmobile.domain.repository.UserRepository
 
 class GameRepositoryImpl(
     private val gameSource: FirebaseGameSource,
-    private val authSource: FirebaseAuthSource,
-    userRepository: UserRepository
+    private val authSource: FirebaseAuthSource
 ) : GameRepository {
 
     override suspend fun loadGameWords(dictionaryId: String, limit: Int): List<GameWord> {
-        return gameSource.loadGameWords(dictionaryId, limit)
+        return try {
+            gameSource.loadGameWords(dictionaryId, limit)
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 
     override suspend fun saveGameResult(score: Int, totalWords: Int) {
-        val userId = authSource.getCurrentUserId() ?: return
-        // Сохраняем только результат игры, без обновления счета
+        val userId = authSource.getCurrentUserId()
+        if (userId == null) {
+            throw IllegalStateException("User not authenticated")
+        }
         gameSource.saveGameResult(userId, score, totalWords)
     }
 
     override suspend fun getGameResults(userId: String): List<GameResult> {
-        return gameSource.getGameResults(userId)
+        return try {
+            gameSource.getGameResults(userId)
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 
     override suspend fun getWeeklyStats(userId: String, weekOffset: Int): List<DailyStats> {
-        return gameSource.getWeeklyStats(userId, weekOffset)
+        return try {
+            gameSource.getWeeklyStats(userId, weekOffset)
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 
     override suspend fun getLeaderboard(limit: Int): List<LeaderboardPlayer> {
-        return gameSource.getLeaderboard(limit)
+        return try {
+            gameSource.getLeaderboard(limit)
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 
     override suspend fun getPlayerPosition(userId: String): LeaderboardPlayer? {
-        return gameSource.getPlayerPosition(userId)
+        return try {
+            gameSource.getPlayerPosition(userId)
+        } catch (e: Exception) {
+            null
+        }
     }
 }

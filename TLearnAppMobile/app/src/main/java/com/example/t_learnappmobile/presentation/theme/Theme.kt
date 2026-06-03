@@ -1,4 +1,3 @@
-// presentation/theme/Theme.kt
 package com.example.t_learnappmobile.presentation.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme

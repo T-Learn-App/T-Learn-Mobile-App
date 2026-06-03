@@ -1,4 +1,3 @@
-// di/AppModule.kt
 package com.example.t_learnappmobile.di
 
 import android.content.Context
@@ -24,7 +23,7 @@ import com.example.t_learnappmobile.domain.usecase.words.*
 
 class AppModule(private val context: Context) {
 
-    // Data Sources
+
     private val database by lazy { AppDatabase.getInstance(context) }
     val wordLocalSource by lazy { WordLocalSource(database.wordDao()) }
     val settingsLocalSource by lazy { SettingsLocalSource(context) }
@@ -37,7 +36,7 @@ class AppModule(private val context: Context) {
         )
     }
 
-    // Sync - теперь принимает 3 параметра
+
     val syncManager by lazy {
         SyncManager(
             localSource = wordLocalSource,
@@ -57,7 +56,10 @@ class AppModule(private val context: Context) {
         UserRepositoryImpl(firebaseFirestoreSource, firebaseAuthSource)
     }
     val gameRepository: GameRepository by lazy {
-        GameRepositoryImpl(firebaseGameSource, firebaseAuthSource, userRepository)
+        GameRepositoryImpl(
+            gameSource = firebaseGameSource,
+            authSource = firebaseAuthSource
+        )
     }
 
     // Use Cases

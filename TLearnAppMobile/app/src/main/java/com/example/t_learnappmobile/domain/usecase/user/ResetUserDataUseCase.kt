@@ -1,4 +1,3 @@
-// domain/usecase/user/ResetUserDataUseCase.kt
 package com.example.t_learnappmobile.domain.usecase.user
 
 import com.example.t_learnappmobile.data.sync.SyncManager
@@ -12,10 +11,8 @@ class ResetUserDataUseCase(
 ) {
     suspend operator fun invoke(userId: String): Result<Unit> {
         return try {
-            // Сбрасываем прогресс всех слов (НЕ удаляем игровые результаты и очки)
             wordRepository.resetAllProgress(userId)
 
-            // Запускаем синхронизацию для сохранения изменений
             syncManager.syncPendingChanges()
 
             Result.success(Unit)

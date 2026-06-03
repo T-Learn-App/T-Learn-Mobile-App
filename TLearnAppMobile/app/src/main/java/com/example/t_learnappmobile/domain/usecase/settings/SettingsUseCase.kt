@@ -1,4 +1,3 @@
-// domain/usecase/settings/SettingsUseCase.kt
 package com.example.t_learnappmobile.domain.usecase.settings
 
 import com.example.t_learnappmobile.data.local.SettingsLocalSource

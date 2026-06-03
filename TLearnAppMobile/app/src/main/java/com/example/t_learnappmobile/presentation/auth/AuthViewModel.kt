@@ -1,4 +1,3 @@
-// presentation/auth/AuthViewModel.kt
 package com.example.t_learnappmobile.presentation.auth
 
 import androidx.lifecycle.ViewModel
@@ -30,8 +29,20 @@ class AuthViewModel(
         viewModelScope.launch {
             _uiState.value = AuthUiState(isLoading = true)
             loginUseCase(email, password).fold(
-                onSuccess = { _uiState.value = AuthUiState(isSuccess = true) },
-                onFailure = { e -> _uiState.value = AuthUiState(error = e.message) }
+                onSuccess = {
+                    _uiState.value = AuthUiState(isSuccess = true)
+                },
+                onFailure = { e ->
+                    val errorMessage = when {
+                        e.message?.contains("Email cannot be empty") == true -> "Введите email"
+                        e.message?.contains("Password must be at least 6 characters") == true -> "Пароль должен быть не менее 6 символов"
+                        e.message?.contains("User not found") == true -> "Пользователь не найден"
+                        e.message?.contains("Invalid password") == true -> "Неверный пароль"
+                        e.message?.contains("Network error") == true -> "Ошибка сети. Проверьте подключение"
+                        else -> e.message ?: "Ошибка входа"
+                    }
+                    _uiState.value = AuthUiState(error = errorMessage)
+                }
             )
         }
     }
@@ -40,8 +51,19 @@ class AuthViewModel(
         viewModelScope.launch {
             _uiState.value = AuthUiState(isLoading = true)
             registerUseCase(email, password, firstName, lastName).fold(
-                onSuccess = { _uiState.value = AuthUiState(isSuccess = true) },
-                onFailure = { e -> _uiState.value = AuthUiState(error = e.message) }
+                onSuccess = {
+                    _uiState.value = AuthUiState(isSuccess = true)
+                },
+                onFailure = { e ->
+                    val errorMessage = when {
+                        e.message?.contains("Email cannot be empty") == true -> "Введите email"
+                        e.message?.contains("Email already in use") == true -> "Этот email уже зарегистрирован"
+                        e.message?.contains("Password too short") == true -> "Пароль слишком короткий"
+                        e.message?.contains("Минимум") == true -> e.message
+                        else -> e.message ?: "Ошибка регистрации"
+                    }
+                    _uiState.value = AuthUiState(error = errorMessage)
+                }
             )
         }
     }
@@ -54,7 +76,6 @@ class AuthViewModel(
     }
 
     fun checkAuthState() {
-        // Проверяем, авторизован ли пользователь
         if (authRepository.isAuthenticated()) {
             _uiState.value = AuthUiState(isSuccess = true)
         }

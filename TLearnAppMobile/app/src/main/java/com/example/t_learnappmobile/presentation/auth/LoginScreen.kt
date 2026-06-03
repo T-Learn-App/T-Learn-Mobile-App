@@ -1,4 +1,3 @@
-// presentation/auth/LoginScreen.kt - исправить все ссылки на authState на uiState
 package com.example.t_learnappmobile.presentation.auth
 
 import android.content.res.Configuration
@@ -145,9 +144,7 @@ fun LoginScreen(
         if (uiState.isLoading) {
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.5f))
-                    .clickable(enabled = false) { },
+                    .fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(color = YellowPrimary)

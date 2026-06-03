@@ -1,4 +1,3 @@
-// MainActivity.kt
 package com.example.t_learnappmobile
 
 import android.os.Bundle
@@ -35,8 +34,7 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        // КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Используем key(darkTheme) только для темы,
-                        // но НЕ пересоздаем NavGraph
+
                         NavGraph(
                             notificationManager = notificationManager,
                             onThemeChanged = { newDarkTheme ->
@@ -47,7 +45,7 @@ class MainActivity : ComponentActivity() {
                                     SettingsLocalSource.THEME_LIGHT
                                 }
                                 appModule.settingsLocalSource.setTheme(mode)
-                                // НЕ вызываем рекомпозицию NavGraph
+
                             },
                             appModule = appModule
                         )

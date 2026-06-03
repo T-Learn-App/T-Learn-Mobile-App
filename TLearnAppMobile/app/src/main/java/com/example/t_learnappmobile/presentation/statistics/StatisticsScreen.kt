@@ -1,4 +1,3 @@
-// presentation/statistics/StatisticsScreen.kt
 package com.example.t_learnappmobile.presentation.statistics
 
 import android.content.res.Configuration
@@ -209,7 +208,6 @@ fun UserPositionCard(uiState: StatisticsUiState) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = YellowPrimary.copy(alpha = 0.15f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),

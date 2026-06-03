@@ -1,7 +1,6 @@
-// presentation/settings/SettingsScreen.kt
 package com.example.t_learnappmobile.presentation.settings
 
-import android.content.res.Configuration
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -27,7 +26,6 @@ import androidx.compose.ui.unit.sp
 import com.example.t_learnappmobile.R
 import com.example.t_learnappmobile.domain.model.Dictionary
 import com.example.t_learnappmobile.presentation.components.NotificationManager
-import com.example.t_learnappmobile.presentation.components.rememberNotificationManager
 import com.example.t_learnappmobile.presentation.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,11 +43,33 @@ fun SettingsScreen(
     var showEditProfileDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.error) {
-        uiState.error?.let { error -> notificationManager.showError(error) }
+        uiState.error?.let { error ->
+            notificationManager.showError(error)
+            if (error.contains("Ошибка загрузки")) {
+                kotlinx.coroutines.delay(2000)
+                onClose()
+            }
+        }
     }
 
     LaunchedEffect(uiState.isSuccess) {
         if (uiState.isSuccess) notificationManager.showSuccess("Профиль обновлен")
+    }
+
+    if (uiState.dictionaries.isEmpty() && !uiState.isLoading && uiState.error == null) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Загрузка словарей...", color = MediumGray)
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(onClick = { viewModel.refreshUserData() }) {
+                    Text("Повторить")
+                }
+            }
+        }
+        return
     }
 
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
@@ -58,7 +78,6 @@ fun SettingsScreen(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 48.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Заголовок
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -77,7 +96,6 @@ fun SettingsScreen(
                 }
             }
 
-            // Профиль пользователя
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -138,11 +156,11 @@ fun SettingsScreen(
                 }
             }
 
-            // Выбор словаря
             item {
                 DictionarySelector(
                     dictionaries = uiState.dictionaries,
                     currentDictionaryId = uiState.currentDictionaryId,
+                    currentDictionaryName = uiState.currentDictionaryName,
                     onDictionarySelected = { dictId ->
                         viewModel.updateDictionary(dictId)
                         onDictionaryChanged(dictId)
@@ -150,7 +168,6 @@ fun SettingsScreen(
                 )
             }
 
-            // Выбор темы
             item {
                 ThemeSelector(
                     isDarkTheme = uiState.isDarkTheme,
@@ -161,7 +178,6 @@ fun SettingsScreen(
                 )
             }
 
-            // Управление данными
             item {
                 DataManagement(
                     onResetDictionary = { viewModel.resetDictionaryStatistics() },
@@ -169,7 +185,6 @@ fun SettingsScreen(
                 )
             }
 
-            // Кнопка выхода из аккаунта
             item {
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
@@ -195,7 +210,6 @@ fun SettingsScreen(
         }
     }
 
-    // Диалог изменения профиля
     if (showEditProfileDialog) {
         var editFirstName by remember(uiState.firstName) { mutableStateOf(uiState.firstName) }
         var editLastName by remember(uiState.lastName) { mutableStateOf(uiState.lastName) }
@@ -248,7 +262,6 @@ fun SettingsScreen(
         )
     }
 
-    // Диалог подтверждения выхода
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
@@ -284,6 +297,7 @@ fun SettingsScreen(
 fun DictionarySelector(
     dictionaries: List<Dictionary>,
     currentDictionaryId: String,
+    currentDictionaryName: String,
     onDictionarySelected: (String) -> Unit
 ) {
     Card(
@@ -297,17 +311,34 @@ fun DictionarySelector(
             Spacer(modifier = Modifier.height(12.dp))
 
             var expanded by remember { mutableStateOf(false) }
-            val currentDict = dictionaries.find { it.id == currentDictionaryId }
+
+            val displayName = when {
+                dictionaries.isEmpty() -> "Загрузка словарей..."
+                currentDictionaryName.isNotEmpty() -> currentDictionaryName
+                else -> dictionaries.find { it.id == currentDictionaryId }?.name ?: "Выберите словарь"
+            }
+
+            Log.d("DictionarySelector", "Displaying: id='$currentDictionaryId', name='$displayName'")
+            Log.d("DictionarySelector", "Available dictionaries: ${dictionaries.map { "${it.id} (${it.name})" }}")
 
             Box {
-                OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
-                    Text(currentDict?.name ?: "Выберите словарь")
+                OutlinedButton(
+                    onClick = { if (dictionaries.isNotEmpty()) expanded = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = dictionaries.isNotEmpty()
+                ) {
+                    Text(displayName)
                 }
-                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+
+                DropdownMenu(
+                    expanded = expanded && dictionaries.isNotEmpty(),
+                    onDismissRequest = { expanded = false }
+                ) {
                     dictionaries.forEach { dict ->
                         DropdownMenuItem(
                             text = { Text(dict.name) },
                             onClick = {
+                                Log.d("DictionarySelector", "Selected: ${dict.name} (${dict.id})")
                                 onDictionarySelected(dict.id)
                                 expanded = false
                             }
@@ -353,8 +384,6 @@ fun ThemeOption(title: String, icon: androidx.compose.ui.graphics.vector.ImageVe
         }
     }
 }
-// presentation/settings/SettingsScreen.kt
-// Замените функцию DataManagement на эту:
 
 @Composable
 fun DataManagement(onResetDictionary: () -> Unit, onResetAll: () -> Unit) {

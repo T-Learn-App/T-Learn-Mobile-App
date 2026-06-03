@@ -1,4 +1,3 @@
-// domain/model/AuthModels.kt
 package com.example.t_learnappmobile.domain.model
 
 data class AuthResult(

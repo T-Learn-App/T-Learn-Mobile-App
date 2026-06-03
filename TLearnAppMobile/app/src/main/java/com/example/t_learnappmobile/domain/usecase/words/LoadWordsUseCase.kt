@@ -1,4 +1,3 @@
-// domain/usecase/words/LoadWordsUseCase.kt
 package com.example.t_learnappmobile.domain.usecase.words
 
 import com.example.t_learnappmobile.domain.model.Word

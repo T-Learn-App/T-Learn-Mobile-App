@@ -1,4 +1,3 @@
-// data/repository/AuthRepositoryImpl.kt
 package com.example.t_learnappmobile.data.repository
 
 import com.example.t_learnappmobile.data.remote.FirebaseAuthSource
@@ -21,7 +20,6 @@ class AuthRepositoryImpl(
         firstName: String,
         lastName: String
     ): Result<AuthResult> {
-        // Только регистрация, профиль создается в RegisterUseCase
         return authSource.signUp(email, password)
     }
 

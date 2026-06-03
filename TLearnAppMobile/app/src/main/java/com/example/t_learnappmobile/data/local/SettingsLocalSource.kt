@@ -1,4 +1,3 @@
-// data/local/SettingsLocalSource.kt
 package com.example.t_learnappmobile.data.local
 
 import android.content.Context
@@ -34,8 +33,6 @@ class SettingsLocalSource(private val context: Context) {
             remove(KEY_CATEGORY_NAME)
         }
     }
-    // data/local/SettingsLocalSource.kt
-// Добавьте логирование в методы:
 
     fun getCurrentDictionaryId(): String? {
         val value = prefs.getString(KEY_CATEGORY_ID, null)

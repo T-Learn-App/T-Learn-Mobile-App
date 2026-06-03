@@ -1,4 +1,3 @@
-// domain/repository/WordRepository.kt
 package com.example.t_learnappmobile.domain.repository
 
 import com.example.t_learnappmobile.domain.model.Dictionary

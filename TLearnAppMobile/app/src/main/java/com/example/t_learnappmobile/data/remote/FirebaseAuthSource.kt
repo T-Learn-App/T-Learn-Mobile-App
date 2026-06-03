@@ -1,4 +1,3 @@
-// data/remote/FirebaseAuthSource.kt
 package com.example.t_learnappmobile.data.remote
 
 import android.util.Log
@@ -15,7 +14,7 @@ class FirebaseAuthSource {
     suspend fun signIn(email: String, password: String): Result<AuthResult> {
         return try {
             val result = auth.signInWithEmailAndPassword(email, password).await()
-            val user = result.user ?: return Result.failure(Exception("User is null"))
+            val user = result.user ?: return Result.failure(Exception("Пользователь не найден"))
             Result.success(AuthResult(user.uid, user.email))
         } catch (e: Exception) {
             Log.e(TAG, "Sign in error", e)
@@ -26,7 +25,7 @@ class FirebaseAuthSource {
     suspend fun signUp(email: String, password: String): Result<AuthResult> {
         return try {
             val result = auth.createUserWithEmailAndPassword(email, password).await()
-            val user = result.user ?: return Result.failure(Exception("User is null"))
+            val user = result.user ?: return Result.failure(Exception("Не удалось создать пользователя"))
             Result.success(AuthResult(user.uid, user.email))
         } catch (e: Exception) {
             Log.e(TAG, "Sign up error", e)
@@ -44,15 +43,18 @@ class FirebaseAuthSource {
     fun isAuthenticated(): Boolean = auth.currentUser != null
 
     private fun mapFirebaseError(e: Exception): String {
-        val message = e.message ?: return "Authentication error"
+        val message = e.message ?: return "Ошибка авторизации"
         return when {
-            message.contains("The email address is badly formatted") -> "Invalid email format"
-            message.contains("There is no user record") -> "User not found"
-            message.contains("The password is invalid") -> "Invalid password"
-            message.contains("The email address is already in use") -> "Email already in use"
-            message.contains("Password should be at least 6 characters") -> "Password too short"
-            message.contains("A network error") -> "Network error"
-            else -> message
+            message.contains("The email address is badly formatted") -> "Неверный формат электронной почты"
+            message.contains("There is no user record") -> "Пользователь не найден"
+            message.contains("The password is invalid") -> "Введены некорректные данные"
+            message.contains("The email address is already in use") -> "Электронная почта уже используется"
+            message.contains("Password should be at least 6 characters") -> "Пароль должен содержать минимум 6 символов"
+            message.contains("A network error") -> "Ошибка сети. Проверьте подключение"
+            message.contains("INTERNAL_ERROR") -> "Внутренняя ошибка сервера. Попробуйте позже"
+            message.contains("USER_DISABLED") -> "Аккаунт отключен"
+            message.contains("TOO_MANY_ATTEMPTS_TRY_LATER") -> "Слишком много попыток. Попробуйте позже"
+            else -> "Ошибка: $message"
         }
     }
 }

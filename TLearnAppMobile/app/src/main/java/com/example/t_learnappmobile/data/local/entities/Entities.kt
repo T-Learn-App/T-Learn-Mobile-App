@@ -1,4 +1,3 @@
-// data/local/entities/Entities.kt
 package com.example.t_learnappmobile.data.local.entities
 
 import androidx.room.Entity

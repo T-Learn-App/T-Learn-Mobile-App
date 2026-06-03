@@ -1,4 +1,3 @@
-// domain/usecase/auth/RegisterUseCase.kt
 package com.example.t_learnappmobile.domain.usecase.auth
 
 import com.example.t_learnappmobile.domain.model.AuthResult
@@ -19,7 +18,6 @@ class RegisterUseCase(
             return Result.failure(IllegalArgumentException("Email cannot be empty"))
         }
 
-        // Валидация пароля
         val passwordErrors = mutableListOf<String>()
         if (password.length < 8) passwordErrors.add("Минимум 8 символов")
         if (!password.any { it.isUpperCase() }) passwordErrors.add("Заглавная буква")

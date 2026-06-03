@@ -1,4 +1,3 @@
-// domain/model/UserModels.kt
 package com.example.t_learnappmobile.domain.model
 
 data class UserProfile(

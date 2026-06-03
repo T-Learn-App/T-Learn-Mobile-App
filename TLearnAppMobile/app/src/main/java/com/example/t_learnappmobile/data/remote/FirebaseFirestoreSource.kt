@@ -1,4 +1,3 @@
-// data/remote/FirebaseFirestoreSource.kt
 package com.example.t_learnappmobile.data.remote
 
 import android.util.Log
@@ -15,29 +14,55 @@ class FirebaseFirestoreSource(
 
     suspend fun getWords(dictionaryId: String): List<WordEntity> {
         return try {
-            firestore.collection("words")
+            Log.d(TAG, "=== getWords START ===")
+            Log.d(TAG, "Requested dictionaryId: '$dictionaryId'")
+            Log.d(TAG, "dictionaryId length: ${dictionaryId.length}")
+            Log.d(TAG, "dictionaryId chars: ${dictionaryId.toCharArray().joinToString(",")}")
+
+
+            val querySnapshot = firestore.collection("words")
                 .whereEqualTo("dictionaryId", dictionaryId)
                 .get()
                 .await()
-                .documents
-                .mapNotNull { doc ->
-                    val data = doc.data ?: return@mapNotNull null
-                    WordEntity(
-                        id = doc.id,
-                        dictionaryId = dictionaryId,
-                        englishWord = data["englishWord"] as? String ?: "",
-                        translation = data["translation"] as? String ?: "",
-                        transcription = data["transcription"] as? String ?: "",
-                        partOfSpeech = data["partOfSpeech"] as? String ?: "",
-                        lastUpdated = System.currentTimeMillis()
-                    )
+
+            Log.d(TAG, "Query returned ${querySnapshot.documents.size} documents")
+
+            querySnapshot.documents.forEach { doc ->
+                val data = doc.data
+                Log.d(TAG, "Document ${doc.id}: dictionaryId field = ${data?.get("dictionaryId")}")
+                Log.d(TAG, "  - englishWord: ${data?.get("englishWord")}")
+                Log.d(TAG, "  - translation: ${data?.get("translation")}")
+            }
+
+            val words = querySnapshot.documents.mapNotNull { doc ->
+                val data = doc.data ?: run {
+                    Log.w(TAG, "Document ${doc.id} has no data")
+                    return@mapNotNull null
                 }
+
+                val docDictionaryId = data["dictionaryId"] as? String
+                if (docDictionaryId != dictionaryId) {
+                    Log.w(TAG, "Document ${doc.id} has dictionaryId='$docDictionaryId', expected '$dictionaryId'")
+                }
+
+                WordEntity(
+                    id = doc.id,
+                    dictionaryId = dictionaryId,
+                    englishWord = data["englishWord"] as? String ?: "",
+                    translation = data["translation"] as? String ?: "",
+                    transcription = data["transcription"] as? String ?: "",
+                    partOfSpeech = data["partOfSpeech"] as? String ?: "",
+                    lastUpdated = System.currentTimeMillis()
+                )
+            }
+
+            Log.d(TAG, "=== getWords END - returning ${words.size} words ===")
+            words
         } catch (e: Exception) {
-            Log.e(TAG, "Error getting words", e)
+            Log.e(TAG, "Error getting words for dictionary '$dictionaryId'", e)
             emptyList()
         }
     }
-
     suspend fun getUserProgress(userId: String, dictionaryId: String): List<UserWordEntity> {
         return try {
             firestore.collection("user_words")
@@ -150,17 +175,13 @@ class FirebaseFirestoreSource(
         }
     }
 
-// data/remote/FirebaseFirestoreSource.kt
-// Найдите метод updateScore и убедитесь, что он делает только ОДНО обновление
 
     suspend fun updateScore(uid: String, score: Int) {
         try {
-            // Обновляем счет в профиле пользователя
             firestore.collection("users").document(uid)
                 .update("totalScore", FieldValue.increment(score.toLong()))
                 .await()
 
-            // Обновляем счет в таблице лидеров
             firestore.collection("leaderboard").document(uid)
                 .update(
                     mapOf(
@@ -173,7 +194,6 @@ class FirebaseFirestoreSource(
             Log.d(TAG, "Score updated: +$score for user $uid")
         } catch (e: Exception) {
             Log.e(TAG, "Error updating score", e)
-            // Если документ в leaderboard не существует, создаем его
             try {
                 firestore.collection("leaderboard").document(uid)
                     .set(
@@ -188,36 +208,6 @@ class FirebaseFirestoreSource(
             } catch (e2: Exception) {
                 Log.e(TAG, "Error creating leaderboard entry", e2)
             }
-        }
-    }
-    // data/remote/FirebaseFirestoreSource.kt
-// Добавьте этот метод в класс FirebaseFirestoreSource
-
-    suspend fun resetUserWordProgress(userId: String, wordId: String, dictionaryId: String) {
-        try {
-            val docId = "${userId}_${wordId}"
-            val resetData = mapOf(
-                "userId" to userId,
-                "wordId" to wordId,
-                "dictionaryId" to dictionaryId,
-                "stage" to 0,
-                "nextReviewDate" to System.currentTimeMillis(),
-                "failCount" to 0,
-                "lastReviewDate" to null,
-                "totalViews" to 0,
-                "correctCount" to 0,
-                "incorrectCount" to 0,
-                "updatedAt" to FieldValue.serverTimestamp()
-            )
-
-            firestore.collection("user_words")
-                .document(docId)
-                .set(resetData, SetOptions.merge())
-                .await()
-
-            Log.d(TAG, "Reset progress for word: $wordId")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error resetting word progress", e)
         }
     }
 
@@ -242,21 +232,6 @@ class FirebaseFirestoreSource(
         }
     }
 
-    suspend fun resetUserWords(userId: String, dictionaryId: String) {
-        try {
-            val snapshot = firestore.collection("user_words")
-                .whereEqualTo("userId", userId)
-                .whereEqualTo("dictionaryId", dictionaryId)
-                .get()
-                .await()
-
-            for (doc in snapshot.documents) {
-                doc.reference.delete().await()
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error resetting words", e)
-        }
-    }
 
     suspend fun deleteGameResults(userId: String) {
         try {

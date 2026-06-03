@@ -1,4 +1,3 @@
-// presentation/screens/statistics/StatisticsViewModel.kt
 package com.example.t_learnappmobile.presentation.statistics
 
 import android.util.Log
@@ -73,7 +72,7 @@ class StatisticsViewModel(
                     dictionaryName = dictName
                 )
 
-                // Load all stats in parallel
+
                 loadWordStats(userId!!, dictId)
                 loadWeeklyStats(userId!!, _uiState.value.currentWeekOffset)
                 loadLeaderboard(userId!!)

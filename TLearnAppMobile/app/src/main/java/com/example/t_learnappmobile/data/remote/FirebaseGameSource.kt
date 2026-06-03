@@ -1,4 +1,3 @@
-// data/remote/FirebaseGameSource.kt
 package com.example.t_learnappmobile.data.remote
 
 import android.content.Context
@@ -13,12 +12,10 @@ import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.*
 
-// data/remote/FirebaseGameSource.kt
 class FirebaseGameSource(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
     private val context: Context
 ) {
-    // ...
 
     private val TAG = "GameSource"
 

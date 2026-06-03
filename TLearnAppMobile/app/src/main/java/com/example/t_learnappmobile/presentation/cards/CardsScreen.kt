@@ -1,10 +1,7 @@
-// presentation/cards/CardsScreen.kt
 package com.example.t_learnappmobile.presentation.cards
 
-import android.content.res.Configuration
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,30 +19,50 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.t_learnappmobile.domain.model.CardType
 import com.example.t_learnappmobile.domain.model.Dictionary
 import com.example.t_learnappmobile.domain.model.PartOfSpeech
 import com.example.t_learnappmobile.domain.model.TranslationDirection
 import com.example.t_learnappmobile.domain.model.Word
 import com.example.t_learnappmobile.presentation.components.NotificationManager
+import com.example.t_learnappmobile.presentation.components.SmartTranslationText
+import com.example.t_learnappmobile.presentation.components.SmartWordText
 import com.example.t_learnappmobile.presentation.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CardsScreen(
     viewModel: CardsViewModel,
-    notificationManager: NotificationManager,
     onNavigateToGame: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToStatistics: () -> Unit,
     onLogout: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-// presentation/cards/CardsScreen.kt
-// Замените Box с условиями на этот:
+    val lifecycleOwner = LocalLifecycleOwner.current
 
-    // presentation/cards/CardsScreen.kt
-// Замените Box с условиями:
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> {
+                    viewModel.manualCheck()
+                    viewModel.startBackgroundCheck()
+                }
+                Lifecycle.Event.ON_PAUSE -> {
+                    viewModel.stopBackgroundCheck()
+                }
+                else -> { }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            viewModel.stopBackgroundCheck()
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -80,7 +97,7 @@ fun CardsScreen(
                     onNavigateToStatistics = onNavigateToStatistics,
                     onNavigateToGame = onNavigateToGame,
                     onNavigateToSettings = onNavigateToSettings,
-                    onLogout = onLogout
+
                 )
 
                 Box(modifier = Modifier.weight(1f)) {
@@ -92,7 +109,9 @@ fun CardsScreen(
                             cardType = viewModel.getCardType(),
                             onToggleTranslation = { viewModel.toggleTranslation() }
                         )
-                        else -> EmptyWordsView()
+                        else -> EmptyWordsView(
+
+                        )
                     }
                 }
 
@@ -107,11 +126,9 @@ fun CardsScreen(
                 }
             }
         }
-
     }
 }
 
-// Новый экран приветствия с кнопками словарей
 @Composable
 fun WelcomeScreen(
     dictionaries: List<Dictionary>,
@@ -126,7 +143,7 @@ fun WelcomeScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "🎉 Добро пожаловать!",
+            text = "Добро пожаловать!",
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface,
@@ -136,7 +153,7 @@ fun WelcomeScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Выберите словарь для начала изучения:",
+            text = "Выберите словарь для изучения:",
             fontSize = 16.sp,
             color = MediumGray,
             textAlign = TextAlign.Center
@@ -144,7 +161,6 @@ fun WelcomeScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Кнопки словарей
         dictionaries.forEach { dictionary ->
             Button(
                 onClick = { onDictionarySelected(dictionary.id) },
@@ -196,7 +212,6 @@ fun WelcomeScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Кнопка выхода
         OutlinedButton(
             onClick = onLogout,
             modifier = Modifier.fillMaxWidth(),
@@ -224,7 +239,6 @@ fun CardsTopBar(
     onNavigateToStatistics: () -> Unit,
     onNavigateToGame: () -> Unit,
     onNavigateToSettings: () -> Unit,
-    onLogout: () -> Unit
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -322,22 +336,19 @@ fun WordCardSection(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                Text(
+                SmartWordText(
                     text = when (word.translationDirection) {
                         TranslationDirection.EN_TO_RU -> word.englishWord
                         TranslationDirection.RU_TO_EN -> word.translation
                     },
-                    fontSize = 36.sp,
-                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center,
-                    lineHeight = 42.sp
+                    fontWeight = FontWeight.Bold
                 )
 
                 if (word.translationDirection == TranslationDirection.EN_TO_RU && word.transcription.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "[${word.transcription}]",
+                        text = "${word.transcription}",
                         fontSize = 20.sp,
                         color = MediumGray,
                         textAlign = TextAlign.Center
@@ -385,16 +396,13 @@ fun WordCardSection(
                         shape = RoundedCornerShape(16.dp),
                         color = YellowPrimary.copy(alpha = 0.15f)
                     ) {
-                        Text(
+                        SmartTranslationText(
                             text = when (word.translationDirection) {
                                 TranslationDirection.EN_TO_RU -> word.translation
                                 TranslationDirection.RU_TO_EN -> word.englishWord
                             },
-                            fontSize = 28.sp,
-                            fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.padding(24.dp),
-                            textAlign = TextAlign.Center
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
@@ -406,7 +414,8 @@ fun WordCardSection(
 }
 
 @Composable
-fun EmptyWordsView() {
+fun EmptyWordsView(
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -415,27 +424,26 @@ fun EmptyWordsView() {
         verticalArrangement = Arrangement.Center
     ) {
         Icon(
-            Icons.Default.CheckCircle,
+            Icons.Default.Schedule,
             contentDescription = null,
             tint = BlueColor,
             modifier = Modifier.size(80.dp)
         )
         Spacer(modifier = Modifier.height(24.dp))
         Text(
-            "Все слова выучены! 🎉",
-            fontSize = 28.sp,
+            "Нет слов для повторения",
+            fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(12.dp))
         Text(
-            "Выберите другой словарь или сыграйте в игру",
-            fontSize = 16.sp,
+            "Следующие слова появятся, когда придет время их повторить. Пока можно выбрать другой словарь или проверить свои знания в игре!",
+            fontSize = 14.sp,
             color = MediumGray,
             textAlign = TextAlign.Center
         )
-        Spacer(modifier = Modifier.height(32.dp))
     }
 }
 

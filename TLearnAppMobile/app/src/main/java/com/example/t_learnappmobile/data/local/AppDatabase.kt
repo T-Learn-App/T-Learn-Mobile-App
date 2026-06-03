@@ -1,4 +1,3 @@
-// data/local/AppDatabase.kt
 package com.example.t_learnappmobile.data.local
 
 import androidx.room.Database
@@ -7,10 +6,10 @@ import androidx.room.RoomDatabase
 import android.content.Context
 import com.example.t_learnappmobile.data.local.dao.WordDao
 import com.example.t_learnappmobile.data.local.entities.*
-// data/local/AppDatabase.kt
+
 @Database(
     entities = [WordEntity::class, UserWordEntity::class, DictionaryEntity::class],
-    version = 3,  // Увеличено с 2 до 3
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

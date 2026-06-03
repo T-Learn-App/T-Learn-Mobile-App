@@ -1,4 +1,3 @@
-// presentation/auth/RegistrationScreen.kt
 package com.example.t_learnappmobile.presentation.auth
 
 import androidx.compose.foundation.background
@@ -41,7 +40,6 @@ fun RegistrationScreen(
 
     val uiState by authViewModel.uiState.collectAsState()
 
-    // Валидация пароля
     val passwordErrors = remember(password) {
         val errors = mutableListOf<String>()
         if (password.isNotEmpty()) {
@@ -176,7 +174,7 @@ fun RegistrationScreen(
                             containerColor = YellowPrimary,
                             contentColor = Color.Black
                         ),
-                        enabled = isFormValid
+                        enabled = isFormValid && !uiState.isLoading
                     ) {
                         Text(
                             text = "Зарегистрироваться",
@@ -193,7 +191,7 @@ fun RegistrationScreen(
             Text(
                 text = stringResource(R.string.i_already_have_account),
                 modifier = Modifier
-                    .clickable { onNavigateToLogin() }
+                    .clickable { if (!uiState.isLoading) onNavigateToLogin() }
                     .padding(12.dp),
                 color = BlueColor,
                 fontSize = 16.sp,
@@ -204,9 +202,8 @@ fun RegistrationScreen(
         if (uiState.isLoading) {
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.5f))
-                    .clickable(enabled = false) { },
+                    .fillMaxSize(),
+
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(color = YellowPrimary)

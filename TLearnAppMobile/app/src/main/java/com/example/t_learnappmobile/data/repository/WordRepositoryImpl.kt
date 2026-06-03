@@ -1,4 +1,3 @@
-// data/repository/WordRepositoryImpl.kt
 package com.example.t_learnappmobile.data.repository
 
 import android.util.Log
@@ -17,17 +16,24 @@ class WordRepositoryImpl(
 
     private val TAG = "WordRepository"
 
+    private  val LEARNED_STAGE = 8
+
     private val reviewIntervals = listOf(
-        0L, 5 * 60 * 1000L, 10 * 60 * 1000L, 60 * 60 * 1000L,
-        24 * 60 * 60 * 1000L, 7 * 24 * 60 * 60 * 1000L,
-        30L * 24 * 60 * 60 * 1000, 90L * 24 * 60 * 60 * 1000
+        0L,                                    // stage 0 - новое слово
+        5 * 60 * 1000L,                       // stage 1 - 5 минут
+        10 * 60 * 1000L,                      // stage 2 - 10 минут
+        60 * 60 * 1000L,                      // stage 3 - 1 час
+        24 * 60 * 60 * 1000L,                 // stage 4 - 1 день
+        7 * 24 * 60 * 60 * 1000L,             // stage 5 - 1 неделя
+        30L * 24 * 60 * 60 * 1000,            // stage 6 - 1 месяц
+        90L * 24 * 60 * 60 * 1000,            // stage 7 - 3 месяца
+        Long.MAX_VALUE                        // stage 8 - выучено навсегда
     )
 
     override suspend fun loadWords(userId: String, dictionaryId: String): LoadWordsResult {
         Log.d(TAG, "Loading words for userId=$userId, dictionaryId=$dictionaryId")
 
         return try {
-            // Сначала пробуем локальные данные
             val localWords = localSource.getWords(dictionaryId)
             val localProgress = localSource.getUserProgress(userId, dictionaryId)
 
@@ -46,12 +52,11 @@ class WordRepositoryImpl(
                     LoadWordsResult.Empty
                 }
             } else {
-                // Загружаем из Firebase
                 loadFromRemote(userId, dictionaryId)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error loading words", e)
-            LoadWordsResult.Error(e.message ?: "Unknown error")
+            LoadWordsResult.Error(e.message ?: "Неизвестная ошибка")
         }
     }
 
@@ -117,8 +122,7 @@ class WordRepositoryImpl(
 
         localSource.saveUserProgress(updatedProgress)
 
-        // Если слово выучено (stage >= 8), возвращаем null
-        return if (newStage < 8) {
+        return if (newStage < LEARNED_STAGE) {
             mapToDomain(wordEntity, updatedProgress)
         } else {
             null
@@ -129,8 +133,8 @@ class WordRepositoryImpl(
         val progress = localSource.getUserProgress(userId, dictionaryId)
         return WordStats(
             newWords = progress.count { it.stage == 0 },
-            inProgressWords = progress.count { it.stage in 1..7 },
-            learnedWords = progress.count { it.stage >= 8 }
+            inProgressWords = progress.count { it.stage in 1 until LEARNED_STAGE },
+            learnedWords = progress.count { it.stage >= LEARNED_STAGE }
         )
     }
 
@@ -156,6 +160,7 @@ class WordRepositoryImpl(
                 )
             )
         }
+        Log.d(TAG, "Reset dictionary progress for $dictionaryId")
     }
 
     override suspend fun resetAllProgress(userId: String) {
@@ -163,10 +168,9 @@ class WordRepositoryImpl(
         dictionaries.forEach { dict ->
             resetDictionaryProgress(userId, dict.id)
         }
+        Log.d(TAG, "Reset all progress for user $userId")
     }
 
-    // data/repository/WordRepositoryImpl.kt
-// Замените метод createInitialProgress:
 
     private suspend fun createInitialProgress(
         userId: String,
@@ -227,8 +231,9 @@ class WordRepositoryImpl(
         return words.mapNotNull { wordEntity ->
             val userProgress = progressMap[wordEntity.id] ?: return@mapNotNull null
 
-            // Возвращаем только слова, которые нужно показать
-            if (userProgress.stage < 8 && (userProgress.stage == 0 || userProgress.nextReviewDate <= now)) {
+
+            if (userProgress.stage < LEARNED_STAGE &&
+                (userProgress.stage == 0 || userProgress.nextReviewDate <= now)) {
                 mapToDomain(wordEntity, userProgress)
             } else {
                 null
@@ -238,6 +243,73 @@ class WordRepositoryImpl(
                 word.isNew -> 0
                 word.nextReviewDate <= now -> 1
                 else -> 2
+            }
+        }
+    }
+
+    private fun calculateNextStage(
+        currentStage: Int,
+        known: Boolean,
+        failCount: Int,
+        now: Long
+    ): Triple<Int, Long, Int> {
+        return if (known) {
+            // Логика для "знаю" - оставляем как было
+            when {
+                currentStage == 0 -> {
+                    Log.d(TAG, "Пользователь знает новое слово! Сразу выучено.")
+                    Triple(LEARNED_STAGE, Long.MAX_VALUE, 0)
+                }
+                currentStage in 1 until LEARNED_STAGE -> {
+                    val newStage = currentStage + 1
+                    val nextDate = if (newStage < LEARNED_STAGE) {
+                        now + reviewIntervals[newStage]
+                    } else {
+                        Long.MAX_VALUE
+                    }
+                    Triple(newStage, nextDate, 0)
+                }
+                else -> Triple(LEARNED_STAGE, Long.MAX_VALUE, 0)
+            }
+        } else {
+            // НОВАЯ ЛОГИКА ДЛЯ "НЕ ЗНАЮ"
+            val newFailCount = failCount + 1
+
+            when {
+                // Новое слово (этап 0)
+                currentStage == 0 -> {
+                    Log.d(TAG, "Новое слово, пользователь не знает -> этап 1")
+                    Triple(1, now + reviewIntervals[1], newFailCount)
+                }
+
+                // Слова на этапах 1-7
+                currentStage in 1 until LEARNED_STAGE -> {
+                    when (newFailCount) {
+                        1 -> {
+                            // Первая ошибка: через 5 минут, этап не меняем
+                            Log.d(TAG, "Этап $currentStage, 1-я ошибка -> покажем через 5 минут")
+                            Triple(currentStage, now + reviewIntervals[1], newFailCount)
+                        }
+                        2 -> {
+                            // Вторая ошибка: через 10 минут, этап не меняем
+                            Log.d(TAG, "Этап $currentStage, 2-я ошибка -> покажем через 10 минут")
+                            Triple(currentStage, now + reviewIntervals[2], newFailCount)
+                        }
+                        else -> {
+                            // Третья и более ошибки: возвращаем на исходный этап, через 5 минут
+                            Log.d(TAG, "Этап $currentStage, ${newFailCount}-я ошибка -> возврат на этап $currentStage через 5 минут")
+                            Triple(currentStage, now + reviewIntervals[1], 0)  // Сбрасываем счетчик ошибок
+                        }
+                    }
+                }
+
+                // Выученное слово (этап 8 и выше)
+                currentStage >= LEARNED_STAGE -> {
+                    Log.d(TAG, "Выученное слово забыто -> возврат на этап 7")
+                    Triple(LEARNED_STAGE - 1, now + reviewIntervals[LEARNED_STAGE - 1], 1)
+                }
+
+                else -> Triple(currentStage, now + reviewIntervals[1], newFailCount)
             }
         }
     }
@@ -252,43 +324,10 @@ class WordRepositoryImpl(
             partOfSpeech = parsePartOfSpeech(wordEntity.partOfSpeech),
             stage = progress.stage,
             nextReviewDate = progress.nextReviewDate,
-            isNew = progress.stage == 0 && progress.failCount == 0,
+            isNew = progress.stage == 0,
             userWordDocId = "${progress.userId}_${wordEntity.id}",
             failCount = progress.failCount
         )
-    }
-
-    private fun calculateNextStage(
-        currentStage: Int,
-        known: Boolean,
-        failCount: Int,
-        now: Long
-    ): Triple<Int, Long, Int> {
-        val maxStage = reviewIntervals.size - 1
-
-        return if (known) {
-            when {
-                currentStage == 0 -> Triple(8, Long.MAX_VALUE, 0)
-                currentStage < maxStage -> {
-                    val newStage = currentStage + 1
-                    Triple(newStage, now + reviewIntervals[newStage], 0)
-                }
-                else -> Triple(8, Long.MAX_VALUE, 0)
-            }
-        } else {
-            val newFailCount = failCount + 1
-            when {
-                currentStage == 0 -> Triple(1, now + reviewIntervals[1], newFailCount)
-                currentStage >= 1 && newFailCount <= 2 -> {
-                    val retryInterval = if (newFailCount == 1) reviewIntervals[1] else reviewIntervals[2]
-                    Triple(currentStage, now + retryInterval, newFailCount)
-                }
-                else -> {
-                    val newStage = maxOf(1, currentStage - 1)
-                    Triple(newStage, now + reviewIntervals[newStage], 0)
-                }
-            }
-        }
     }
 
     private fun parsePartOfSpeech(value: String?): PartOfSpeech {

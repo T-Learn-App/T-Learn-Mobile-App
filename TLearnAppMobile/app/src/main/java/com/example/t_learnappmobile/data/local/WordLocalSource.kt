@@ -1,4 +1,3 @@
-// data/local/WordLocalSource.kt
 package com.example.t_learnappmobile.data.local
 
 import com.example.t_learnappmobile.data.local.dao.WordDao
@@ -10,8 +9,6 @@ class WordLocalSource(private val wordDao: WordDao) {
     suspend fun getWords(dictionaryId: String): List<WordEntity> =
         wordDao.getWordsByDictionary(dictionaryId)
 
-    fun getWordsFlow(dictionaryId: String): Flow<List<WordEntity>> =
-        wordDao.getWordsByDictionaryFlow(dictionaryId)
 
     suspend fun insertWords(words: List<WordEntity>) = wordDao.insertWords(words)
 
@@ -29,8 +26,6 @@ class WordLocalSource(private val wordDao: WordDao) {
     suspend fun markAsSynced(userId: String, wordId: String) =
         wordDao.markAsSynced(userId, wordId)
 
-    suspend fun deleteProgressByDictionary(userId: String, dictionaryId: String) =
-        wordDao.deleteUserWordsByDictionary(userId, dictionaryId)
 
     suspend fun getDictionaries(): List<DictionaryEntity> = wordDao.getDictionaries()
 

@@ -1,4 +1,3 @@
-// domain/usecase/game/LoadGameWordsUseCase.kt
 package com.example.t_learnappmobile.domain.usecase.game
 
 import com.example.t_learnappmobile.domain.model.GameWord

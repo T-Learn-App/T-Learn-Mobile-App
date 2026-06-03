@@ -1,4 +1,3 @@
-// domain/model/Word.kt
 package com.example.t_learnappmobile.domain.model
 
 data class Word(

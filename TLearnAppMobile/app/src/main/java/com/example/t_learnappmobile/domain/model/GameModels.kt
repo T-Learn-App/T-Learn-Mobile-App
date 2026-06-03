@@ -1,4 +1,3 @@
-// domain/model/GameModels.kt
 package com.example.t_learnappmobile.domain.model
 
 data class GameWord(

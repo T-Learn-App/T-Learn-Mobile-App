@@ -1,6 +1,6 @@
-// presentation/navigation/NavGraph.kt
 package com.example.t_learnappmobile.presentation.navigation
 
+import android.util.Log
 import androidx.compose.runtime.*
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -67,7 +67,6 @@ fun NavGraph(
         SettingsViewModel(
             getDictionariesUseCase = appModule.getDictionariesUseCase,
             updateProfileUseCase = appModule.updateProfileUseCase,
-            resetUserDataUseCase = appModule.resetUserDataUseCase,
             settingsUseCase = appModule.settingsUseCase,
             authRepository = appModule.authRepository,
             userRepository = appModule.userRepository,
@@ -86,8 +85,6 @@ fun NavGraph(
         )
     }
 
-    val authState by authViewModel.uiState.collectAsState()
-
     LaunchedEffect(Unit) {
         authViewModel.checkAuthState()
     }
@@ -101,7 +98,6 @@ fun NavGraph(
     }
 
     NavHost(navController = navController, startDestination = startDestination) {
-
         composable(Screen.Login.route) {
             LoginScreen(
                 authViewModel = authViewModel,
@@ -139,7 +135,6 @@ fun NavGraph(
         composable(Screen.Cards.route) {
             CardsScreen(
                 viewModel = cardsViewModel,
-                notificationManager = notificationManager,
                 onNavigateToGame = {
                     navController.navigate(Screen.Game.route)
                 },
@@ -158,7 +153,6 @@ fun NavGraph(
             )
         }
 
-
         composable(Screen.Game.route) {
             GameScreen(
                 viewModel = gameViewModel,
@@ -171,16 +165,25 @@ fun NavGraph(
 
         composable(Screen.Settings.route) {
             LaunchedEffect(Unit) {
+                settingsViewModel.syncCurrentDictionaryFromExternal()
                 settingsViewModel.refreshUserData()
             }
+
             SettingsScreen(
                 viewModel = settingsViewModel,
                 notificationManager = notificationManager,
                 onDictionaryChanged = { dictionaryId ->
+                    Log.d("NavGraph", "Dictionary changed in settings: $dictionaryId")
                     cardsViewModel.selectDictionary(dictionaryId)
                 },
                 onClose = {
-                    navController.popBackStack()
+                    if (navController.previousBackStackEntry != null) {
+                        navController.popBackStack()
+                    } else {
+                        navController.navigate(Screen.Cards.route) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
                 },
                 onLogout = {
                     authViewModel.logout()

@@ -92,6 +92,8 @@ configurations.all {
 }
 
 dependencies {
+    implementation(libs.androidx.compose.foundation.layout)
+    implementation(libs.androidx.compose.ui.text)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -105,6 +107,7 @@ dependencies {
 
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.datastore.core)
+    implementation(libs.androidx.material3)
     implementation(libs.core.ktx)
     implementation(libs.androidx.adapters)
     implementation(libs.google.firebase.crashlytics.buildtools)

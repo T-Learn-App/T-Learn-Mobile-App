@@ -150,27 +150,6 @@ fun LoginScreen(
                 CircularProgressIndicator(color = YellowPrimary)
             }
         }
-
-        uiState.error?.let { error ->
-            Snackbar(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(16.dp),
-                containerColor = RedError,
-                contentColor = Color.White
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(error, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { authViewModel.resetState() }) {
-                        Text("OK", color = Color.White)
-                    }
-                }
-            }
-        }
     }
 }
 

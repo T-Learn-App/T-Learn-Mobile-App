@@ -19,6 +19,8 @@ import com.example.t_learnappmobile.presentation.settings.SettingsViewModel
 import com.example.t_learnappmobile.presentation.statistics.StatisticsScreen
 import com.example.t_learnappmobile.presentation.statistics.StatisticsViewModel
 
+private const val TAG = "NavGraph"
+
 sealed class Screen(val route: String) {
     object Login : Screen("login")
     object Registration : Screen("registration")
@@ -32,18 +34,23 @@ sealed class Screen(val route: String) {
 fun NavGraph(
     notificationManager: NotificationManager,
     onThemeChanged: (Boolean) -> Unit = {},
-    appModule: AppModule
+    appModule: AppModule,
+    isConnected: Boolean
 ) {
     val navController = rememberNavController()
+
+    Log.d(TAG, "NavGraph recompose")
 
     val authViewModel = remember {
         AuthViewModel(
             loginUseCase = appModule.loginUseCase,
             registerUseCase = appModule.registerUseCase,
-            authRepository = appModule.authRepository
+            authRepository = appModule.authRepository,
+            wordRepository = appModule.wordRepository,
+            gameLocalSource = appModule.gameLocalSource,
+            settingsLocalSource = appModule.settingsLocalSource
         )
     }
-
     val cardsViewModel = remember {
         CardsViewModel(
             authRepository = appModule.authRepository,
@@ -55,11 +62,13 @@ fun NavGraph(
         )
     }
 
+
     val gameViewModel = remember {
         GameViewModel(
             loadGameWordsUseCase = appModule.loadGameWordsUseCase,
             saveGameResultUseCase = appModule.saveGameResultUseCase,
-            settingsUseCase = appModule.settingsUseCase
+            settingsUseCase = appModule.settingsUseCase,
+            wordRepository = appModule.wordRepository
         )
     }
 
@@ -81,20 +90,25 @@ fun NavGraph(
             getLeaderboardUseCase = appModule.getLeaderboardUseCase,
             authRepository = appModule.authRepository,
             userRepository = appModule.userRepository,
-            settingsUseCase = appModule.settingsUseCase
+            settingsUseCase = appModule.settingsUseCase,
+            syncManager = appModule.syncManager,
+            gameLocalSource = appModule.gameLocalSource
         )
     }
 
     LaunchedEffect(Unit) {
+        Log.d(TAG, "NavGraph LaunchedEffect - checkAuthState")
         authViewModel.checkAuthState()
     }
 
     val startDestination = remember {
-        if (appModule.authRepository.isAuthenticated()) {
+        val dest = if (appModule.authRepository.isAuthenticated()) {
             Screen.Cards.route
         } else {
             Screen.Login.route
         }
+        Log.d(TAG, "startDestination = $dest")
+        dest
     }
 
     NavHost(navController = navController, startDestination = startDestination) {
@@ -103,12 +117,15 @@ fun NavGraph(
                 authViewModel = authViewModel,
                 notificationManager = notificationManager,
                 onLoginSuccess = {
+                    Log.d(TAG, "Login success, navigating to Cards")
+                    statisticsViewModel.onUserChanged()
                     cardsViewModel.resetAndReload()
                     navController.navigate(Screen.Cards.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
                 },
                 onNavigateToRegistration = {
+                    Log.d(TAG, "Navigate to Registration")
                     navController.navigate(Screen.Registration.route)
                 }
             )
@@ -119,12 +136,14 @@ fun NavGraph(
                 authViewModel = authViewModel,
                 notificationManager = notificationManager,
                 onRegisterSuccess = {
+                    Log.d(TAG, "Register success, navigating to Cards")
                     cardsViewModel.resetAndReload()
                     navController.navigate(Screen.Cards.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
                 },
                 onNavigateToLogin = {
+                    Log.d(TAG, "Navigate to Login")
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Registration.route) { inclusive = true }
                     }
@@ -136,16 +155,29 @@ fun NavGraph(
             CardsScreen(
                 viewModel = cardsViewModel,
                 onNavigateToGame = {
-                    navController.navigate(Screen.Game.route)
+                    Log.d(TAG, "Navigate to Game from Cards")
+                    if (isConnected) {
+                        navController.navigate(Screen.Game.route)
+                    } else {
+                        notificationManager.showError("Для игры требуется интернет-соединение")
+                    }
                 },
                 onNavigateToSettings = {
+                    Log.d(TAG, "Navigate to Settings from Cards")
                     navController.navigate(Screen.Settings.route)
                 },
                 onNavigateToStatistics = {
-                    navController.navigate(Screen.Statistics.route)
+                    Log.d(TAG, "Navigate to Statistics from Cards")
+                    if (isConnected) {
+                        navController.navigate(Screen.Statistics.route)
+                    } else {
+                        notificationManager.showError("Статистика требует интернет-соединение")
+                    }
                 },
                 onLogout = {
-                    authViewModel.logout()
+                    Log.d(TAG, "Logout from Cards")
+                    authViewModel.logoutAndClearData()
+                    statisticsViewModel.onUserChanged()
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Cards.route) { inclusive = true }
                     }
@@ -156,42 +188,46 @@ fun NavGraph(
         composable(Screen.Game.route) {
             GameScreen(
                 viewModel = gameViewModel,
-                notificationManager = notificationManager,
                 onGameFinished = {
+                    Log.d(TAG, "Game finished, popBackStack")
                     navController.popBackStack()
-                }
+                },
+                isConnected = isConnected
             )
         }
 
+
         composable(Screen.Settings.route) {
             LaunchedEffect(Unit) {
-                settingsViewModel.syncCurrentDictionaryFromExternal()
-                settingsViewModel.refreshUserData()
+                settingsViewModel.refreshData()
             }
 
             SettingsScreen(
                 viewModel = settingsViewModel,
                 notificationManager = notificationManager,
                 onDictionaryChanged = { dictionaryId ->
-                    Log.d("NavGraph", "Dictionary changed in settings: $dictionaryId")
+                    Log.d(TAG, "Dictionary changed in settings: $dictionaryId")
                     cardsViewModel.selectDictionary(dictionaryId)
                 },
                 onClose = {
-                    if (navController.previousBackStackEntry != null) {
-                        navController.popBackStack()
-                    } else {
-                        navController.navigate(Screen.Cards.route) {
-                            popUpTo(0) { inclusive = true }
-                        }
-                    }
+                    Log.d(TAG, "Settings close clicked, popBackStack")
+                    navController.popBackStack()
                 },
                 onLogout = {
-                    authViewModel.logout()
+                    Log.d(TAG, "Logout from Settings")
+                    authViewModel.logoutAndClearData()
+                    statisticsViewModel.onUserChanged()
+                    cardsViewModel.resetAndReload()
                     navController.navigate(Screen.Login.route) {
                         popUpTo(0) { inclusive = true }
                     }
                 },
-                onThemeChanged = onThemeChanged
+                onThemeChanged = onThemeChanged,
+                isConnected = isConnected,
+                onDataReset = {
+                    Log.d(TAG, "Data reset from Settings")
+                    statisticsViewModel.forceRefresh()
+                }
             )
         }
 
@@ -199,8 +235,10 @@ fun NavGraph(
             StatisticsScreen(
                 viewModel = statisticsViewModel,
                 onClose = {
+                    Log.d(TAG, "Statistics close clicked, popBackStack")
                     navController.popBackStack()
-                }
+                },
+                isConnected = isConnected
             )
         }
     }

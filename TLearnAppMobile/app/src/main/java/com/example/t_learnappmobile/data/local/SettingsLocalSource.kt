@@ -25,13 +25,11 @@ class SettingsLocalSource(private val context: Context) {
         prefs.edit { putInt(KEY_THEME, mode) }
     }
 
-
     fun clearAllData() {
         prefs.edit {
-            remove(KEY_THEME)
-            remove(KEY_CATEGORY_ID)
-            remove(KEY_CATEGORY_NAME)
+            clear()
         }
+        Log.d("SettingsLocal", "Cleared all settings")
     }
 
     fun getCurrentDictionaryId(): String? {

@@ -15,7 +15,15 @@ class RegisterUseCase(
         lastName: String
     ): Result<AuthResult> {
         if (email.isBlank()) {
-            return Result.failure(IllegalArgumentException("Email cannot be empty"))
+            return Result.failure(IllegalArgumentException("Email не может быть пустым"))
+        }
+
+        if (firstName.length > 20) {
+            return Result.failure(IllegalArgumentException("Имя не может быть длиннее 20 символов"))
+        }
+
+        if (lastName.length > 20) {
+            return Result.failure(IllegalArgumentException("Фамилия не может быть длиннее 20 символов"))
         }
 
         val passwordErrors = mutableListOf<String>()

@@ -5,15 +5,17 @@ import android.util.Log
 import androidx.appcompat.app.AppCompatDelegate
 import com.example.t_learnappmobile.di.AppModule
 import com.google.firebase.FirebaseApp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class App : Application() {
-
     lateinit var appModule: AppModule
+    lateinit var networkMonitor: NetworkMonitor
         private set
 
     override fun onCreate() {
         super.onCreate()
-
 
         try {
             if (FirebaseApp.getApps(this).isEmpty()) {
@@ -24,13 +26,21 @@ class App : Application() {
             Log.e("App", "Firebase init error", e)
         }
 
-
         appModule = AppModule(this)
+        networkMonitor = NetworkMonitor(this)
 
+        networkMonitor.onInternetConnected = {
+            CoroutineScope(Dispatchers.IO).launch {
+                appModule.gameRepository.syncPendingResults()
+                appModule.syncManager.syncPendingGames()
+                Log.d("App", "Sync triggered on internet connection")
+            }
+        }
+
+        networkMonitor.startMonitoring()
 
         val theme = appModule.settingsLocalSource.getTheme()
         AppCompatDelegate.setDefaultNightMode(theme)
-
 
         appModule.syncManager.startPeriodicSync()
 

@@ -1,8 +1,13 @@
+// ФАЙЛ: main/java/com/example/t_learnappmobile/presentation/auth/AuthViewModel.kt (очищать settingsLocalSource)
 package com.example.t_learnappmobile.presentation.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.t_learnappmobile.domain.repository.AuthRepository
+import com.example.t_learnappmobile.domain.repository.UserRepository
+import com.example.t_learnappmobile.domain.repository.WordRepository
+import com.example.t_learnappmobile.data.local.GameLocalSource
+import com.example.t_learnappmobile.data.local.SettingsLocalSource
 import com.example.t_learnappmobile.domain.usecase.auth.LoginUseCase
 import com.example.t_learnappmobile.domain.usecase.auth.RegisterUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,7 +24,10 @@ data class AuthUiState(
 class AuthViewModel(
     private val loginUseCase: LoginUseCase,
     private val registerUseCase: RegisterUseCase,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val wordRepository: WordRepository,
+    private val gameLocalSource: GameLocalSource,
+    private val settingsLocalSource: SettingsLocalSource
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AuthUiState())
@@ -68,8 +76,19 @@ class AuthViewModel(
         }
     }
 
-    fun logout() {
+    suspend fun clearLocalUserData(userId: String) {
+        wordRepository.clearUserProgress(userId)
+        gameLocalSource.clearUserScore(userId)
+    }
+
+    fun logoutAndClearData() {
         viewModelScope.launch {
+            val userId = authRepository.getCurrentUserId()
+            if (userId != null) {
+                clearLocalUserData(userId)
+            }
+            gameLocalSource.clearAllUserData()
+            settingsLocalSource.clearAllData()
             authRepository.logout()
             _uiState.value = AuthUiState()
         }
@@ -78,11 +97,9 @@ class AuthViewModel(
     fun checkAuthState() {
         if (authRepository.isAuthenticated()) {
             _uiState.value = AuthUiState(isSuccess = true)
+        } else {
+            _uiState.value = AuthUiState()
         }
-    }
-
-    fun clearError() {
-        _uiState.value = _uiState.value.copy(error = null)
     }
 
     fun resetState() {

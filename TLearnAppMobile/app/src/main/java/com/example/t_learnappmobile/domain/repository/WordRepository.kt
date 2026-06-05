@@ -1,5 +1,7 @@
 package com.example.t_learnappmobile.domain.repository
 
+import com.example.t_learnappmobile.data.local.entities.UserWordEntity
+import com.example.t_learnappmobile.data.local.entities.WordEntity
 import com.example.t_learnappmobile.domain.model.Dictionary
 import com.example.t_learnappmobile.domain.model.Word
 import com.example.t_learnappmobile.domain.model.WordStats
@@ -17,4 +19,9 @@ interface WordRepository {
     suspend fun getStats(userId: String, dictionaryId: String): WordStats
     suspend fun resetDictionaryProgress(userId: String, dictionaryId: String)
     suspend fun resetAllProgress(userId: String)
+    suspend fun resetDictionaryProgressAndSync(userId: String, dictionaryId: String)
+    suspend fun resetAllProgressAndSync(userId: String)
+    suspend fun getUserProgress(userId: String, dictionaryId: String): List<UserWordEntity>
+    suspend fun getWordsFromFirebase(dictionaryId: String): List<WordEntity>
+    suspend fun clearUserProgress(userId: String)
 }

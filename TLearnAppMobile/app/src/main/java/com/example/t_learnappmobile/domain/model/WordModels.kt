@@ -21,20 +21,6 @@ data class Dictionary(
     val order: Int = 0
 )
 
-data class WordProgress(
-    val userId: String,
-    val wordId: String,
-    val dictionaryId: String,
-    val stage: Int,
-    val nextReviewDate: Long,
-    val failCount: Int = 0,
-    val totalViews: Int = 0,
-    val correctCount: Int = 0,
-    val incorrectCount: Int = 0,
-    val isSynced: Boolean = false,
-    val updatedAt: Long = System.currentTimeMillis()
-)
-
 data class WordStats(
     val newWords: Int = 0,
     val inProgressWords: Int = 0,

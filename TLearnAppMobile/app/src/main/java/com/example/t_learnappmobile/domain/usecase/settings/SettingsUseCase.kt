@@ -5,7 +5,6 @@ import com.example.t_learnappmobile.data.local.SettingsLocalSource
 class SettingsUseCase(
     private val settingsLocalSource: SettingsLocalSource
 ) {
-    fun getTheme(): Int = settingsLocalSource.getTheme()
 
     fun isDarkTheme(): Boolean = settingsLocalSource.getTheme() == SettingsLocalSource.THEME_DARK
 
@@ -25,5 +24,6 @@ class SettingsUseCase(
         settingsLocalSource.setCurrentDictionaryName(name)
     }
 
+    // Этот метод теперь не должен использоваться при сбросе данных
     fun clearAllSettings() = settingsLocalSource.clearAllData()
 }

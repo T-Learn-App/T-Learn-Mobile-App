@@ -12,4 +12,5 @@ interface GameRepository {
     suspend fun getWeeklyStats(userId: String, weekOffset: Int): List<DailyStats>
     suspend fun getLeaderboard(limit: Int): List<LeaderboardPlayer>
     suspend fun getPlayerPosition(userId: String): LeaderboardPlayer?
+    suspend fun syncPendingResults()
 }

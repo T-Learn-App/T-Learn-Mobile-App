@@ -9,6 +9,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.t_learnappmobile.data.local.SettingsLocalSource
 import com.example.t_learnappmobile.presentation.components.AppNotificationHost
 import com.example.t_learnappmobile.presentation.components.rememberNotificationManager
@@ -20,11 +21,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val appModule = (application as App).appModule
+        val networkMonitor = (application as App).networkMonitor
         val themeMode = appModule.settingsLocalSource.getTheme()
         val isDarkTheme = themeMode == SettingsLocalSource.THEME_DARK
 
         setContent {
             var darkTheme by remember { mutableStateOf(isDarkTheme) }
+            val isConnected by networkMonitor.isConnected.collectAsStateWithLifecycle(initialValue = true)
 
             TLearnAppMobileTheme(darkTheme = darkTheme) {
                 val notificationManager = rememberNotificationManager()
@@ -34,7 +37,6 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
-
                         NavGraph(
                             notificationManager = notificationManager,
                             onThemeChanged = { newDarkTheme ->
@@ -45,11 +47,10 @@ class MainActivity : ComponentActivity() {
                                     SettingsLocalSource.THEME_LIGHT
                                 }
                                 appModule.settingsLocalSource.setTheme(mode)
-
                             },
-                            appModule = appModule
+                            appModule = appModule,
+                            isConnected = isConnected
                         )
-
                         AppNotificationHost(manager = notificationManager)
                     }
                 }

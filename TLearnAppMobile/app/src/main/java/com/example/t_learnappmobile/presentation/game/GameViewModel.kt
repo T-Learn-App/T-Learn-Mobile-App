@@ -1,17 +1,18 @@
 package com.example.t_learnappmobile.presentation.game
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.t_learnappmobile.domain.model.GameWord
+import com.example.t_learnappmobile.domain.repository.WordRepository
 import com.example.t_learnappmobile.domain.usecase.game.LoadGameWordsUseCase
 import com.example.t_learnappmobile.domain.usecase.game.SaveGameResultUseCase
 import com.example.t_learnappmobile.domain.usecase.settings.SettingsUseCase
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 
 data class GameUiState(
     val currentWord: GameWord? = null,
@@ -30,13 +31,17 @@ data class GameUiState(
 class GameViewModel(
     private val loadGameWordsUseCase: LoadGameWordsUseCase,
     private val saveGameResultUseCase: SaveGameResultUseCase,
-    private val settingsUseCase: SettingsUseCase
+    private val settingsUseCase: SettingsUseCase,
+    private val wordRepository: WordRepository
 ) : ViewModel() {
 
     companion object {
+        private const val TAG = "GameViewModel"
         private const val DELAY_BEFORE_NEXT_WORD_MS = 800L
         private const val POINTS_PER_CORRECT_ANSWER = 100
         private const val NUMBER_OF_OPTIONS = 2
+        private const val LEARNED_STAGE = 8
+        private const val MIN_WORDS_FOR_GAME = 10
     }
 
     private val _uiState = MutableStateFlow(GameUiState())
@@ -51,14 +56,78 @@ class GameViewModel(
             _uiState.update { it.copy(isLoading = true, error = null, isGameActive = false) }
 
             try {
-                val dictionaryId = settingsUseCase.getCurrentDictionaryId() ?: "finance"
-                gameWords = loadGameWordsUseCase(dictionaryId, 10)
-
-                if (gameWords.isEmpty()) {
+                val userId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+                if (userId == null) {
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            error = "Нет слов для игры. Изучите несколько слов сначала!"
+                            error = "Пользователь не авторизован"
+                        )
+                    }
+                    return@launch
+                }
+
+                val dictionaryId = settingsUseCase.getCurrentDictionaryId() ?: "finance"
+
+                val userProgress = wordRepository.getUserProgress(userId, dictionaryId)
+
+                Log.d(TAG, "User progress size: ${userProgress.size}")
+                userProgress.forEach { progress ->
+                    Log.d(TAG, "Progress - wordId: ${progress.wordId}, stage: ${progress.stage}")
+                }
+
+                val learnedOrInProgressWords = userProgress
+                    .filter { it.stage > 0 && it.stage <= LEARNED_STAGE }
+                    .map { it.wordId }
+                    .toSet()
+
+                Log.d(TAG, "Valid word ids (stage > 0): ${learnedOrInProgressWords.size}")
+
+                if (learnedOrInProgressWords.size < MIN_WORDS_FOR_GAME) {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = "Недостаточно слов для игры. Нужно минимум $MIN_WORDS_FOR_GAME изученных слов. Сейчас изучено: ${learnedOrInProgressWords.size}"
+                        )
+                    }
+                    return@launch
+                }
+
+                val allGameWords = withTimeoutOrNull(5000L) {
+                    loadGameWordsUseCase(dictionaryId, 100)
+                } ?: emptyList()
+
+                Log.d(TAG, "All game words loaded: ${allGameWords.size}")
+
+                val wordsFromFirebase = wordRepository.getWordsFromFirebase(dictionaryId)
+                Log.d(TAG, "Words from Firebase: ${wordsFromFirebase.size}")
+
+                val wordIdToEnglish = wordsFromFirebase.associate { it.id to it.englishWord }
+
+                gameWords = allGameWords
+                    .filter { gameWord ->
+                        val matchingWordId = wordIdToEnglish.entries.find {
+                            it.value.equals(gameWord.english, ignoreCase = true)
+                        }?.key
+
+                        val isValid = matchingWordId != null && learnedOrInProgressWords.contains(matchingWordId)
+                        if (!isValid) {
+                            Log.d(TAG, "Filtered out word: ${gameWord.english} (no match in progress)")
+                        } else {
+                            Log.d(TAG, "Keeping word: ${gameWord.english} (matched with id: $matchingWordId)")
+                        }
+                        isValid
+                    }
+                    .shuffled()
+                    .take(10)
+
+                Log.d(TAG, "Final game words count: ${gameWords.size}")
+
+                if (gameWords.size < MIN_WORDS_FOR_GAME) {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = "Недостаточно подходящих слов для игры. Нужно минимум $MIN_WORDS_FOR_GAME слов. Найдено: ${gameWords.size}"
                         )
                     }
                     return@launch
@@ -76,10 +145,11 @@ class GameViewModel(
 
                 loadCurrentWord()
             } catch (e: Exception) {
+                Log.e(TAG, "Error starting game", e)
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        error = e.message ?: "Не удалось загрузить игру"
+                        error = "Не удалось загрузить игру. Проверьте интернет-соединение."
                     )
                 }
             }
@@ -98,10 +168,10 @@ class GameViewModel(
 
         val otherAnswers = gameWords
             .filter { it.id != word.id }
+            .map { it.russian }
+            .distinct()
             .shuffled()
             .take(NUMBER_OF_OPTIONS - 1)
-            .map { it.russian }
-
 
         val finalOtherAnswers = if (otherAnswers.isEmpty()) {
             listOf("???")
@@ -168,22 +238,26 @@ class GameViewModel(
         isGameEnded = true
         isAnswerProcessing = false
 
-        viewModelScope.launch {
-            val finalScore = _uiState.value.score
+        val finalScore = _uiState.value.score
+        val totalWords = gameWords.size
 
+        viewModelScope.launch(Dispatchers.IO) {
             try {
-                saveGameResultUseCase(finalScore, gameWords.size)
+                withTimeoutOrNull(5000L) {
+                    saveGameResultUseCase(finalScore, totalWords)
+                    Log.d(TAG, "Game result saved: score=$finalScore")
+                }
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e(TAG, "Failed to save game result", e)
             }
+        }
 
-            _uiState.update {
-                it.copy(
-                    isGameActive = false,
-                    showResults = true,
-                    currentWord = null
-                )
-            }
+        _uiState.update {
+            it.copy(
+                isGameActive = false,
+                showResults = true,
+                currentWord = null
+            )
         }
     }
 

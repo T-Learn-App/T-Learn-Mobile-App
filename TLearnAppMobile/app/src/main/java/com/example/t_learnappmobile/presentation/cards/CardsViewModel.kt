@@ -148,7 +148,6 @@ class CardsViewModel(
             "Я запомнил" to "Я не запомнил"
         }
     }
-
     fun resetAndReload() {
         stopBackgroundCheck()
         wordQueue.clear()
@@ -157,8 +156,6 @@ class CardsViewModel(
         _uiState.update { CardsUiState() }
         loadDictionaries()
     }
-
-
 
     private suspend fun getUserIdWithRetry(): String? {
         var userId = authRepository.getCurrentUserId()
@@ -260,12 +257,24 @@ class CardsViewModel(
                 wordQueue.addAll(result.words)
                 currentWordIndex = 0
                 showNextWord()
-                syncManager.syncPendingChanges()
+                viewModelScope.launch {
+                    try {
+                        syncManager.syncPendingChanges()
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Sync failed, but continuing", e)
+                    }
+                }
                 startBackgroundCheck()
             }
             is LoadWordsResult.Empty -> {
                 Log.d(TAG, "No words available")
-                _uiState.update { it.copy(isLoading = false, currentWord = null) }
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        currentWord = null,
+                        error = "Нет слов для изучения. Проверьте интернет-соединение для загрузки словаря."
+                    )
+                }
                 startBackgroundCheck()
             }
             is LoadWordsResult.Error -> {
@@ -334,7 +343,6 @@ class CardsViewModel(
             }
         }
     }
-
 
     private fun showNextWord() {
         if (currentWordIndex >= wordQueue.size) {

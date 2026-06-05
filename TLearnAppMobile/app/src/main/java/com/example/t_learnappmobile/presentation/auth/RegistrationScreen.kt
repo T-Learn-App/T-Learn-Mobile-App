@@ -1,3 +1,4 @@
+// ФАЙЛ: main/java/com/example/t_learnappmobile/presentation/auth/RegistrationScreen.kt
 package com.example.t_learnappmobile.presentation.auth
 
 import androidx.compose.foundation.background
@@ -40,6 +41,10 @@ fun RegistrationScreen(
 
     val uiState by authViewModel.uiState.collectAsState()
 
+    // Проверка длины имени и фамилии
+    val isFirstNameValid = firstName.length <= 20
+    val isLastNameValid = lastName.length <= 20
+
     val passwordErrors = remember(password) {
         val errors = mutableListOf<String>()
         if (password.isNotEmpty()) {
@@ -53,7 +58,7 @@ fun RegistrationScreen(
     }
 
     val isPasswordValid = password.isNotEmpty() && passwordErrors.isEmpty()
-    val isFormValid = email.isNotEmpty() && isPasswordValid
+    val isFormValid = email.isNotEmpty() && isPasswordValid && isFirstNameValid && isLastNameValid && firstName.length <= 20 && lastName.length <= 20
 
     LaunchedEffect(uiState.error) {
         uiState.error?.let { error -> notificationManager.showError(error) }
@@ -107,22 +112,58 @@ fun RegistrationScreen(
 
                     OutlinedTextField(
                         value = firstName,
-                        onValueChange = { firstName = it },
+                        onValueChange = {
+                            if (it.length <= 20) firstName = it
+                        },
                         label = { Text("Имя") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        isError = !isFirstNameValid && firstName.isNotEmpty(),
+                        supportingText = {
+                            if (!isFirstNameValid && firstName.isNotEmpty()) {
+                                Text(
+                                    text = "Максимум 20 символов (сейчас ${firstName.length})",
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            } else if (firstName.isNotEmpty()) {
+                                Text(
+                                    text = "${firstName.length}/20",
+                                    fontSize = 10.sp,
+                                    color = MediumGray
+                                )
+                            }
+                        }
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))
 
                     OutlinedTextField(
                         value = lastName,
-                        onValueChange = { lastName = it },
+                        onValueChange = {
+                            if (it.length <= 20) lastName = it
+                        },
                         label = { Text("Фамилия") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        isError = !isLastNameValid && lastName.isNotEmpty(),
+                        supportingText = {
+                            if (!isLastNameValid && lastName.isNotEmpty()) {
+                                Text(
+                                    text = "Максимум 20 символов (сейчас ${lastName.length})",
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            } else if (lastName.isNotEmpty()) {
+                                Text(
+                                    text = "${lastName.length}/20",
+                                    fontSize = 10.sp,
+                                    color = MediumGray
+                                )
+                            }
+                        }
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))
@@ -158,6 +199,14 @@ fun RegistrationScreen(
                                         )
                                     }
                                 }
+                            }
+                        } else if (password.isNotEmpty() && isPasswordValid) {
+                            {
+                                Text(
+                                    text = "✓ Надежный пароль",
+                                    color = Color(0xFF4CAF50),
+                                    fontSize = 12.sp
+                                )
                             }
                         } else null
                     )

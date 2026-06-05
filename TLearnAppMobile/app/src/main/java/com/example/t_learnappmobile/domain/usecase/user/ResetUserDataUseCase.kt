@@ -12,9 +12,7 @@ class ResetUserDataUseCase(
     suspend operator fun invoke(userId: String): Result<Unit> {
         return try {
             wordRepository.resetAllProgress(userId)
-
             syncManager.syncPendingChanges()
-
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

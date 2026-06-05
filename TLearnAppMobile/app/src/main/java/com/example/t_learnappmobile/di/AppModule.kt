@@ -2,6 +2,7 @@ package com.example.t_learnappmobile.di
 
 import android.content.Context
 import com.example.t_learnappmobile.data.local.AppDatabase
+import com.example.t_learnappmobile.data.local.GameLocalSource
 import com.example.t_learnappmobile.data.local.SettingsLocalSource
 import com.example.t_learnappmobile.data.local.WordLocalSource
 import com.example.t_learnappmobile.data.remote.FirebaseAuthSource
@@ -23,12 +24,16 @@ import com.example.t_learnappmobile.domain.usecase.words.*
 
 class AppModule(private val context: Context) {
 
-
     private val database by lazy { AppDatabase.getInstance(context) }
     val wordLocalSource by lazy { WordLocalSource(database.wordDao()) }
     val settingsLocalSource by lazy { SettingsLocalSource(context) }
     val firebaseAuthSource by lazy { FirebaseAuthSource() }
     val firebaseFirestoreSource by lazy { FirebaseFirestoreSource() }
+
+    val gameLocalSource by lazy {
+        GameLocalSource(context)
+    }
+
     val firebaseGameSource by lazy {
         FirebaseGameSource(
             firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance(),
@@ -36,33 +41,37 @@ class AppModule(private val context: Context) {
         )
     }
 
-
     val syncManager by lazy {
         SyncManager(
+            context = context,
             localSource = wordLocalSource,
             remoteSource = firebaseFirestoreSource,
-            authSource = firebaseAuthSource
+            authSource = firebaseAuthSource,
+            gameLocalSource = gameLocalSource,
+            firebaseGameSource = firebaseGameSource
         )
     }
 
-    // Repositories
     val authRepository: AuthRepository by lazy {
         AuthRepositoryImpl(firebaseAuthSource, firebaseFirestoreSource)
     }
+
     val wordRepository: WordRepository by lazy {
         WordRepositoryImpl(wordLocalSource, firebaseFirestoreSource)
     }
+
     val userRepository: UserRepository by lazy {
         UserRepositoryImpl(firebaseFirestoreSource, firebaseAuthSource)
     }
+
     val gameRepository: GameRepository by lazy {
         GameRepositoryImpl(
             gameSource = firebaseGameSource,
-            authSource = firebaseAuthSource
+            authSource = firebaseAuthSource,
+            gameLocalSource = gameLocalSource
         )
     }
 
-    // Use Cases
     val loginUseCase by lazy { LoginUseCase(authRepository) }
     val registerUseCase by lazy { RegisterUseCase(authRepository, userRepository) }
     val loadWordsUseCase by lazy { LoadWordsUseCase(wordRepository) }

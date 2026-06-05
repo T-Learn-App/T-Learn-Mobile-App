@@ -1,9 +1,7 @@
 package com.example.t_learnappmobile.presentation.game
 
-import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -19,25 +17,33 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.t_learnappmobile.domain.model.GameWord
+import com.example.t_learnappmobile.presentation.components.NoInternetScreen
 import com.example.t_learnappmobile.presentation.components.NotificationManager
 import com.example.t_learnappmobile.presentation.components.SmartGameOptionText
 import com.example.t_learnappmobile.presentation.components.SmartGameWordText
-import com.example.t_learnappmobile.presentation.components.rememberNotificationManager
 import com.example.t_learnappmobile.presentation.theme.*
+
 @Composable
 fun GameScreen(
     viewModel: GameViewModel,
-    notificationManager: NotificationManager,
-    onGameFinished: () -> Unit
+    onGameFinished: () -> Unit,
+    isConnected: Boolean
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showExitDialog by remember { mutableStateOf(false) }
     var selectedAnswer by remember { mutableStateOf<Int?>(null) }
+    var errorShown by remember { mutableStateOf(false) }
 
-    LaunchedEffect(uiState.error) {
-        uiState.error?.let { error -> notificationManager.showError(error) }
+
+    if (!isConnected) {
+        NoInternetScreen(
+            message = "Для игры требуется интернет-соединение",
+            onRetry = { /* Не пытаемся даже начать игру */ }
+        )
+        return
     }
+
+
 
     LaunchedEffect(Unit) {
         viewModel.startGame()
@@ -84,17 +90,17 @@ fun GameScreen(
 
     if (showExitDialog) {
         AlertDialog(
-            onDismissRequest = { showExitDialog = false },
+            onDismissRequest = {  },
             title = { Text("Выйти из игры?", fontWeight = FontWeight.Bold, fontSize = 20.sp) },
             text = { Text("Вы уверены, что хотите выйти? Текущий прогресс будет потерян.", fontSize = 16.sp, color = MediumGray) },
             confirmButton = {
                 TextButton(onClick = {
-                    showExitDialog = false
+
                     viewModel.closeResults()
                     onGameFinished()
                 }) { Text("Выйти", color = RedError, fontWeight = FontWeight.Bold) }
             },
-            dismissButton = { TextButton(onClick = { showExitDialog = false }) { Text("Продолжить", color = BlueColor) } },
+            dismissButton = { TextButton(onClick = {  }) { Text("Продолжить", color = BlueColor) } },
             shape = RoundedCornerShape(20.dp),
             containerColor = MaterialTheme.colorScheme.surface
         )
@@ -150,7 +156,6 @@ fun ActiveGameView(
             .padding(horizontal = 24.dp)
             .padding(top = 36.dp)
     ) {
-
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -191,7 +196,6 @@ fun ActiveGameView(
                         modifier = Modifier.padding(bottom = 12.dp)
                     )
 
-
                     SmartGameWordText(
                         text = currentWord,
                         color = MaterialTheme.colorScheme.onSurface
@@ -210,7 +214,6 @@ fun ActiveGameView(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -218,7 +221,6 @@ fun ActiveGameView(
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             options.forEachIndexed { index, option ->
-                val isSelected = selectedAnswer == index
                 val isCorrect = selectedAnswer != null && index == correctIndex
                 val isWrong = selectedAnswer == index && index != correctIndex
 
@@ -255,7 +257,6 @@ fun ActiveGameView(
                         pressedElevation = 10.dp
                     )
                 ) {
-
                     SmartGameOptionText(
                         text = option,
                         color = when {
@@ -288,8 +289,6 @@ fun GameResultsView(
                 modifier = Modifier.padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("🎉", fontSize = 64.sp)
-                Spacer(modifier = Modifier.height(16.dp))
                 Text("$score очков!", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = YellowPrimary)
                 Spacer(modifier = Modifier.height(8.dp))
                 Text("$totalWords слов завершено", fontSize = 16.sp, color = MediumGray)
@@ -303,67 +302,6 @@ fun GameResultsView(
                     Text("ЗАКРЫТЬ", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
                 }
             }
-        }
-    }
-}
-
-
-@Preview(showBackground = true, showSystemUi = true, widthDp = 360, heightDp = 720)
-@Composable
-fun GameScreenPreview() {
-    TLearnAppMobileTheme {
-        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-            ActiveGameView(
-                score = 500,
-                currentWord = "investment",
-                currentIndex = 5,
-                totalWords = 10,
-                options = listOf("инвестиция", "расход"),
-                correctIndex = 0,
-                selectedAnswer = null,
-                onOptionClick = {},
-                onExitClick = {}
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true, showSystemUi = true, name = "Game - Correct Answer")
-@Composable
-fun GameScreenCorrectPreview() {
-    TLearnAppMobileTheme {
-        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-            ActiveGameView(
-                score = 600,
-                currentWord = "investment",
-                currentIndex = 5,
-                totalWords = 10,
-                options = listOf("инвестиция", "расход"),
-                correctIndex = 0,
-                selectedAnswer = 0,
-                onOptionClick = {},
-                onExitClick = {}
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true, showSystemUi = true, name = "Game - Wrong Answer")
-@Composable
-fun GameScreenWrongPreview() {
-    TLearnAppMobileTheme {
-        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-            ActiveGameView(
-                score = 500,
-                currentWord = "investment",
-                currentIndex = 5,
-                totalWords = 10,
-                options = listOf("инвестиция", "расход"),
-                correctIndex = 0,
-                selectedAnswer = 1,
-                onOptionClick = {},
-                onExitClick = {}
-            )
         }
     }
 }

@@ -8,6 +8,8 @@ import com.example.t_learnappmobile.data.remote.FirebaseFirestoreSource
 import com.example.t_learnappmobile.domain.model.*
 import com.example.t_learnappmobile.domain.repository.LoadWordsResult
 import com.example.t_learnappmobile.domain.repository.WordRepository
+import kotlinx.coroutines.*
+import kotlinx.coroutines.withContext
 
 class WordRepositoryImpl(
     private val localSource: WordLocalSource,
@@ -15,79 +17,138 @@ class WordRepositoryImpl(
 ) : WordRepository {
 
     private val TAG = "WordRepository"
-
-    private  val LEARNED_STAGE = 8
+    private val LEARNED_STAGE = 8
 
     private val reviewIntervals = listOf(
-        0L,                                    // stage 0 - новое слово
-        5 * 60 * 1000L,                       // stage 1 - 5 минут
-        10 * 60 * 1000L,                      // stage 2 - 10 минут
-        60 * 60 * 1000L,                      // stage 3 - 1 час
-        24 * 60 * 60 * 1000L,                 // stage 4 - 1 день
-        7 * 24 * 60 * 60 * 1000L,             // stage 5 - 1 неделя
-        30L * 24 * 60 * 60 * 1000,            // stage 6 - 1 месяц
-        90L * 24 * 60 * 60 * 1000,            // stage 7 - 3 месяца
-        Long.MAX_VALUE                        // stage 8 - выучено навсегда
+        0L,
+        5 * 60 * 1000L,
+        10 * 60 * 1000L,
+        60 * 60 * 1000L,
+        24 * 60 * 60 * 1000L,
+        7 * 24 * 60 * 60 * 1000L,
+        30L * 24 * 60 * 60 * 1000,
+        90L * 24 * 60 * 60 * 1000,
+        Long.MAX_VALUE
     )
 
     override suspend fun loadWords(userId: String, dictionaryId: String): LoadWordsResult {
         Log.d(TAG, "Loading words for userId=$userId, dictionaryId=$dictionaryId")
 
-        return try {
-            val localWords = localSource.getWords(dictionaryId)
-            val localProgress = localSource.getUserProgress(userId, dictionaryId)
+        return withContext(Dispatchers.IO) {
+            try {
+                val localWords = localSource.getWords(dictionaryId)
+                val localProgress = localSource.getUserProgress(userId, dictionaryId)
 
-            if (localWords.isNotEmpty()) {
-                val progress = if (localProgress.isEmpty()) {
-                    createInitialProgress(userId, dictionaryId, localWords)
-                    localSource.getUserProgress(userId, dictionaryId)
+                if (localWords.isNotEmpty()) {
+                    val progress = if (localProgress.isEmpty()) {
+                        try {
+                            withTimeoutOrNull(3000L) {
+                                syncProgressFromFirebase(userId, dictionaryId, localWords)
+                            } ?: localProgress
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Could not sync from Firebase", e)
+                            localProgress
+                        }
+                    } else {
+                        localProgress
+                    }
+
+                    val words = buildWordList(localWords, progress)
+                    if (words.isNotEmpty()) {
+                        LoadWordsResult.HasWords(words)
+                    } else {
+                        LoadWordsResult.Empty
+                    }
                 } else {
-                    localProgress
+                    loadFromRemoteWithTimeout(userId, dictionaryId)
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading words", e)
+                LoadWordsResult.Empty
+            }
+        }
+    }
 
-                val words = buildWordList(localWords, progress)
-                if (words.isNotEmpty()) {
-                    LoadWordsResult.HasWords(words)
+    private suspend fun loadFromRemoteWithTimeout(userId: String, dictionaryId: String): LoadWordsResult {
+        return try {
+            withTimeoutOrNull(5000L) {
+                val remoteWords = remoteSource.getWords(dictionaryId)
+                if (remoteWords.isNotEmpty()) {
+                    localSource.insertWords(remoteWords)
+                    createInitialProgress(userId, dictionaryId, remoteWords)
+                    val finalProgress = localSource.getUserProgress(userId, dictionaryId)
+                    val words = buildWordList(remoteWords, finalProgress)
+                    if (words.isNotEmpty()) LoadWordsResult.HasWords(words) else LoadWordsResult.Empty
                 } else {
                     LoadWordsResult.Empty
                 }
+            } ?: LoadWordsResult.Empty
+        } catch (e: Exception) {
+            Log.e(TAG, "Error loading from remote", e)
+            LoadWordsResult.Empty
+        }
+    }
+
+    private suspend fun syncProgressFromFirebase(
+        userId: String,
+        dictionaryId: String,
+        localWords: List<WordEntity>
+    ): List<UserWordEntity> {
+        try {
+            Log.d(TAG, "Syncing progress from Firebase for dictionary: $dictionaryId")
+            val remoteProgress = remoteSource.getUserProgress(userId, dictionaryId)
+
+            if (remoteProgress.isNotEmpty()) {
+                Log.d(TAG, "Found ${remoteProgress.size} progress entries in Firebase")
+                remoteProgress.forEach { remoteProgressItem ->
+                    localSource.saveUserProgress(remoteProgressItem)
+                }
+                return remoteProgress
             } else {
-                loadFromRemote(userId, dictionaryId)
+                Log.d(TAG, "No progress in Firebase, creating initial progress")
+                createInitialProgress(userId, dictionaryId, localWords)
+                return localSource.getUserProgress(userId, dictionaryId)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error loading words", e)
-            LoadWordsResult.Error(e.message ?: "Неизвестная ошибка")
+            Log.e(TAG, "Error syncing progress from Firebase", e)
+            createInitialProgress(userId, dictionaryId, localWords)
+            return localSource.getUserProgress(userId, dictionaryId)
         }
     }
 
     override suspend fun getDictionaries(): List<Dictionary> {
-        return try {
-            val localDicts = localSource.getDictionaries()
-            if (localDicts.isNotEmpty()) {
-                return localDicts.map { Dictionary(it.id, it.name, it.order) }
-            }
+        return withContext(Dispatchers.IO) {
+            try {
+                val localDicts = localSource.getDictionaries()
+                if (localDicts.isNotEmpty()) {
+                    return@withContext localDicts.map { Dictionary(it.id, it.name, it.order) }
+                }
 
-            val remoteDicts = remoteSource.getDictionaries()
-            if (remoteDicts.isNotEmpty()) {
-                localSource.insertDictionaries(remoteDicts)
-            }
+                val remoteDicts = withTimeoutOrNull(5000L) {
+                    remoteSource.getDictionaries()
+                } ?: emptyList()
 
-            remoteDicts.ifEmpty {
+                if (remoteDicts.isNotEmpty()) {
+                    localSource.insertDictionaries(remoteDicts)
+                }
+
+                remoteDicts.ifEmpty {
+                    listOf(
+                        com.example.t_learnappmobile.data.local.entities.DictionaryEntity("finance", "Финансы", 1),
+                        com.example.t_learnappmobile.data.local.entities.DictionaryEntity("conversational", "Разговорные слова", 2),
+                        com.example.t_learnappmobile.data.local.entities.DictionaryEntity("technology", "Технологии", 3),
+                        com.example.t_learnappmobile.data.local.entities.DictionaryEntity("slang", "Сленг", 4)
+                    )
+                }.map { Dictionary(it.id, it.name, it.order) }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading dictionaries", e)
                 listOf(
-                    com.example.t_learnappmobile.data.local.entities.DictionaryEntity("finance", "Финансы", 1),
-                    com.example.t_learnappmobile.data.local.entities.DictionaryEntity("conversational", "Разговорные слова", 2),
-                    com.example.t_learnappmobile.data.local.entities.DictionaryEntity("technology", "Технологии", 3),
-                    com.example.t_learnappmobile.data.local.entities.DictionaryEntity("slang", "Сленг", 4)
+                    Dictionary("finance", "Финансы", 1),
+                    Dictionary("conversational", "Разговорные слова", 2),
+                    Dictionary("technology", "Технологии", 3),
+                    Dictionary("slang", "Сленг", 4)
                 )
-            }.map { Dictionary(it.id, it.name, it.order) }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error loading dictionaries", e)
-            listOf(
-                Dictionary("finance", "Финансы", 1),
-                Dictionary("conversational", "Разговорные слова", 2),
-                Dictionary("technology", "Технологии", 3),
-                Dictionary("slang", "Сленг", 4)
-            )
+            }
         }
     }
 
@@ -97,54 +158,71 @@ class WordRepositoryImpl(
         dictionaryId: String,
         known: Boolean
     ): Word? {
-        val existingProgress = localSource.getUserWord(userId, wordId) ?: return null
-        val wordEntity = localSource.getWords(dictionaryId).find { it.id == wordId } ?: return null
+        return withContext(Dispatchers.IO) {
+            val existingProgress = localSource.getUserWord(userId, wordId) ?: return@withContext null
+            val wordEntity = localSource.getWords(dictionaryId).find { it.id == wordId } ?: return@withContext null
 
-        val now = System.currentTimeMillis()
-        val (newStage, nextReviewDate, newFailCount) = calculateNextStage(
-            existingProgress.stage, known, existingProgress.failCount, now
-        )
+            val now = System.currentTimeMillis()
+            val (newStage, nextReviewDate, newFailCount) = calculateNextStage(
+                existingProgress.stage, known, existingProgress.failCount, now
+            )
 
-        val updatedProgress = UserWordEntity(
-            userId = userId,
-            wordId = wordId,
-            dictionaryId = dictionaryId,
-            stage = newStage,
-            nextReviewDate = nextReviewDate,
-            failCount = newFailCount,
-            lastReviewDate = now,
-            totalViews = existingProgress.totalViews + 1,
-            correctCount = existingProgress.correctCount + (if (known) 1 else 0),
-            incorrectCount = existingProgress.incorrectCount + (if (known) 0 else 1),
-            isSynced = false,
-            updatedAt = now
-        )
+            val updatedProgress = UserWordEntity(
+                userId = userId,
+                wordId = wordId,
+                dictionaryId = dictionaryId,
+                stage = newStage,
+                nextReviewDate = nextReviewDate,
+                failCount = newFailCount,
+                lastReviewDate = now,
+                totalViews = existingProgress.totalViews + 1,
+                correctCount = existingProgress.correctCount + (if (known) 1 else 0),
+                incorrectCount = existingProgress.incorrectCount + (if (known) 0 else 1),
+                isSynced = false,
+                updatedAt = now
+            )
 
-        localSource.saveUserProgress(updatedProgress)
+            localSource.saveUserProgress(updatedProgress)
+            Log.d(TAG, "Progress saved locally for word: $wordId, stage: $newStage")
 
-        return if (newStage < LEARNED_STAGE) {
-            mapToDomain(wordEntity, updatedProgress)
-        } else {
-            null
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    withTimeoutOrNull(3000L) {
+                        remoteSource.saveUserProgress(updatedProgress)
+                        localSource.markAsSynced(userId, wordId)
+                        Log.d(TAG, "Progress synced to Firebase for word: $wordId")
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Could not sync to Firebase: ${e.message}")
+                }
+            }
+
+            return@withContext if (newStage < LEARNED_STAGE) {
+                mapToDomain(wordEntity, updatedProgress)
+            } else {
+                null
+            }
         }
     }
 
     override suspend fun getStats(userId: String, dictionaryId: String): WordStats {
-        val progress = localSource.getUserProgress(userId, dictionaryId)
-        return WordStats(
-            newWords = progress.count { it.stage == 0 },
-            inProgressWords = progress.count { it.stage in 1 until LEARNED_STAGE },
-            learnedWords = progress.count { it.stage >= LEARNED_STAGE }
-        )
+        return withContext(Dispatchers.IO) {
+            val progress = localSource.getUserProgress(userId, dictionaryId)
+            WordStats(
+                newWords = progress.count { it.stage == 0 },
+                inProgressWords = progress.count { it.stage in 1 until LEARNED_STAGE },
+                learnedWords = progress.count { it.stage >= LEARNED_STAGE }
+            )
+        }
     }
 
     override suspend fun resetDictionaryProgress(userId: String, dictionaryId: String) {
-        val words = localSource.getWords(dictionaryId)
-        val now = System.currentTimeMillis()
+        withContext(Dispatchers.IO) {
+            val words = localSource.getWords(dictionaryId)
+            val now = System.currentTimeMillis()
 
-        words.forEach { word ->
-            localSource.saveUserProgress(
-                UserWordEntity(
+            words.forEach { word ->
+                val resetProgress = UserWordEntity(
                     userId = userId,
                     wordId = word.id,
                     dictionaryId = dictionaryId,
@@ -158,19 +236,140 @@ class WordRepositoryImpl(
                     isSynced = false,
                     updatedAt = now
                 )
-            )
+                localSource.saveUserProgress(resetProgress)
+            }
+            Log.d(TAG, "Reset dictionary progress locally for $dictionaryId")
         }
-        Log.d(TAG, "Reset dictionary progress for $dictionaryId")
     }
 
     override suspend fun resetAllProgress(userId: String) {
-        val dictionaries = localSource.getDictionaries()
-        dictionaries.forEach { dict ->
-            resetDictionaryProgress(userId, dict.id)
+        withContext(Dispatchers.IO) {
+            val dictionaries = localSource.getDictionaries()
+            dictionaries.forEach { dict ->
+                resetDictionaryProgress(userId, dict.id)
+            }
+            Log.d(TAG, "Reset all progress locally for user $userId")
         }
-        Log.d(TAG, "Reset all progress for user $userId")
     }
 
+    override suspend fun resetDictionaryProgressAndSync(userId: String, dictionaryId: String) {
+        withContext(Dispatchers.IO) {
+            try {
+                remoteSource.deleteUserProgress(userId, dictionaryId)
+
+                val words = localSource.getWords(dictionaryId)
+                val now = System.currentTimeMillis()
+
+                localSource.getUserProgress(userId, dictionaryId).forEach { progress ->
+                    val resetProgress = UserWordEntity(
+                        userId = userId,
+                        wordId = progress.wordId,
+                        dictionaryId = dictionaryId,
+                        stage = 0,
+                        nextReviewDate = now,
+                        failCount = 0,
+                        lastReviewDate = null,
+                        totalViews = 0,
+                        correctCount = 0,
+                        incorrectCount = 0,
+                        isSynced = true,
+                        updatedAt = now
+                    )
+                    localSource.saveUserProgress(resetProgress)
+                }
+
+                if (words.isEmpty()) {
+                    val remoteWords = remoteSource.getWords(dictionaryId)
+                    if (remoteWords.isNotEmpty()) {
+                        localSource.insertWords(remoteWords)
+                        remoteWords.forEach { word ->
+                            val resetProgress = UserWordEntity(
+                                userId = userId,
+                                wordId = word.id,
+                                dictionaryId = dictionaryId,
+                                stage = 0,
+                                nextReviewDate = now,
+                                failCount = 0,
+                                lastReviewDate = null,
+                                totalViews = 0,
+                                correctCount = 0,
+                                incorrectCount = 0,
+                                isSynced = true,
+                                updatedAt = now
+                            )
+                            localSource.saveUserProgress(resetProgress)
+                        }
+                    }
+                }
+
+                Log.d(TAG, "Reset dictionary progress and synced for $dictionaryId")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error resetting dictionary progress", e)
+                resetDictionaryProgress(userId, dictionaryId)
+            }
+        }
+    }
+
+    override suspend fun resetAllProgressAndSync(userId: String) {
+        withContext(Dispatchers.IO) {
+            try {
+                remoteSource.deleteAllUserProgress(userId)
+
+                val dictionaries = localSource.getDictionaries()
+                val now = System.currentTimeMillis()
+
+                dictionaries.forEach { dict ->
+                    val words = localSource.getWords(dict.id)
+
+                    localSource.getUserProgress(userId, dict.id).forEach { progress ->
+                        val resetProgress = UserWordEntity(
+                            userId = userId,
+                            wordId = progress.wordId,
+                            dictionaryId = dict.id,
+                            stage = 0,
+                            nextReviewDate = now,
+                            failCount = 0,
+                            lastReviewDate = null,
+                            totalViews = 0,
+                            correctCount = 0,
+                            incorrectCount = 0,
+                            isSynced = true,
+                            updatedAt = now
+                        )
+                        localSource.saveUserProgress(resetProgress)
+                    }
+
+                    if (words.isEmpty()) {
+                        val remoteWords = remoteSource.getWords(dict.id)
+                        if (remoteWords.isNotEmpty()) {
+                            localSource.insertWords(remoteWords)
+                            remoteWords.forEach { word ->
+                                val resetProgress = UserWordEntity(
+                                    userId = userId,
+                                    wordId = word.id,
+                                    dictionaryId = dict.id,
+                                    stage = 0,
+                                    nextReviewDate = now,
+                                    failCount = 0,
+                                    lastReviewDate = null,
+                                    totalViews = 0,
+                                    correctCount = 0,
+                                    incorrectCount = 0,
+                                    isSynced = true,
+                                    updatedAt = now
+                                )
+                                localSource.saveUserProgress(resetProgress)
+                            }
+                        }
+                    }
+                }
+                Log.d(TAG, "Reset all progress and synced for user $userId")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error resetting all progress", e)
+                resetAllProgress(userId)
+            }
+        }
+    }
 
     private suspend fun createInitialProgress(
         userId: String,
@@ -202,35 +401,12 @@ class WordRepositoryImpl(
         }
     }
 
-    private suspend fun loadFromRemote(userId: String, dictionaryId: String): LoadWordsResult {
-        val remoteWords = remoteSource.getWords(dictionaryId)
-        if (remoteWords.isEmpty()) return LoadWordsResult.Empty
-
-        localSource.insertWords(remoteWords)
-        createInitialProgress(userId, dictionaryId, remoteWords)
-
-        val remoteProgress = remoteSource.getUserProgress(userId, dictionaryId)
-        if (remoteProgress.isNotEmpty()) {
-            remoteProgress.forEach { localSource.saveUserProgress(it) }
-        }
-
-        val finalProgress = localSource.getUserProgress(userId, dictionaryId)
-        val words = buildWordList(remoteWords, finalProgress)
-
-        return if (words.isNotEmpty()) {
-            LoadWordsResult.HasWords(words)
-        } else {
-            LoadWordsResult.Empty
-        }
-    }
-
     private fun buildWordList(words: List<WordEntity>, progress: List<UserWordEntity>): List<Word> {
         val progressMap = progress.associateBy { it.wordId }
         val now = System.currentTimeMillis()
 
         return words.mapNotNull { wordEntity ->
             val userProgress = progressMap[wordEntity.id] ?: return@mapNotNull null
-
 
             if (userProgress.stage < LEARNED_STAGE &&
                 (userProgress.stage == 0 || userProgress.nextReviewDate <= now)) {
@@ -254,7 +430,6 @@ class WordRepositoryImpl(
         now: Long
     ): Triple<Int, Long, Int> {
         return if (known) {
-            // Логика для "знаю" - оставляем как было
             when {
                 currentStage == 0 -> {
                     Log.d(TAG, "Пользователь знает новое слово! Сразу выучено.")
@@ -272,48 +447,49 @@ class WordRepositoryImpl(
                 else -> Triple(LEARNED_STAGE, Long.MAX_VALUE, 0)
             }
         } else {
-            // НОВАЯ ЛОГИКА ДЛЯ "НЕ ЗНАЮ"
             val newFailCount = failCount + 1
-
             when {
-                // Новое слово (этап 0)
                 currentStage == 0 -> {
                     Log.d(TAG, "Новое слово, пользователь не знает -> этап 1")
                     Triple(1, now + reviewIntervals[1], newFailCount)
                 }
-
-                // Слова на этапах 1-7
-                currentStage in 1 until LEARNED_STAGE -> {
-                    when (newFailCount) {
-                        1 -> {
-                            // Первая ошибка: через 5 минут, этап не меняем
-                            Log.d(TAG, "Этап $currentStage, 1-я ошибка -> покажем через 5 минут")
-                            Triple(currentStage, now + reviewIntervals[1], newFailCount)
-                        }
-                        2 -> {
-                            // Вторая ошибка: через 10 минут, этап не меняем
-                            Log.d(TAG, "Этап $currentStage, 2-я ошибка -> покажем через 10 минут")
-                            Triple(currentStage, now + reviewIntervals[2], newFailCount)
-                        }
-                        else -> {
-                            // Третья и более ошибки: возвращаем на исходный этап, через 5 минут
-                            Log.d(TAG, "Этап $currentStage, ${newFailCount}-я ошибка -> возврат на этап $currentStage через 5 минут")
-                            Triple(currentStage, now + reviewIntervals[1], 0)  // Сбрасываем счетчик ошибок
-                        }
+                currentStage in 1 until LEARNED_STAGE && newFailCount <= 2 -> {
+                    val retryInterval = when (newFailCount) {
+                        1 -> reviewIntervals[1]
+                        else -> reviewIntervals[2]
                     }
+                    Triple(currentStage, now + retryInterval, newFailCount)
                 }
-
-                // Выученное слово (этап 8 и выше)
+                currentStage in 1 until LEARNED_STAGE -> {
+                    val newStage = maxOf(1, currentStage - 1)
+                    Triple(newStage, now + reviewIntervals[newStage], 0)
+                }
                 currentStage >= LEARNED_STAGE -> {
                     Log.d(TAG, "Выученное слово забыто -> возврат на этап 7")
                     Triple(LEARNED_STAGE - 1, now + reviewIntervals[LEARNED_STAGE - 1], 1)
                 }
-
                 else -> Triple(currentStage, now + reviewIntervals[1], newFailCount)
             }
         }
     }
 
+    override suspend fun getWordsFromFirebase(dictionaryId: String): List<WordEntity> {
+        return withContext(Dispatchers.IO) {
+            try {
+                remoteSource.getWords(dictionaryId)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error getting words from Firebase", e)
+                emptyList()
+            }
+        }
+    }
+    // ФАЙЛ: main/java/com/example/t_learnappmobile/data/repository/WordRepositoryImpl.kt (добавить метод)
+    override suspend fun clearUserProgress(userId: String) {
+        withContext(Dispatchers.IO) {
+            localSource.clearUserProgress(userId)
+            Log.d(TAG, "Cleared user progress for: $userId")
+        }
+    }
     private fun mapToDomain(wordEntity: WordEntity, progress: UserWordEntity): Word {
         return Word(
             id = wordEntity.id,
@@ -341,6 +517,11 @@ class WordRepositoryImpl(
             "conjunction" -> PartOfSpeech.CONJUNCTION
             "interjection" -> PartOfSpeech.INTERJECTION
             else -> PartOfSpeech.UNKNOWN
+        }
+    }
+    override suspend fun getUserProgress(userId: String, dictionaryId: String): List<UserWordEntity> {
+        return withContext(Dispatchers.IO) {
+            localSource.getUserProgress(userId, dictionaryId)
         }
     }
 }

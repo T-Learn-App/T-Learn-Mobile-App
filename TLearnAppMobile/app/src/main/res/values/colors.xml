@@ -24,4 +24,6 @@
     <!-- Дополнительные цвета для themes.xml -->
     <color name="colorPrimaryDark">#FFC700</color>
     <color name="colorButtonDontKnow">#000000</color>
+
+    <color name="ic_launcher_background">#FFC107</color>
 </resources>

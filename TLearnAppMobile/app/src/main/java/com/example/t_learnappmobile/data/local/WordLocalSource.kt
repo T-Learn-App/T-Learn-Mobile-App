@@ -9,7 +9,6 @@ class WordLocalSource(private val wordDao: WordDao) {
     suspend fun getWords(dictionaryId: String): List<WordEntity> =
         wordDao.getWordsByDictionary(dictionaryId)
 
-
     suspend fun insertWords(words: List<WordEntity>) = wordDao.insertWords(words)
 
     suspend fun getUserProgress(userId: String, dictionaryId: String): List<UserWordEntity> =
@@ -26,9 +25,15 @@ class WordLocalSource(private val wordDao: WordDao) {
     suspend fun markAsSynced(userId: String, wordId: String) =
         wordDao.markAsSynced(userId, wordId)
 
-
     suspend fun getDictionaries(): List<DictionaryEntity> = wordDao.getDictionaries()
 
     suspend fun insertDictionaries(dictionaries: List<DictionaryEntity>) =
         wordDao.insertDictionaries(dictionaries)
+
+    suspend fun clearUserProgress(userId: String) {
+        val dictionaries = getDictionaries()
+        dictionaries.forEach { dict ->
+            wordDao.deleteUserWordsByDictionary(userId, dict.id)
+        }
+    }
 }

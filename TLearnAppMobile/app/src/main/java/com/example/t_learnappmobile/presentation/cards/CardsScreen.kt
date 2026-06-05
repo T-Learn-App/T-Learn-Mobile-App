@@ -232,6 +232,8 @@ fun getDictionaryDescription(dictionaryId: String): String {
         else -> "Изучайте новые слова"
     }
 }
+// ФАЙЛ: main/java/com/example/t_learnappmobile/presentation/cards/CardsScreen.kt (только часть с кнопками)
+// Найдите строки с onNavigateToStatistics и onNavigateToSettings и замените на:
 
 @Composable
 fun CardsTopBar(
@@ -240,6 +242,8 @@ fun CardsTopBar(
     onNavigateToGame: () -> Unit,
     onNavigateToSettings: () -> Unit,
 ) {
+    var isNavigating by remember { mutableStateOf(false) }
+
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shadowElevation = 0.dp,
@@ -271,13 +275,40 @@ fun CardsTopBar(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onNavigateToStatistics, modifier = Modifier.size(56.dp)) {
+                IconButton(
+                    onClick = {
+                        if (!isNavigating) {
+                            isNavigating = true
+                            onNavigateToStatistics()
+                            isNavigating = false
+                        }
+                    },
+                    modifier = Modifier.size(56.dp)
+                ) {
                     Icon(Icons.Filled.Leaderboard, contentDescription = "Статистика", tint = DarkGray, modifier = Modifier.size(32.dp))
                 }
-                IconButton(onClick = onNavigateToGame, modifier = Modifier.size(56.dp)) {
+                IconButton(
+                    onClick = {
+                        if (!isNavigating) {
+                            isNavigating = true
+                            onNavigateToGame()
+                            isNavigating = false
+                        }
+                    },
+                    modifier = Modifier.size(56.dp)
+                ) {
                     Icon(Icons.Filled.SportsEsports, contentDescription = "Игра", tint = DarkGray, modifier = Modifier.size(32.dp))
                 }
-                IconButton(onClick = onNavigateToSettings, modifier = Modifier.size(56.dp)) {
+                IconButton(
+                    onClick = {
+                        if (!isNavigating) {
+                            isNavigating = true
+                            onNavigateToSettings()
+                            isNavigating = false
+                        }
+                    },
+                    modifier = Modifier.size(56.dp)
+                ) {
                     Icon(Icons.Filled.Tune, contentDescription = "Настройки", tint = DarkGray, modifier = Modifier.size(32.dp))
                 }
             }

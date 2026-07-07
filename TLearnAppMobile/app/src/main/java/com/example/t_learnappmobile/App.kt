@@ -1,49 +1,15 @@
 package com.example.t_learnappmobile
 
 import android.app.Application
-import android.util.Log
 import androidx.appcompat.app.AppCompatDelegate
-import com.example.t_learnappmobile.di.AppModule
-import com.google.firebase.FirebaseApp
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import com.example.t_learnappmobile.data.repository.ServiceLocator
+import com.example.t_learnappmobile.data.settings.SettingsManager
 
 class App : Application() {
-    lateinit var appModule: AppModule
-    lateinit var networkMonitor: NetworkMonitor
-        private set
-
     override fun onCreate() {
         super.onCreate()
-
-        try {
-            if (FirebaseApp.getApps(this).isEmpty()) {
-                FirebaseApp.initializeApp(this)
-                Log.d("App", "Firebase initialized successfully")
-            }
-        } catch (e: Exception) {
-            Log.e("App", "Firebase init error", e)
-        }
-
-        appModule = AppModule(this)
-        networkMonitor = NetworkMonitor(this)
-
-        networkMonitor.onInternetConnected = {
-            CoroutineScope(Dispatchers.IO).launch {
-                appModule.gameRepository.syncPendingResults()
-                appModule.syncManager.syncPendingGames()
-                Log.d("App", "Sync triggered on internet connection")
-            }
-        }
-
-        networkMonitor.startMonitoring()
-
-        val theme = appModule.settingsLocalSource.getTheme()
-        AppCompatDelegate.setDefaultNightMode(theme)
-
-        appModule.syncManager.startPeriodicSync()
-
-        Log.d("App", "Application initialized successfully")
+        val settingsManager = SettingsManager(this)
+        AppCompatDelegate.setDefaultNightMode(settingsManager.getTheme())
+        ServiceLocator.initContextAwareDependencies(this)
     }
 }

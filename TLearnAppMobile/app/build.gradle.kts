@@ -3,6 +3,8 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("com.google.devtools.ksp")
+    id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
 }
 
 android {
@@ -47,10 +49,10 @@ android {
         viewBinding = true
         buildConfig = true
     }
+
     ksp {
         arg("room.schemaLocation", "$projectDir/schemas")
     }
-
 
     packaging {
         resources {
@@ -85,13 +87,13 @@ configurations.all {
     resolutionStrategy {
         force("com.google.protobuf:protobuf-javalite:3.21.12")
     }
-
     exclude(group = "com.google.protobuf", module = "protobuf-java")
-
     exclude(group = "com.google.api.grpc", module = "proto-google-common-protos")
 }
 
 dependencies {
+    implementation(libs.androidx.compose.foundation.layout)
+    implementation(libs.androidx.compose.ui.text)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -103,14 +105,14 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.cardview)
 
-
- 
-
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.datastore.core)
+    implementation(libs.androidx.material3)
     implementation(libs.core.ktx)
     implementation(libs.androidx.adapters)
-
+    implementation(libs.google.firebase.crashlytics.buildtools)
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.lifecycle.runtime.compose)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -138,9 +140,6 @@ dependencies {
         exclude(group = "com.google.protobuf")
     }
 
-    // JWT
-    implementation("com.auth0:java-jwt:4.5.0")
-
     // DataStore
     implementation("androidx.datastore:datastore-preferences:1.2.0")
 
@@ -156,5 +155,31 @@ dependencies {
     implementation("androidx.room:room-ktx:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")
 
+    // Firebase
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-firestore")
+    implementation("com.google.firebase:firebase-database")
+    implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-crashlytics")
+    implementation("com.google.firebase:firebase-messaging")
+
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
+    implementation("com.google.android.gms:play-services-base:18.5.0")
+
+
+    // В блок dependencies добавь:
+    implementation("androidx.compose.ui:ui:1.5.4")
+    implementation("androidx.compose.ui:ui-tooling-preview:1.5.4")
+    implementation("androidx.compose.material3:material3:1.1.2")
+    implementation("androidx.compose.material:material-icons-extended:1.5.4")
+    implementation("androidx.activity:activity-compose:1.8.1")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.6.2")
+    implementation("androidx.navigation:navigation-compose:2.7.5")
+
+
+
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
 
 }

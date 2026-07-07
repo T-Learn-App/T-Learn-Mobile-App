@@ -1,17 +1,27 @@
 package com.example.t_learnappmobile.domain.repository
 
-import com.example.t_learnappmobile.model.Word
-import kotlinx.coroutines.flow.Flow
+import com.example.t_learnappmobile.data.local.entities.UserWordEntity
+import com.example.t_learnappmobile.data.local.entities.WordEntity
+import com.example.t_learnappmobile.domain.model.Dictionary
+import com.example.t_learnappmobile.domain.model.Word
+import com.example.t_learnappmobile.domain.model.WordStats
+
+sealed class LoadWordsResult {
+    data class HasWords(val words: List<Word>) : LoadWordsResult()
+    object Empty : LoadWordsResult()
+    data class Error(val message: String) : LoadWordsResult()
+}
 
 interface WordRepository {
-    fun nextWord()
-    fun getCurrentCardFlow(): Flow<Word?>
-    fun getCurrentCard(): Word?
-    fun getNewWords(): List<Word>
-    fun getRotationWords(): List<Word>
-    fun getLearnedWords(): List<Word>
-    fun addWord(word: Word)
-    suspend fun fetchWords(categoryId: Long): List<Word>
-    suspend fun fetchAllWords(): List<Word>
-    suspend fun completeWord(wordId: Long): Boolean
+    suspend fun loadWords(userId: String, dictionaryId: String): LoadWordsResult
+    suspend fun getDictionaries(): List<Dictionary>
+    suspend fun processAnswer(userId: String, wordId: String, dictionaryId: String, known: Boolean): Word?
+    suspend fun getStats(userId: String, dictionaryId: String): WordStats
+    suspend fun resetDictionaryProgress(userId: String, dictionaryId: String)
+    suspend fun resetAllProgress(userId: String)
+    suspend fun resetDictionaryProgressAndSync(userId: String, dictionaryId: String)
+    suspend fun resetAllProgressAndSync(userId: String)
+    suspend fun getUserProgress(userId: String, dictionaryId: String): List<UserWordEntity>
+    suspend fun getWordsFromFirebase(dictionaryId: String): List<WordEntity>
+    suspend fun clearUserProgress(userId: String)
 }
